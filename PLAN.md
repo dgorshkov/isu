@@ -33,6 +33,18 @@ request per story. Do not skip ahead, do not batch stories, do not merge your ow
   a successful story.**
 - **Every story leaves the tree green:** `go build ./...`, `go vet ./...`,
   `golangci-lint run`, `go test ./...` all pass, and coverage does not drop.
+- **Mark it done in this file, in the same pull request.** The pull request that finishes a
+  story also updates PLAN.md, or the story is not finished. Specifically:
+  - append ` ✅` to the story heading, and add a `**Done**` line directly beneath it naming
+    the pull request and the date it merged — `**Done** #1, 2026-08-24`;
+  - update the **status** column of that story's milestone in the Milestones table;
+  - when the last story of a milestone lands, mark the milestone heading ` ✅` too and set
+    its row to `done`.
+
+  Mark a story done only once its pull request has merged — not when the branch is pushed.
+  Never mark a story that was skipped, deferred or partially built; say what is missing
+  instead. This file is how a reviewer, and the next session, learn where the build actually
+  is, so a stale PLAN.md is a defect like any other.
 
 ### Stack
 
@@ -189,19 +201,19 @@ reads history must read blob content, not `%an`. M3-S5 tests a squash-only lifec
 
 Eleven milestones. Stop for review at the end of each.
 
-| | milestone | ships |
-|---|---|---|
-| M0 | Foundations | repo, CI, lint, test harness |
-| M1 | Issue files | parse, serialise, validate |
-| M2 | Git layer | fast load from any ref and from the working tree |
-| M3 | Derivation | statuses, epics, claims, contention |
-| M4 | CLI | board, show, ready, new, claim, resolve, drop, field notes |
-| M5 | Checks | `isu check`, hooks, GitHub Actions, GitLab CI, dogfooding |
-| M6 | TUI | `isu ui` |
-| M7 | Local web | `isu serve` |
-| M8 | Importers | safe writes, Jira, Linear |
-| M9 | Public website | content, design, landing page, live demo, docs, deploy |
-| M10 | Release | goreleaser, brew, docs, v1.0.0 |
+| | milestone | ships | status |
+|---|---|---|---|
+| M0 | Foundations | repo, CI, lint, test harness | in progress — 1/4 |
+| M1 | Issue files | parse, serialise, validate | not started |
+| M2 | Git layer | fast load from any ref and from the working tree | not started |
+| M3 | Derivation | statuses, epics, claims, contention | not started |
+| M4 | CLI | board, show, ready, new, claim, resolve, drop, field notes | not started |
+| M5 | Checks | `isu check`, hooks, GitHub Actions, GitLab CI, dogfooding | not started |
+| M6 | TUI | `isu ui` | not started |
+| M7 | Local web | `isu serve` | not started |
+| M8 | Importers | safe writes, Jira, Linear | not started |
+| M9 | Public website | content, design, landing page, live demo, docs, deploy | not started |
+| M10 | Release | goreleaser, brew, docs, v1.0.0 | not started |
 
 ### Sizing
 
@@ -232,7 +244,11 @@ a regression test first.
 
 # M0 · Foundations
 
-### M0-S1 · Repository skeleton
+**Status** in progress — M0-S1 done; M0-S2, M0-S3 and M0-S4 not started. The milestone
+boundary rule in §0 applies once all four have landed, not before.
+
+### M0-S1 · Repository skeleton ✅
+**Done** #1, 2026-08-24. Module path confirmed as `github.com/dgorshkov/isu`.
 **Branch** `isu/M0-S1-skeleton`
 **Decide first** the module path. `github.com/dgorshkov/isu` is a placeholder — confirm the
 real one before the first commit, because changing it later rewrites every import in the tree.
@@ -810,4 +826,6 @@ State this in the README so nobody has to ask:
 3. Coverage is at or above 85% overall, 100% for `internal/model`.
 4. The story's own issue file is flipped to `resolved` in the same pull request (from M2-S4).
 5. The pull request describes what changed, what was decided, and anything that needs a call.
-6. You have not merged it.
+6. The same pull request marks the story done in this file — heading ✅, `**Done**` line,
+   milestone status column, per §0.
+7. You have not merged it.
