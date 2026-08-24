@@ -1,0 +1,5 @@
+# Configuration for isu itself. See PLAN.md section 1.
+#
+# prefix is the issue id prefix: isu's own issues are ISU-1, ISU-2, ... Ids are
+# allocated as max-existing + 1 at creation time (M1-S4).
+prefix: ISU
