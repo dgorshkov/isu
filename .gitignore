@@ -1,0 +1,14 @@
+# Built binaries
+/isu
+/dist/
+
+# Test and coverage output
+*.test
+coverage.out
+coverage.html
+
+# Editor and OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
