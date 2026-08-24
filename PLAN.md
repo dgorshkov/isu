@@ -186,16 +186,23 @@ a `parent:` line to a third file.
 
 ### Derived statuses
 
-Never stored. Computed from `state` read across refs.
+Never stored. Computed from `state` read across refs. **The rows are ordered and the first
+match wins** — several of them overlap, and without a stated precedence a merged issue whose
+claim ref still exists matches both `done` and `in progress`.
 
 | status | rule |
 |---|---|
-| `awaiting triage` | folder exists on a branch, not on trunk |
-| `open` | on trunk with `state: open`, nothing claims it |
-| `in progress` | a claim ref exists, or some branch has `state: resolved` where trunk has `open` |
 | `done` | trunk has `state: resolved` |
 | `dropped` | trunk has `state: dropped` |
+| `awaiting triage` | folder exists on a branch, not on trunk |
+| `in progress` | a claim ref exists, or some branch has `state: resolved` where trunk has `open` |
 | `reopened` | trunk has `state: open`, and some earlier trunk commit had `resolved` |
+| `open` | on trunk with `state: open`, nothing claims it |
+
+Terminal trunk state beats every claim, so a finished issue reads `done` whether or not its
+claim ref was tidied up. `in progress` beats `reopened` because someone actively re-fixing an
+issue needs to show as worked, not as merely broken again — but **reopened survives as an
+annotation** on whatever status wins, so the fact is never lost.
 
 `in progress` has two sources because claims are advisory: someone who never ran `isu claim`
 but has pushed a branch that resolves the issue is, observably, working on it.
@@ -228,6 +235,23 @@ that is what lets `blocked_by` on one branch keep pointing at the right issue wh
 other branches are in flight. **Imported issues keep their source key verbatim** as their id —
 `PROJ-1234` is a valid id, and the format above governs generation, not validation.
 
+### Configuration
+
+`.isu.yml` sits at the repository root. This is the whole schema; stories below may not invent
+keys, and an unknown key is a validation error rather than a silent no-op.
+
+| key | type | default | meaning |
+|---|---|---|---|
+| `prefix` | string | — | required; the issue id prefix |
+| `agents` | list of strings | empty | commit authors treated as agents by M5-S4 |
+| `direct_triage` | bool | `false` | allow `isu triage --push` to write straight to trunk |
+| `stale_days` | int | `7` | a claim older than this is stale |
+| `fetch_warn_hours` | int | `24` | warn when the newest remote ref is older than this |
+| `attachment_max_bytes` | int | `524288` | per-attachment cap enforced by M5-S2 |
+
+Every one of these is read by a story below, so the file's schema is validated in M1-S4 rather
+than discovered a milestone at a time.
+
 ### Claims
 
 `isu claim AR-7f3akq` does, in this order:
@@ -254,6 +278,13 @@ check exactly as it should.
 
 `isu unclaim` deletes the claim ref. Claims are advisory for humans and binding for agents.
 
+**A claim is released when the work lands.** `isu unclaim` does it by hand; the CI template from
+M5-S6 deletes `refs/claims/<ID>` on every push to trunk that leaves the issue terminal. Nothing
+else in this design ever removes a claim ref, so without that sweep every completed issue keeps
+one forever and M5-S5 reports it as a stale claim for the life of the repository. The status
+precedence above keeps the board correct in the meantime; the sweep is what keeps the warnings
+correct.
+
 Some remotes refuse pushes outside `refs/heads/*` and `refs/tags/*`. `isu claim` must tell that
 rejection apart from a lost race and say so plainly — the two look identical in git's output and
 mean opposite things. `--no-claim` is the documented degraded mode: branch, work, and let
@@ -266,10 +297,15 @@ metadata. Squash collapses authorship; it does not touch the file. Every derivat
 reads history must read blob content, not `%an`. M3-S5 tests a squash-only lifecycle.
 
 Linking a trunk commit back to the issue it resolved is the one thing file content cannot
-answer, so `isu resolve` writes an `Isu-Resolves: <ID>` **commit trailer**. Recovery reads the
-trailer first and falls back to parsing the subject. The fallback is what the plan used to rely
-on alone, and it is GitHub's squash format — GitLab does not share it, and this project ships
-CI for both.
+answer, so `isu resolve` writes an `Isu-Resolves: <ID>` **commit trailer**. Recovery reads three
+sources in order: the trailer, the **branch name** recorded by the merge, then the commit
+subject.
+
+The middle tier is not redundant. GitLab's squash message defaults to the merge request title
+and drops the source commits' trailers, so on GitLab the trailer and the GitHub-style subject
+can both be absent from the same commit — and this project ships CI for both forges. Branch
+names are `isu/<ID>`, which survives either forge's squash, and M7-S3 already scans for exactly
+that.
 
 ---
 
@@ -335,10 +371,16 @@ carrying `prefix: ISU`.
 ### M0-S2 · Lint, vet, coverage gate
 **Branch** `isu/M0-S2-quality-gates`
 **Build** `.golangci.yml` (errcheck, govet, staticcheck, revive, gofumpt), a `Makefile` with
-`make test lint cover`, and a coverage script that fails under **85%** for `./internal/...`.
-**Tests first** a test that shells the coverage script against a fixture below threshold and
-asserts non-zero exit.
-**Done when** `make lint` and `make cover` both pass locally.
+`make test lint cover`, and a coverage script enforcing **both** floors from the definition of
+done: **85% across `./...`** — the whole module, `cmd/` included, not just `./internal/...` —
+and **100% for `internal/model`** once that package exists. A gate that measures a subset of
+the tree is not the gate §0 says it is.
+**Tests first** a test that shells the coverage script against a fixture below the overall
+threshold and asserts non-zero exit; a second fixture that clears 85% overall but leaves
+`internal/model` under 100% and must also exit non-zero; a third asserting the per-package
+floor is skipped, not failed, while `internal/model` does not yet exist.
+**Done when** `make lint` and `make cover` both pass locally, and neither floor can be met by
+a tree that violates the other.
 
 ### M0-S3 · CI on both forges
 **Branch** `isu/M0-S3-ci`
@@ -381,8 +423,8 @@ required-field table from section 1. Errors accumulate — return all problems, 
 `Validate()` takes one issue and nothing else: no child index, no sibling lookup, no repo.
 **Tests first** one case per row of the type table, plus: id not matching folder, missing
 title, missing or malformed `created`, unknown type, unknown state, unknown priority, dropped
-without `reason`, dropped without `resolution`, bug without repro, **an epic declaring
-`state:`**, and **a non-epic omitting it**.
+without `reason`, dropped without `resolution`, **dropped with a `resolution` outside the
+enum**, bug without repro, **an epic declaring `state:`**, and **a non-epic omitting it**.
 **Done when** `Validate()` output is stable, sorted and human-readable, and the epic cases pass
 without the function ever seeing a second issue.
 
@@ -397,15 +439,19 @@ keeps pull requests readable.
 
 ### M1-S4 · ID generation and `.isu.yml`
 **Branch** `isu/M1-S4-ids`
-**Build** config loading, prefix validation, and `NewID(title, owner, created)` implementing the
-token scheme from section 1. No counter, no scan of existing issues to find a maximum, no
-`isu renumber` — ids are permanent from creation.
+**Build** config loading and validation against the `.isu.yml` table in section 1, plus
+`NewID(title, owner, created)` implementing the token scheme. **`NewID` is pure** — it reads
+nothing, knows about no other issue, and cannot detect a collision, because detecting one means
+loading the repository and the git layer does not exist until M2. No counter, no scan for a
+maximum, no `isu renumber` — ids are permanent from creation.
 **Tests first** the same inputs plus different random bytes give different ids; the alphabet
-never emits `i`, `l`, `o` or `u`; generation is constant-time with respect to repo size
-(assert it issues zero reads against a 5,000-issue fixture); an id colliding with an existing
-one is regenerated rather than returned; an imported `PROJ-1234` validates as an id even though
-nothing would ever generate it.
-**Done when** creating an issue needs neither the network nor a full read of `issues/`.
+never emits `i`, `l`, `o` or `u`; `NewID` issues zero reads against a 5,000-issue fixture; an
+imported `PROJ-1234` validates as an id even though nothing would ever generate it; every key
+in the config table round-trips with its default applied, an unknown key is refused, and a bad
+value is refused with the key named.
+**Done when** generating an id needs neither the network nor a read of `issues/`. Collision
+regeneration is deliberately **not** here — it needs the loaded repo, so it belongs to `isu new`
+in M4-S3.
 
 ### M1-S5 · Schema version and migration
 **Branch** `isu/M1-S5-schema-version`
@@ -573,7 +619,7 @@ test asserting `--fetch` is a no-op against a repo with no remote rather than an
 **Branch** `isu/M4-S2-board-show`
 **Build** the derived board grouped by status, and single-issue detail including attachments,
 comments, claim and epic position. Both print a **freshness line** — how old the newest remote
-ref is — and warn above a configurable threshold. Two engineers looking at the same repo with
+ref is — and warn once it exceeds `fetch_warn_hours`. Two engineers looking at the same repo with
 different fetch ages see different contention, and the output should say so rather than let
 them argue about it.
 **Tests first** golden output for a repo in every status; `--json` round-trips through
@@ -583,14 +629,24 @@ freshly fetched one does not.
 
 ### M4-S3 · `isu new` and `isu ready`
 **Branch** `isu/M4-S3-new-ready`
-**Build** `new` scaffolds a folder, generates an id per M1-S4, requires `--title`, stamps
-`created`, defaults `priority` to `p2`, creates a `report/<ID>` branch and stages it for a pull
-request. `ready` lists open issues whose `blocked_by` are all terminal, **ordered by priority
-then age**, `--json` by default for agents.
+**Build** `new` scaffolds a folder, generates an id per M1-S4 and **regenerates it if the token
+collides with any id it can see** (trunk plus local refs — this is the story that has the loader
+M1-S4 lacks), requires `--title`, stamps `created`, and defaults `priority` to `p2`. It also
+takes `--type` (default `bug`) and `--parent`; **`--type epic` omits `state:`**, and is the only
+way to create an epic. By default it creates a `report/<ID>` branch and stages it for a pull
+request; **`--no-branch`** writes into the working tree instead, which is what a bulk conversion
+needs and what M5-S7 uses.
+`ready` lists open issues whose `blocked_by` are all terminal — **an epic blocker is terminal
+when its rollup is**, since an epic has no `state:` of its own — ordered by priority then age,
+`--json` by default for agents.
 **Tests first** `new` produces a valid issue and a branch not on trunk (status: awaiting
 triage); `new` without a title is refused; two `new` runs in the same second produce different
-ids; `ready` excludes blocked, dropped, claimed and contended issues; `ready` puts a `p0` ahead
-of an older `p2`.
+ids; a seeded collision with an existing id is regenerated rather than returned; `--type epic`
+produces an issue with no `state:` that passes M1-S2, and any other type without one fails;
+`--no-branch` leaves the repository on the branch it started on; `--parent` naming a non-epic is
+refused; `ready` excludes blocked, dropped, claimed and contended issues; `ready` treats an
+issue blocked by a fully-resolved epic as ready and one blocked by a half-done epic as not;
+`ready` puts a `p0` ahead of an older `p2`.
 **Done when** `isu ready --json | head -1` gives an agent everything it needs to start.
 
 ### M4-S4 · `isu claim` and `isu unclaim`
@@ -598,7 +654,9 @@ of an older `p2`.
 **Build** the three-step claim from section 1, in that order — parentless claim commit pushed
 to `refs/claims/<ID>` first, then the branch, and **no write to the issue file**. Claim failure
 must be fast, quiet and exit non-zero with a machine-readable reason that distinguishes a lost
-race from a remote that refuses the ref namespace.
+race from a remote that refuses the ref namespace. Build `--no-claim` here too — section 1
+names it the documented degraded mode for those remotes, and a documented mode that no story
+builds is a promise the plan breaks.
 **Tests first** the rejection path **deterministically**: create the claim ref, then claim
 from a second clone and assert the failure names the holder and exits non-zero. **Assert the
 claim commit is parentless**, and assert a claim attempt built on the current trunk tip is
@@ -682,8 +740,8 @@ trunk — never raw git.
 **Branch** `isu/M5-S2-structural-checks`
 **Build** schema validity, id matches folder, duplicate ids, `parent` and `blocked_by` exist,
 **`parent` names an issue of `type: epic`**, parent cycles, self-parent, dependency cycles,
-**an epic declaring its own `state:`**, **an epic with no children**, attachment size cap
-(default 512 KB, configurable).
+**an epic declaring its own `state:`**, **an epic with no children**, and the attachment size
+cap from `attachment_max_bytes`.
 **Tests first** one repo fixture per violation, and one clean fixture asserting zero findings.
 The duplicate-id fixture matters more than it used to: it is now the only thing standing
 between two clones that generated the same token at the same moment and a corrupt tree.
@@ -714,7 +772,7 @@ code changes warns and exits 0.
 ### M5-S5 · Contention and staleness reporting
 **Branch** `isu/M5-S5-contention`
 **Build** warn when another ref claims the same issue, naming the branch and holder; warn on
-claims older than the stale threshold. Both warnings are statements about refs, so both are
+claims older than `stale_days`. Both warnings are statements about refs, so both are
 only as true as the last fetch: run `--fetch` in CI, and include the fetch age in the warning
 so a local run that disagrees with CI is self-explaining.
 **Tests first** two branches claiming the same issue produces one warning naming the other
@@ -736,12 +794,17 @@ zero-length diff; init over an existing workflow without `--force` refuses.
 **Why** Last in this milestone on purpose. It needs `isu new` from M4-S3 to create the issues
 and the whole check suite to keep them honest; converting any earlier means hand-maintaining
 issue files with nothing verifying them.
-**Build** convert every remaining story in this plan into an issue folder **using `isu new`**.
-Milestones become issues of `type: epic`; `blocked_by` encodes the order. Turn `isu check` on
-for this repository's own pipeline.
+**Build** convert every remaining story in this plan into an issue folder using
+**`isu new --no-branch`**, so the whole conversion lands on this one branch and reaches trunk in
+this one pull request — the default `report/<ID>` branch per issue would scatter fifty issues
+across fifty branches that the test below, which reads trunk, could never see. Milestones become
+`--type epic`; every story is created with `--parent` naming its milestone, and `blocked_by`
+encodes the order. Turn `isu check` on for this repository's own pipeline.
 **Tests first** a test loading `issues/` from trunk asserting every issue validates, the
-dependency graph is acyclic, every epic has at least one child, and every non-epic has a
-`parent` that is an epic.
+dependency graph is acyclic, every epic has at least one child, and every non-epic names a
+`parent` that is an epic. That last one is an assertion about **this repository's tree**, which
+the conversion controls — `parent` stays optional in the schema, because a repository with no
+epics at all is a perfectly good repository.
 **Done when** isu tracks its own construction and its own CI enforces it. From here on every
 story pull request also flips its own issue file to `resolved` — and M5-S3 turns that into a
 failing check if the pull request contains nothing else.
@@ -813,8 +876,9 @@ custom fields produces clean frontmatter and a complete `source.yml`.
 ### M7-S2 · Safe writes
 **Branch** `isu/M7-S2-safe-writes`
 **Why** An importer writes attacker-influenced data into your repository. Ticket titles,
-filenames and attachments all originate outside your control. Serving that data is guarded in
-M7-S2; **writing it is the more dangerous direction and gets its own story.**
+filenames and attachments all originate outside your control. v1.0.0 never serves that data over
+HTTP — the web UI is out of scope, and `glamour` renders to a terminal — so **writing it to disk
+is the entire attack surface, and it gets its own story.**
 **Build** one guarded write path that every importer must use. Filenames sanitised and
 constrained to the issue's own folder — reject `..`, absolute paths, symlinks, control
 characters, reserved Windows names, and names over 255 bytes. Per-file and per-issue size
@@ -841,15 +905,24 @@ records the stronger one.
 
 ### M7-S4 · Jira: issues, types and hierarchy
 **Branch** `isu/M7-S4-jira-core`
-**Build** read a Jira JSON export. Map issue types to the four isu types. Map status to state:
-terminal statuses become `resolved` or `dropped`, and **everything non-terminal becomes
-`open`** — in-flight statuses are not imported, because in this model they are derived from
-branches, and a ticket parked in review for eight months was never in review. Collapse Epic
-Link, parent and subtask into the single `parent` field.
+**Build** read a Jira JSON export. Map issue types to the **five** isu types — a Jira Epic
+becomes `type: epic` and, like every epic, is written **without `state:`**; everything else maps
+to `bug`, `story`, `chore` or `spike`. Map status to state for those: terminal statuses become
+`resolved` or `dropped`, and **everything non-terminal becomes `open`** — in-flight statuses are
+not imported, because in this model they are derived from branches, and a ticket parked in
+review for eight months was never in review. A `dropped` issue also needs `resolution`, which is
+now mandatory: map Jira's own resolution field onto the enum, and anything unrecognised becomes
+`wontfix` with the original string preserved in `source.yml`. Collapse Epic Link, parent and
+subtask into the single `parent` field — and since M5-S2 requires a `parent` to name an epic,
+a subtask whose parent is an ordinary issue keeps the link only when that parent is itself
+imported as an epic; otherwise the link goes to `source.yml` and is reported in the dry run.
 **Tests first** a fixture export covering epics, subtasks, dropped issues and a four-level
 hierarchy; assert the collapse is lossless in the sense that the parent graph is preserved and
-acyclic.
-**Done when** the imported tree passes `isu check` with zero failures.
+acyclic; assert imported Epics carry `type: epic` and no `state:`; assert every dropped issue
+has a `resolution` drawn from the enum; assert a subtask under a non-epic parent does not emit
+a `parent` that would fail the check.
+**Done when** the imported tree passes `isu check` with zero failures — which, with the epic
+and resolution rules above, is now a reachable bar rather than a contradiction.
 
 ### M7-S5 · Jira: comments, attachments and dev-status links
 **Branch** `isu/M7-S5-jira-content`
@@ -931,8 +1004,12 @@ triggers only on trunk; a test asserts every page has a title, a description and
 **Build** goreleaser for linux/darwin on amd64 and arm64, static, reproducible, with version
 and commit stamped in.
 **Tests first** a smoke test running each built binary's `--version` under emulation where
-available.
-**Done when** `goreleaser release --snapshot` produces working binaries.
+available. Plus the case M0-S1's `TestVersionCommand` structurally cannot reach: build with
+`-ldflags -X main.version=...` and assert the **stamped** value still satisfies the semver
+pattern. That test links against the compile-time default and so only ever exercises
+`0.1.0-dev`; a release that stamps a leading `v` would ship broken past a green suite.
+**Done when** `goreleaser release --snapshot` produces working binaries, and a bad stamp fails
+the build rather than the user.
 
 ### M9-S2 · Distribution
 **Branch** `isu/M9-S2-distribution`
