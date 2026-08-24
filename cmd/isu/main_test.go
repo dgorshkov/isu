@@ -25,7 +25,7 @@ func TestVersionCommand(t *testing.T) {
 	require.Equal(t, 0, code, "--version must exit zero; stderr: %s", stderr.String())
 	require.Empty(t, stderr.String(), "--version must not write to stderr")
 
-	// Only the first line is pinned: M10-S1 stamps commit metadata into the
+	// Only the first line is pinned: M9-S1 stamps commit metadata into the
 	// build, and it must land on a later line rather than decorating this one.
 	first, _, _ := strings.Cut(stdout.String(), "\n")
 	require.Regexp(t, regexp.MustCompile(semverPattern), first)

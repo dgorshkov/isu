@@ -11,7 +11,7 @@ import (
 )
 
 // version is the build version. Release builds override it via
-// -ldflags "-X main.version=..." (M10-S1); anything else is a development
+// -ldflags "-X main.version=..." (M9-S1); anything else is a development
 // build and says so.
 var version = "0.1.0-dev"
 
