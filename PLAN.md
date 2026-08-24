@@ -315,7 +315,7 @@ Ten milestones. Stop for review at the end of each.
 
 | | milestone | ships | status |
 |---|---|---|---|
-| M0 | Foundations | repo, CI, lint, test harness | in progress — 1/4 |
+| M0 | Foundations | repo, CI, lint, test harness | done |
 | M1 | Issue files | parse, serialise, validate, version | not started |
 | M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | not started |
 | M3 | Derivation | statuses, epics, claims, contention | not started |
@@ -352,10 +352,10 @@ a regression test first.
 
 ---
 
-# M0 · Foundations
+# M0 · Foundations ✅
 
-**Status** in progress — M0-S1 done; M0-S2, M0-S3 and M0-S4 not started. The milestone
-boundary rule in §0 applies once all four have landed, not before.
+**Status** done — all four stories landed. The milestone boundary rule in §0 applies
+here: M1 does not start without explicit approval.
 
 ### M0-S1 · Repository skeleton ✅
 **Done** #1, 2026-08-24. Module path confirmed as `github.com/dgorshkov/isu`.
@@ -368,7 +368,10 @@ carrying `prefix: ISU`.
 **Tests first** `TestVersionCommand` asserts `isu --version` prints a semver string.
 **Done when** `go run ./cmd/isu --version` works and the tree is green.
 
-### M0-S2 · Lint, vet, coverage gate
+### M0-S2 · Lint, vet, coverage gate ✅
+**Done** #4, 2026-08-24. The profile is built with `-coverpkg=./...`, without which a
+package carrying no test file of its own is absent from the profile and raises the
+average by being untested.
 **Branch** `isu/M0-S2-quality-gates`
 **Build** `.golangci.yml` (errcheck, govet, staticcheck, revive, gofumpt), a `Makefile` with
 `make test lint cover`, and a coverage script enforcing **both** floors from the definition of
@@ -382,7 +385,9 @@ floor is skipped, not failed, while `internal/model` does not yet exist.
 **Done when** `make lint` and `make cover` both pass locally, and neither floor can be met by
 a tree that violates the other.
 
-### M0-S3 · CI on both forges
+### M0-S3 · CI on both forges ✅
+**Done** #4, 2026-08-24. The GitLab pipeline is written for GitLab SaaS runners and
+has not been run: no GitLab project mirrors this repository yet.
 **Branch** `isu/M0-S3-ci`
 **Build** `.github/workflows/ci.yml` and `.gitlab-ci.yml`. Both run build, vet, lint, test,
 coverage on Linux and macOS. Both call the same `make` targets — no logic in YAML.
@@ -390,7 +395,9 @@ coverage on Linux and macOS. Both call the same `make` targets — no logic in Y
 CI files reference is defined. This is what keeps the two forges honest.
 **Done when** both pipelines are green.
 
-### M0-S4 · The git test harness
+### M0-S4 · The git test harness ✅
+**Done** #4, 2026-08-24. Commits by a second author and claim refs are not in the
+harness yet; they arrive with M3-S3, which is where what they mean is decided.
 **Branch** `isu/M0-S4-gittest`
 **Why** Every meaningful test in this project builds a real repository. Getting this helper
 right early is the difference between fast tests and a swamp.
