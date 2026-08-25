@@ -301,11 +301,12 @@ answer, so `isu resolve` writes an `Isu-Resolves: <ID>` **commit trailer**. Reco
 sources in order: the trailer, the **branch name** recorded by the merge, then the commit
 subject.
 
-The middle tier is not redundant. GitLab's squash message defaults to the merge request title
-and drops the source commits' trailers, so on GitLab the trailer and the GitHub-style subject
-can both be absent from the same commit — and this project ships CI for both forges. Branch
-names are `isu/<ID>`, which survives either forge's squash, and M7-S3 already scans for exactly
-that.
+The middle tier is not redundant, and it does not depend on a second forge. GitHub's squash
+commit message is a repository setting: set it to *pull request title*, or let a merge queue
+compose the message, and the source commits' trailers never reach trunk. The subject is then
+the pull request's title rather than anything `isu resolve` wrote, so the trailer and the
+subject can both be useless on the same commit. Branch names are `isu/<ID>`, are recorded by
+the merge whatever that setting says, and M7-S3 already scans for exactly that.
 
 ---
 
@@ -320,7 +321,7 @@ Ten milestones. Stop for review at the end of each.
 | M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | not started |
 | M3 | Derivation | statuses, epics, claims, contention | not started |
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | not started |
-| M5 | Checks | `isu check`, hooks, GitHub Actions, GitLab CI, dogfooding | not started |
+| M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | not started |
 | M6 | TUI | `isu ui` | not started |
 | M7 | Importers | safe writes, Jira | not started |
 | M8 | Public website | content, landing page, docs, deploy | not started |
@@ -385,15 +386,17 @@ floor is skipped, not failed, while `internal/model` does not yet exist.
 **Done when** `make lint` and `make cover` both pass locally, and neither floor can be met by
 a tree that violates the other.
 
-### M0-S3 · CI on both forges ✅
-**Done** #4, 2026-08-24. The GitLab pipeline is written for GitLab SaaS runners and
-has not been run: no GitLab project mirrors this repository yet.
+### M0-S3 · CI ✅
+**Done** #4, 2026-08-24. **This story was amended as it was built.** It read *CI on both
+forges* and shipped a `.gitlab-ci.yml` alongside the Actions workflow; the project lives on
+GitHub only, so the GitLab pipeline was deleted in the same pull request and every other
+reference to a second forge in this file was corrected with it — see *Out of scope* below.
 **Branch** `isu/M0-S3-ci`
-**Build** `.github/workflows/ci.yml` and `.gitlab-ci.yml`. Both run build, vet, lint, test,
-coverage on Linux and macOS. Both call the same `make` targets — no logic in YAML.
-**Tests first** `TestMakefileTargetsExist` parses the Makefile and asserts every target the
-CI files reference is defined. This is what keeps the two forges honest.
-**Done when** both pipelines are green.
+**Build** `.github/workflows/ci.yml`, running build, vet, lint, test and coverage on Linux and
+macOS. It calls `make` targets — no logic in YAML, so every gate can be run before pushing.
+**Tests first** `TestMakefileTargetsExist` parses the Makefile and asserts every target the CI
+file references is defined. This is what stops a gate existing only inside YAML.
+**Done when** the pipeline is green.
 
 ### M0-S4 · The git test harness ✅
 **Done** #4, 2026-08-24. Commits by a second author and claim refs are not in the
@@ -601,8 +604,9 @@ teams use.
 **Tests first** an end-to-end lifecycle using **only** squash merges: report → triage →
 claim → fix → merge → revert, asserting the derived status at every step. Then assert the issue
 id is recoverable from the trunk commit that set `resolved` **via the `Isu-Resolves:` trailer**,
-and separately that the subject-parsing fallback recovers it from a GitHub-style squash subject
-and returns nothing rather than a wrong answer on a GitLab-style one.
+and separately that the subject-parsing fallback recovers it from a squash subject that carries
+the id, and returns nothing rather than a wrong answer on one that is only a pull request
+title.
 **Done when** the squash lifecycle test passes without changing M3-S1..S4.
 
 ---
@@ -789,12 +793,12 @@ warning that says so rather than reporting confident nonsense.
 
 ### M5-S6 · Hooks and CI templates
 **Branch** `isu/M5-S6-init`
-**Build** `isu init` writing a pre-commit hook, `.github/workflows/isu.yml` and
-`.gitlab-ci.yml`. Flags `--hooks`, `--actions`, `--gitlab`. Idempotent: running twice changes
-nothing. Never overwrites an existing file without `--force`.
+**Build** `isu init` writing a pre-commit hook and `.github/workflows/isu.yml`. Flags
+`--hooks`, `--actions`. Idempotent: running twice changes nothing. Never overwrites an existing
+file without `--force`.
 **Tests first** init into a clean repo produces working files; init twice produces a
 zero-length diff; init over an existing workflow without `--force` refuses.
-**Done when** both generated pipelines run `isu check` and fail the build correctly.
+**Done when** the generated pipeline runs `isu check` and fails the build correctly.
 
 ### M5-S7 · Dogfooding switch
 **Branch** `isu/M5-S7-dogfood`
@@ -993,14 +997,14 @@ check catalogue, the JSON contract, importing from Jira, and a page on what isu 
 does not do. Then `make site` producing the whole site from a clean checkout, the gates —
 internal link checker, HTML validity, a 300 KB per-page weight budget, an accessibility pass,
 responsive down to 360 px, `prefers-reduced-motion` honoured — and publishing on merge to trunk
-from both pipelines, with favicon, Open Graph and Twitter cards, sitemap, canonical URLs and a
+from CI, with favicon, Open Graph and Twitter cards, sitemap, canonical URLs and a
 404 page that is useful rather than decorative.
 **Tests first** a test extracting every fenced shell block from the docs and running it against
 a scratch repo — documentation that does not execute is documentation that rots, and these docs
 will be read by agents; the budget and accessibility tests fail on any violation; a viewport
 test asserts no horizontal scroll at 360 px; a workflow-lint test asserts the deploy job
 triggers only on trunk; a test asserts every page has a title, a description and an OG image.
-**Done when** every command in the docs actually runs and the site is live from both forges.
+**Done when** every command in the docs actually runs and the site is live from CI.
 
 ---
 
@@ -1059,6 +1063,12 @@ State this in the README so nobody has to ask:
 - Sprints, story points, burndown, time tracking.
 - Bidirectional sync with anything. Import is one-way and one-time by design.
 - Notifications and email.
+- **A second forge.** This file used to ship a GitLab pipeline beside the GitHub one and read
+  *CI on both forges*; the project is on GitHub, so a pipeline nobody runs was a pipeline
+  that would rot while claiming to be a second opinion. Dropped in #4, along with the parts
+  of the design that leaned on it. Nothing above needs a second forge to be true — the
+  squash-merge tiers stand on GitHub's own squash settings — so adding one later is work,
+  not a redesign.
 
 The first three are deferrals, not rejections, and each has a milestone's worth of design
 already written in this file's history.
