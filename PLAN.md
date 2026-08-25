@@ -370,7 +370,7 @@ carrying `prefix: ISU`.
 **Done when** `go run ./cmd/isu --version` works and the tree is green.
 
 ### M0-S2 · Lint, vet, coverage gate ✅
-**Done** #4, 2026-08-24. The profile is built with `-coverpkg=./...`, without which a
+**Done** #4, 2026-08-25. The profile is built with `-coverpkg=./...`, without which a
 package carrying no test file of its own is absent from the profile and raises the
 average by being untested.
 **Branch** `isu/M0-S2-quality-gates`
@@ -387,7 +387,7 @@ floor is skipped, not failed, while `internal/model` does not yet exist.
 a tree that violates the other.
 
 ### M0-S3 · CI ✅
-**Done** #4, 2026-08-24. **This story was amended as it was built.** It read *CI on both
+**Done** #4, 2026-08-25. **This story was amended as it was built.** It read *CI on both
 forges* and shipped a `.gitlab-ci.yml` alongside the Actions workflow; the project lives on
 GitHub only, so the GitLab pipeline was deleted in the same pull request and every other
 reference to a second forge in this file was corrected with it — see *Out of scope* below.
@@ -399,7 +399,7 @@ file references is defined. This is what stops a gate existing only inside YAML.
 **Done when** the pipeline is green.
 
 ### M0-S4 · The git test harness ✅
-**Done** #4, 2026-08-24. Commits by a second author and claim refs are not in the
+**Done** #4, 2026-08-25. Commits by a second author and claim refs are not in the
 harness yet; they arrive with M3-S3, which is where what they mean is decided.
 **Branch** `isu/M0-S4-gittest`
 **Why** Every meaningful test in this project builds a real repository. Getting this helper
