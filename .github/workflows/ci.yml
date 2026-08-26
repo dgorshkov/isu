@@ -1,0 +1,54 @@
+# The gates themselves live in the Makefile. This file's only job is to say
+# where they run and on what, so that .gitlab-ci.yml can say exactly the same
+# thing without either forge acquiring a check the other does not have.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            runner: ubuntu-latest
+          - name: macos
+            runner: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # golangci-lint is pinned by the Makefile, and installed the same way on
+      # both forges rather than by a forge-specific action.
+      - run: make tools
+
+      - run: make build
+      - run: make vet
+      - run: make lint
+      - run: make test
+      - run: make cover
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.name }}
+          path: coverage.out
+          if-no-files-found: ignore

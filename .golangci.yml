@@ -1,0 +1,73 @@
+# golangci-lint configuration. The linter set is fixed by M0-S2: errcheck,
+# govet, staticcheck, revive and gofumpt. Adding one is a decision, so it is
+# made here rather than discovered in a diff.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - revive
+    - staticcheck
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      # `_ =` stays allowed: it is how this codebase says out loud that a
+      # failure was considered and has nowhere to go — writing the error about
+      # a failed write to the stream that just failed, for one.
+      check-blank: false
+    govet:
+      enable-all: true
+      disable:
+        # Field alignment is a memory micro-optimisation that would reorder
+        # struct fields away from the order they are documented in.
+        - fieldalignment
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-declaration
+        - name: var-naming
+
+  exclusions:
+    generated: lax
+    rules:
+      # Fixture modules under testdata/ exist to be badly covered and are not
+      # compiled as part of this module.
+      - path: testdata/
+        linters:
+          - errcheck
+          - govet
+          - revive
+          - staticcheck
+
+formatters:
+  enable:
+    - gofumpt
+  settings:
+    gofumpt:
+      extra-rules: true
