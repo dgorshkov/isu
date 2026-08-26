@@ -71,7 +71,7 @@ const localConfig = `
 
 // Repo is a git repository scripted by a test.
 type Repo struct {
-	t   *testing.T
+	t   testing.TB
 	dir string
 	// git is the one door to the binary. The harness goes through internal/gitx
 	// like everything else does, so that M2-S1's rule — nothing outside that
@@ -87,7 +87,7 @@ type Repo struct {
 // It has no commits: an empty ref is a case the loader in M2 has to handle,
 // and a harness that starts with a commit cannot produce one. The first
 // Commit is what gives the trunk a tip and lets Branch name it.
-func New(t *testing.T) *Repo {
+func New(t testing.TB) *Repo {
 	t.Helper()
 
 	r := &Repo{t: t, dir: t.TempDir()}

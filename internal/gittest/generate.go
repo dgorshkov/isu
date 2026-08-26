@@ -51,7 +51,7 @@ func GeneratedID(prefix string, n int) string {
 // for the same reason and one more: a branch per issue built by checking out
 // and committing rewrites the index 200 times over, which on 5,000 issues is
 // half a minute of a test doing nothing anybody asked about.
-func Generate(t *testing.T, spec Spec) *Repo {
+func Generate(t testing.TB, spec Spec) *Repo {
 	t.Helper()
 
 	r := New(t)
@@ -81,11 +81,25 @@ func (r *Repo) importBranches(prefix string, spec Spec) {
 
 	var stream strings.Builder
 
-	for n := range spec.Branches {
-		// An epic has no state and cannot be resolved, so branches take the
-		// issues that can be.
-		which := resolvable(n, spec.Issues)
-		if which < 0 {
+	// An epic has no state and cannot be resolved, so branches take the issues
+	// that can be, in turn. Mapping a branch number straight onto an issue
+	// number and nudging past the epics would hand two branch numbers the same
+	// issue, and a fixture asked for two hundred branches would quietly build
+	// a hundred and sixty.
+	which := -1
+
+	for range spec.Branches {
+		for {
+			which++
+			if which >= spec.Issues {
+				break
+			}
+			if generatedType(which) != "epic" {
+				break
+			}
+		}
+
+		if which >= spec.Issues {
 			break
 		}
 
@@ -109,19 +123,6 @@ func (r *Repo) importBranches(prefix string, spec Spec) {
 	); err != nil {
 		r.t.Fatalf("gittest: importing branches: %v", err)
 	}
-}
-
-// resolvable maps a branch number to an issue that carries a state, skipping
-// the epics. It returns -1 when there is no such issue left.
-func resolvable(n, issues int) int {
-	if generatedType(n) == "epic" {
-		n++
-	}
-	if n >= issues {
-		return -1
-	}
-
-	return n
 }
 
 // data writes a fast-import data block, which is length-prefixed rather than

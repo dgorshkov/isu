@@ -266,6 +266,69 @@ func TestDiffNameOnlyReportsAnUnknownRevision(t *testing.T) {
 	require.ErrorIs(t, err, gitx.ErrUnknownRevision)
 }
 
+// The board reads two hundred branches by asking each how it differs from
+// trunk, so the object ids on either side of a change are what it needs — and
+// git answers in time proportional to the difference rather than to the
+// repository, because it compares trees by object id.
+func TestDiffTreeCarriesTheObjectIdOfEveryChange(t *testing.T) {
+	r := gittest.New(t).
+		Issue("AR-7f3akq").Issue("AR-40b1cc").Commit("two issues").
+		Branch("isu/AR-7f3akq").Checkout("isu/AR-7f3akq").
+		Issue("AR-7f3akq", gittest.State("resolved")).
+		Issue("AR-39ka2p").
+		Commit("resolve one issue and open another").
+		Checkout(gittest.DefaultBranch)
+
+	changes, err := open(t, r).DiffTree(
+		t.Context(), gittest.DefaultBranch, "isu/AR-7f3akq", "issues")
+	require.NoError(t, err)
+
+	byPath := map[string]gitx.Change{}
+	for _, c := range changes {
+		byPath[c.Path] = c
+	}
+
+	require.Len(t, byPath, 2, "the issue neither side touched is not a change")
+
+	resolved := byPath["issues/AR-7f3akq/README.md"]
+	require.Equal(t, "M", resolved.Status)
+	require.Len(t, resolved.NewOID, 40)
+	require.NotEqual(t, resolved.OldOID, resolved.NewOID)
+	require.False(t, resolved.Deleted())
+
+	require.Equal(t, "A", byPath["issues/AR-39ka2p/README.md"].Status)
+}
+
+func TestDiffTreeReportsADeletion(t *testing.T) {
+	r := gittest.New(t).
+		Issue("AR-7f3akq").Commit("add AR-7f3akq").
+		Branch("tidy").Checkout("tidy")
+	r.Git("rm", "-r", "--quiet", "issues/AR-7f3akq")
+	r.Commit("delete AR-7f3akq").Checkout(gittest.DefaultBranch)
+
+	changes, err := open(t, r).DiffTree(t.Context(), gittest.DefaultBranch, "tidy", "issues")
+	require.NoError(t, err)
+	require.Len(t, changes, 1)
+	require.True(t, changes[0].Deleted())
+}
+
+func TestDiffTreeOnTwoIdenticalTreesIsNoChanges(t *testing.T) {
+	r := gittest.New(t).
+		Issue("AR-7f3akq").Commit("add AR-7f3akq").
+		Branch("isu/AR-7f3akq")
+
+	changes, err := open(t, r).DiffTree(t.Context(), gittest.DefaultBranch, "isu/AR-7f3akq")
+	require.NoError(t, err)
+	require.Empty(t, changes)
+}
+
+func TestDiffTreeReportsAnUnknownRevision(t *testing.T) {
+	r := gittest.New(t).Issue("AR-7f3akq").Commit("add AR-7f3akq")
+
+	_, err := open(t, r).DiffTree(t.Context(), gittest.DefaultBranch, "refs/heads/nope")
+	require.ErrorIs(t, err, gitx.ErrUnknownRevision)
+}
+
 func TestShowReturnsBlobBytes(t *testing.T) {
 	r := gittest.New(t).
 		Issue("AR-7f3akq", gittest.Body("the body\n")).
