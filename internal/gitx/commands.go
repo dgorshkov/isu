@@ -257,6 +257,32 @@ func (g *Git) DiffNameOnly(ctx context.Context, from, to string, paths ...string
 	return splitNUL(out), nil
 }
 
+// DiffTree lists what changed between two revisions, with the object id on
+// either side of each change.
+//
+// It is DiffNameOnly's answer plus the object ids, which is the difference
+// between knowing that a branch touched an issue and being able to read what it
+// says — and it costs no more, because git compares trees by object id and
+// skips the subtrees that match. That is what lets the board read two hundred
+// branches without listing five thousand issues two hundred times.
+//
+// Renames are not detected, for the same reason as in Log: a moved issue folder
+// is one issue ending and another beginning.
+func (g *Git) DiffTree(ctx context.Context, from, to string, paths ...string) ([]Change, error) {
+	args := []string{"diff-tree", "-r", "--no-abbrev", "--no-renames", "-z", from, to}
+	if len(paths) > 0 {
+		args = append(args, "--")
+		args = append(args, paths...)
+	}
+
+	out, err := g.output(ctx, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseChanges(splitNUL(out))
+}
+
 // Show returns an object's bytes.
 //
 // Nothing on the fast read path uses it — that is LsTree plus CatFileBatch —

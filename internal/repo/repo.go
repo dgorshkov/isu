@@ -147,6 +147,19 @@ func (s *Set) sortBroken() {
 	sort.SliceStable(s.Broken, func(a, b int) bool { return s.Broken[a].ID < s.Broken[b].ID })
 }
 
+// dropBroken forgets what was wrong with one issue, for a ref that has since
+// replaced the file.
+func (s *Set) dropBroken(id string) {
+	kept := s.Broken[:0]
+	for _, b := range s.Broken {
+		if b.ID != id {
+			kept = append(kept, b)
+		}
+	}
+
+	s.Broken = kept
+}
+
 // decode parses one issue file and attaches the folder it came from.
 func decode(id string, data []byte) (*issue.Issue, error) {
 	doc, err := issue.Parse(data)
