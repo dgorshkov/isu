@@ -140,6 +140,15 @@ func TestTimeoutIsReported(t *testing.T) {
 		"a git that outran its timeout says so rather than looking like a git that failed")
 }
 
+func TestRunDiscardsOutputAndReportsFailure(t *testing.T) {
+	r := gittest.New(t).Issue("AR-7f3akq").Commit("add AR-7f3akq")
+	g := open(t, r)
+
+	require.Equal(t, r.Dir(), g.Dir())
+	require.NoError(t, g.Run(t.Context(), "rev-parse", "HEAD"))
+	require.Error(t, g.Run(t.Context(), "rev-parse", "--verify", "refs/heads/nope"))
+}
+
 func TestProcessesCountsEveryInvocation(t *testing.T) {
 	r := gittest.New(t).Issue("AR-7f3akq").Commit("add AR-7f3akq")
 	g := open(t, r)

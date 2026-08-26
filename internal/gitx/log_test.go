@@ -83,30 +83,38 @@ func TestLogRawCarriesTheObjectIdOfEveryChange(t *testing.T) {
 	require.NotEqual(t, modified.Changes[0].OldOID, modified.Changes[0].NewOID)
 }
 
-// A merge commit shows no diff by default, so the change an issue's file went
-// through on a branch would be invisible at trunk. --first-parent is what makes
-// the merge commit report the change it brought in, which is what "the states
-// the file has held at trunk" means.
-func TestLogFirstParentReportsWhatAMergeBroughtIn(t *testing.T) {
+// The state an issue holds "at trunk" changes at the commit that landed on
+// trunk, which is the merge. Without --first-parent git reports the change at
+// the *branch* commit instead: a merge shows no diff of its own, and under a
+// pathspec history simplification drops the merge and promotes the branch
+// commit that is TREESAME to it. A history index built that way would date
+// every state change from a commit that was never on trunk.
+func TestLogFirstParentAttributesAMergeToTrunkAndNotToTheBranch(t *testing.T) {
 	r := gittest.New(t).
 		Issue("AR-7f3akq").Commit("add AR-7f3akq").
 		Branch("isu/AR-7f3akq").Checkout("isu/AR-7f3akq").
-		Issue("AR-7f3akq", gittest.State("resolved")).Commit("resolve AR-7f3akq").
-		Checkout(gittest.DefaultBranch).
-		Merge("isu/AR-7f3akq")
+		Issue("AR-7f3akq", gittest.State("resolved")).Commit("resolve AR-7f3akq")
+	onBranch := r.Head()
+
+	r.Checkout(gittest.DefaultBranch).Merge("isu/AR-7f3akq")
+	merge := r.Head()
 
 	g := open(t, r)
+	spec := gitx.LogSpec{Rev: "HEAD", Raw: true, Paths: []string{"issues"}}
 
-	plain, err := g.Log(t.Context(), gitx.LogSpec{Rev: "HEAD", Raw: true, Paths: []string{"issues"}})
+	plain, err := g.Log(t.Context(), spec)
 	require.NoError(t, err)
-	require.Empty(t, plain[0].Changes, "a merge commit shows no diff on its own")
+	require.Equal(t, onBranch, plain[0].OID,
+		"without --first-parent the change is reported at the branch commit")
 
-	firstParent, err := g.Log(t.Context(), gitx.LogSpec{
-		Rev: "HEAD", Raw: true, FirstParent: true, Paths: []string{"issues"},
-	})
+	spec.FirstParent = true
+
+	firstParent, err := g.Log(t.Context(), spec)
 	require.NoError(t, err)
 	require.Len(t, firstParent, 2, "trunk's own timeline is two commits long")
-	require.Len(t, firstParent[0].Changes, 1)
+	require.Equal(t, merge, firstParent[0].OID)
+	require.Len(t, firstParent[0].Changes, 1,
+		"the merge reports the change it brought in, which a merge shows only under --first-parent")
 	require.Equal(t, "M", firstParent[0].Changes[0].Status)
 	require.Equal(t, "issues/AR-7f3akq/README.md", firstParent[0].Changes[0].Path)
 }
@@ -132,6 +140,22 @@ func TestLogDoesNotDetectRenames(t *testing.T) {
 		"issues/AR-7f3akq/README.md": "D",
 		"issues/AR-40b1cc/README.md": "A",
 	}, statuses)
+
+	for _, c := range commits[0].Changes {
+		require.Equal(t, c.Path == "issues/AR-7f3akq/README.md", c.Deleted())
+	}
+}
+
+func TestLogLimitsTheWalk(t *testing.T) {
+	r := gittest.New(t).
+		Issue("AR-7f3akq").Commit("first").
+		Issue("AR-40b1cc").Commit("second").
+		Issue("AR-39ka2p").Commit("third")
+
+	commits, err := open(t, r).Log(t.Context(), gitx.LogSpec{Rev: "HEAD", Limit: 2})
+	require.NoError(t, err)
+	require.Len(t, commits, 2)
+	require.Equal(t, "third", commits[0].Subject)
 }
 
 func TestLogOnAnEmptyRepositoryIsAnUnknownRevision(t *testing.T) {
