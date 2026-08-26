@@ -220,6 +220,20 @@ func (r *Repo) File(path, content string) *Repo {
 	return r
 }
 
+// WriteFile writes a file without staging it.
+//
+// What is on disk, what is in the index and what is in a commit are three
+// different questions. M2-S3 reads the first of them, so it needs a way to put
+// a file there and leave it there — a file matched by .gitignore cannot be
+// staged at all, and `git add` on one fails rather than adding it.
+func (r *Repo) WriteFile(path, content string) *Repo {
+	r.t.Helper()
+
+	r.write(path, content)
+
+	return r
+}
+
 // ReadFile returns the contents of a file in the working tree.
 func (r *Repo) ReadFile(path string) string {
 	r.t.Helper()

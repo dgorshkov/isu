@@ -227,6 +227,22 @@ func (g *Git) Run(ctx context.Context, args ...string) error {
 	return g.run(ctx, invocation{args: args, stdout: io.Discard})
 }
 
+// Feed runs an arbitrary git command with stdin on its standard input.
+//
+// The commands that read a stream rather than arguments are the ones that do a
+// thousand things in one process — fast-import builds a fixture's two hundred
+// branches without a checkout — so a package that may not build a git command
+// itself needs a way to reach them.
+func (g *Git) Feed(ctx context.Context, stdin io.Reader, args ...string) (string, error) {
+	var buf bytes.Buffer
+
+	if err := g.run(ctx, invocation{args: args, stdin: stdin, stdout: &buf}); err != nil {
+		return "", err
+	}
+
+	return strings.TrimRight(buf.String(), "\n"), nil
+}
+
 // run executes one git process.
 func (g *Git) run(ctx context.Context, in invocation) error {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)

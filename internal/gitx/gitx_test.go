@@ -149,6 +149,21 @@ func TestRunDiscardsOutputAndReportsFailure(t *testing.T) {
 	require.Error(t, g.Run(t.Context(), "rev-parse", "--verify", "refs/heads/nope"))
 }
 
+func TestFeedWritesToGitsStandardInput(t *testing.T) {
+	r := gittest.New(t).Issue("AR-7f3akq").Commit("add AR-7f3akq")
+	g := open(t, r)
+
+	oid, err := g.Feed(t.Context(), strings.NewReader("hello\n"), "hash-object", "-w", "--stdin")
+	require.NoError(t, err)
+
+	data, err := g.Show(t.Context(), oid)
+	require.NoError(t, err)
+	require.Equal(t, "hello\n", string(data))
+
+	_, err = g.Feed(t.Context(), strings.NewReader("nonsense\n"), "fast-import", "--done")
+	require.Error(t, err)
+}
+
 func TestProcessesCountsEveryInvocation(t *testing.T) {
 	r := gittest.New(t).Issue("AR-7f3akq").Commit("add AR-7f3akq")
 	g := open(t, r)
