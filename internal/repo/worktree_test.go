@@ -1,6 +1,10 @@
 package repo_test
 
 import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -118,6 +122,15 @@ func TestLoadWorktreeWithNoIssuesDirectory(t *testing.T) {
 	require.Empty(t, set.Broken)
 }
 
+// A plain file where issues/ belongs is not an empty board, and reading it as
+// one would hide the mistake.
+func TestLoadWorktreeRefusesAFileWhereIssuesBelongs(t *testing.T) {
+	r := gittest.New(t).File("issues", "not a directory\n").Commit("a file named issues")
+
+	_, err := open(t, r).LoadWorktree(t.Context())
+	require.ErrorContains(t, err, "issues")
+}
+
 func TestLoadWorktreeOnAnEmptyRepository(t *testing.T) {
 	set, err := open(t, gittest.New(t)).LoadWorktree(t.Context())
 	require.NoError(t, err)
@@ -174,6 +187,50 @@ func TestLoadWorktreeReportsAFolderThatCannotBeAnID(t *testing.T) {
 	require.Equal(t, []string{"AR-7f3akq"}, set.IDs())
 	require.Len(t, set.Broken, 1)
 	require.ErrorContains(t, set.Broken[0].Err, "cannot be an issue id")
+}
+
+// A README that is a symlink reads as its target on disk and as the target's
+// *path* at a ref. That is the one way the two loaders could disagree about a
+// clean checkout, so it is refused with a reason rather than quietly resolved.
+func TestLoadWorktreeRefusesAReadmeThatIsNotARegularFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need a privilege there; CI is linux and macos")
+	}
+
+	r := gittest.New(t).Issue("AR-7f3akq")
+
+	require.NoError(t, os.MkdirAll(filepath.Join(r.Dir(), "issues", "AR-40b1cc"), 0o750))
+	require.NoError(t, os.Symlink(
+		filepath.Join(r.Dir(), "issues", "AR-7f3akq", "README.md"),
+		filepath.Join(r.Dir(), "issues", "AR-40b1cc", "README.md")))
+
+	// A directory where the README belongs is the same question with a
+	// different answer from the filesystem.
+	require.NoError(t, os.MkdirAll(filepath.Join(r.Dir(), "issues", "AR-39ka2p", "README.md"), 0o750))
+
+	set, err := open(t, r).LoadWorktree(t.Context())
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"AR-7f3akq"}, set.IDs())
+	require.Len(t, set.Broken, 2)
+	for _, b := range set.Broken {
+		require.ErrorContains(t, b.Err, "must be a regular file")
+	}
+}
+
+func TestLoadWorktreeReportsAReadmeItCannotRead(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a file whatever its mode says")
+	}
+
+	r := gittest.New(t).Issue("AR-7f3akq")
+	require.NoError(t, os.Chmod(filepath.Join(r.Dir(), "issues", "AR-7f3akq", "README.md"), 0o000))
+
+	set, err := open(t, r).LoadWorktree(t.Context())
+	require.NoError(t, err, "one unreadable file is not the end of the board")
+	require.Empty(t, set.IDs())
+	require.Len(t, set.Broken, 1)
+	require.ErrorIs(t, set.Broken[0].Err, fs.ErrPermission)
 }
 
 // Walking the tree is filesystem work; only the ignore list costs a process.
