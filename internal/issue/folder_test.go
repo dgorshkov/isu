@@ -267,7 +267,7 @@ func TestLoadRejects(t *testing.T) {
 			build: func(t *testing.T, dir string) {
 				writeIssue(t, dir, frontmatter("schema: 2", "id: ISU-7f3akq"))
 			},
-			msg: "found 2",
+			msg: "this issue is version 2",
 		},
 		{
 			name: "a comments entry that is a file",
