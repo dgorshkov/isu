@@ -10,12 +10,24 @@ import (
 	"github.com/dgorshkov/isu/internal/issue"
 )
 
-func TestNewTokenIsSixCharactersOfTheAlphabet(t *testing.T) {
+// What NewToken itself has to prove is the narrow thing the deterministic
+// tests beside it cannot: that the public entry point consults the random
+// source at all, and that what comes back is the shape the schema promises.
+//
+// It deliberately does **not** try to measure how much entropy is in there.
+// Two thousand draws over thirty bits expect 0.002 collisions, and two
+// thousand draws over *twenty* bits expect 1.9 — so any distinctness threshold
+// loose enough not to flake is also loose enough to miss ten lost bits. That
+// property is proven against token() directly, where the inputs are chosen
+// rather than sampled.
+func TestNewToken(t *testing.T) {
 	t.Parallel()
 
 	const alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
 
 	created := mustDate(t, "2026-08-24")
+
+	seen := map[string]bool{}
 
 	for range 2000 {
 		tok, err := issue.NewToken("Login retries stop", "dmitry", created)
@@ -24,49 +36,17 @@ func TestNewTokenIsSixCharactersOfTheAlphabet(t *testing.T) {
 
 		for _, r := range tok {
 			require.Contains(t, alphabet, string(r), "token %q", tok)
+			require.NotContains(t, "ilou", string(r),
+				"nothing in an id may be ambiguous read aloud: token %q", tok)
 		}
-	}
-}
 
-// i, l, o and u are absent so that nothing in an id is ambiguous read aloud or
-// typed from a screenshot. Two thousand tokens is twelve thousand characters,
-// which is enough to notice a leak from any of the thirty-two positions.
-func TestNewTokenNeverEmitsAnAmbiguousLetter(t *testing.T) {
-	t.Parallel()
-
-	created := mustDate(t, "2026-08-24")
-
-	for range 2000 {
-		tok, err := issue.NewToken("Login retries stop", "dmitry", created)
-		require.NoError(t, err)
-		require.NotContains(t, tok, "i")
-		require.NotContains(t, tok, "l")
-		require.NotContains(t, tok, "o")
-		require.NotContains(t, tok, "u")
-	}
-}
-
-// The same title, owner and date, different random bytes, different id. That
-// is the whole reason allocation needs no coordination: two clones creating
-// the same issue at the same moment do not agree on a number, they disagree on
-// thirty bits of hash.
-func TestNewTokenIsDifferentEveryTime(t *testing.T) {
-	t.Parallel()
-
-	created := mustDate(t, "2026-08-24")
-
-	seen := map[string]bool{}
-	for range 2000 {
-		tok, err := issue.NewToken("Login retries stop", "dmitry", created)
-		require.NoError(t, err)
 		seen[tok] = true
 	}
 
-	// Thirty bits and two thousand draws: the birthday bound puts the expected
-	// number of collisions under two, so anything close to two thousand
-	// distinct tokens is the generator working and anything far below it is a
-	// generator that is not using its randomness.
-	require.Greater(t, len(seen), 1900)
+	// The same title, owner and date every time, so a generator that ignored
+	// its randomness would produce exactly one distinct token.
+	require.Greater(t, len(seen), 1,
+		"NewToken must read the random source, not just hash its arguments")
 }
 
 func TestNewIDIsThePrefixAndAToken(t *testing.T) {

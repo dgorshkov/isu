@@ -1,6 +1,7 @@
 package issue
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -90,6 +91,75 @@ func TestNewTokenReadsNothing(t *testing.T) {
 	require.NoError(t, genErr)
 	require.Equal(t, inRepo, tok,
 		"an id must be generated with no working directory to read at all")
+}
+
+// Every one of the six characters must be able to be any of the thirty-two
+// symbols. This is the test that catches a token whose entropy has quietly
+// narrowed: a wrong shift that zero-fills the low characters, an alphabet
+// indexed with the wrong mask, a position stuck on one symbol. A distinctness
+// count over random draws cannot see any of those — a stuck last character
+// still leaves 2000 draws almost entirely distinct.
+//
+// It runs against token() with a counter for entropy rather than against
+// NewToken with crypto/rand, so it is not a sample: the inputs are fixed, the
+// outputs are fixed, and a run that passes today passes every time.
+func TestTokenReachesEverySymbolInEveryPosition(t *testing.T) {
+	t.Parallel()
+
+	const (
+		alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
+		draws    = 2000
+	)
+
+	day := time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)
+
+	seen := make([]map[rune]bool, TokenLength)
+	for i := range seen {
+		seen[i] = map[rune]bool{}
+	}
+
+	entropy := make([]byte, entropyBytes)
+	for n := range draws {
+		binary.BigEndian.PutUint64(entropy, uint64(n))
+
+		tok := token("Login retries stop", "dmitry", day, entropy)
+		require.Len(t, tok, TokenLength)
+
+		for i, r := range tok {
+			require.Contains(t, alphabet, string(r), "token %q", tok)
+			seen[i][r] = true
+		}
+	}
+
+	for i, symbols := range seen {
+		require.Len(t, symbols, len(alphabet),
+			"character %d of the token only ever took %d of the %d symbols "+
+				"over %d draws, so the token carries less entropy than it claims",
+			i, len(symbols), len(alphabet), draws)
+	}
+}
+
+// And every bit of the randomness has to reach the digest. Passing eight bytes
+// to crypto/rand and folding four of them into the hash is a halving nothing
+// else here would notice: the alphabet still fills, the tokens still differ,
+// and the collision rate quietly goes up by a factor of sixty-five thousand.
+func TestTokenDependsOnEveryEntropyBit(t *testing.T) {
+	t.Parallel()
+
+	day := time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)
+	base := []byte{0x5a, 0xa5, 0x0f, 0xf0, 0x33, 0xcc, 0x69, 0x96}
+
+	want := token("Login retries stop", "dmitry", day, base)
+
+	for bit := range entropyBytes * 8 {
+		flipped := make([]byte, len(base))
+		copy(flipped, base)
+		flipped[bit/8] ^= 1 << (bit % 8)
+
+		require.NotEqual(t, want, token("Login retries stop", "dmitry", day, flipped),
+			"flipping bit %d of the entropy left the token unchanged, "+
+				"so that bit is not reaching the digest", bit)
+	}
 }
 
 // The digest covers every input, with the fields separated rather than run
