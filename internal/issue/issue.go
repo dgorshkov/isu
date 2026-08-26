@@ -209,6 +209,10 @@ type Issue struct {
 	// doc is the document this issue was decoded from, or nil for an issue
 	// built in memory.
 	doc *Document
+	// decoded is what the fields above rendered as at decode time. It is nil
+	// for an issue built in memory, where every field is new and every one is
+	// written.
+	decoded map[string]string
 }
 
 // EffectivePriority is Priority with the default applied.
@@ -263,23 +267,16 @@ func Decode(doc *Document) (*Issue, error) {
 		i.BlockedBy = splitList(v)
 	}
 
+	// What the fields render as before the caller has touched anything. Encode
+	// compares against this to tell an edit from a difference in spelling.
+	i.decoded = i.values()
+
 	return i, nil
 }
 
-// Encode renders the issue back to a file.
-//
-// A key whose value has not changed is not rewritten, which is what keeps an
-// unmodified issue a zero-length diff: unknown keys, the order the author
-// wrote their frontmatter in, the spacing around a colon and the file's line
-// terminators all survive untouched.
-func (i *Issue) Encode() []byte {
-	doc := i.doc
-	if doc == nil {
-		doc = NewDocument()
-		i.doc = doc
-	}
-
-	values := map[string]string{
+// values renders the fields this package owns as they would be written out.
+func (i *Issue) values() map[string]string {
+	return map[string]string{
 		KeySchema:     strconv.Itoa(i.Schema),
 		KeyID:         i.ID,
 		KeyTitle:      i.Title,
@@ -296,9 +293,39 @@ func (i *Issue) Encode() []byte {
 		KeyReason:     i.Reason,
 		KeyResolution: string(i.Resolution),
 	}
+}
+
+// Encode renders the issue back to a file.
+//
+// A field the caller did not touch is not written at all, which is what keeps
+// an unmodified issue a zero-length diff: unknown keys, the order the author
+// wrote their frontmatter in, the spacing around a colon and the file's line
+// terminators all survive untouched.
+//
+// "Did not touch" is measured against what this issue decoded from, not
+// against what the field would render as now. Those are different questions
+// whenever the file's spelling is not the one this package would choose —
+// `blocked_by: a,b` without the space, `schema: 01`, an optional key present
+// with an empty value — and asking the second one rewrites lines nobody
+// edited. Comparing against the decode is also what keeps a key that is
+// present and empty distinct from one that is absent: both leave the field
+// empty, and only the second should stay absent when the issue is written
+// back.
+func (i *Issue) Encode() []byte {
+	doc := i.doc
+	if doc == nil {
+		doc = NewDocument()
+		i.doc = doc
+	}
+
+	now := i.values()
 
 	for _, key := range keyOrder {
-		sync(doc, key, values[key])
+		if was, decoded := i.decoded[key]; decoded && was == now[key] {
+			continue
+		}
+
+		sync(doc, key, now[key])
 	}
 
 	doc.Body = i.Body

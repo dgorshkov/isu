@@ -199,6 +199,85 @@ func TestWriteRemovesAClearedOptionalField(t *testing.T) {
 		string(written))
 }
 
+// A field nobody edited is never rewritten, however the author spelled it.
+//
+// This is the case an unmodified-round-trip test alone does not reach: the
+// encoder used to compare a field's *re-rendered* value against the file's
+// text, so any value whose canonical spelling differed from what was written
+// came back "changed" and got its line rewritten. Every row below is a legal
+// file that this package would have spelled differently.
+func TestWriteLeavesUntouchedFieldsExactlyAsTheyWereSpelled(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		lines []string
+	}{
+		{
+			name:  "an optional key present with an empty value",
+			lines: []string{"schema: 1", "id: ISU-7f3akq", "priority:", "parent:"},
+		},
+		{
+			name:  "a required key present with an empty value",
+			lines: []string{"schema: 1", "id: ISU-7f3akq", "owner:", "title:"},
+		},
+		{
+			name:  "a comma list without spaces",
+			lines: []string{"schema: 1", "id: ISU-7f3akq", "blocked_by: ISU-a,ISU-b"},
+		},
+		{
+			name:  "a comma list with ragged spacing",
+			lines: []string{"schema: 1", "id: ISU-7f3akq", "blocked_by: ISU-a ,  ISU-b"},
+		},
+		{
+			name:  "a zero-padded schema version",
+			lines: []string{"schema: 01", "id: ISU-7f3akq"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			text := frontmatter(tc.lines...)
+
+			i := decode(t, text)
+			require.Equal(t, text, string(i.Encode()),
+				"nothing was edited, so nothing may be rewritten")
+		})
+	}
+}
+
+// The flip side: a field the caller does edit is written in this package's
+// spelling, not left as it was found.
+func TestWriteCanonicalisesAFieldTheCallerActuallyChanged(t *testing.T) {
+	t.Parallel()
+
+	i := decode(t, frontmatter("schema: 1", "id: ISU-7f3akq", "blocked_by: ISU-a,ISU-b"))
+
+	i.BlockedBy = append(i.BlockedBy, "ISU-c")
+
+	require.Equal(t,
+		frontmatter("schema: 1", "id: ISU-7f3akq", "blocked_by: ISU-a, ISU-b, ISU-c"),
+		string(i.Encode()))
+}
+
+// An optional key that is present and empty is not the same as an absent one,
+// and clearing a field that was never set must not invent a line for it.
+func TestWriteTellsAnEmptyValueFromAnAbsentKey(t *testing.T) {
+	t.Parallel()
+
+	present := decode(t, frontmatter("schema: 1", "id: ISU-7f3akq", "priority:"))
+	present.Priority = ""
+	require.Equal(t, frontmatter("schema: 1", "id: ISU-7f3akq", "priority:"),
+		string(present.Encode()), "the key was there, so it stays there")
+
+	absent := decode(t, frontmatter("schema: 1", "id: ISU-7f3akq"))
+	absent.Priority = ""
+	require.Equal(t, frontmatter("schema: 1", "id: ISU-7f3akq"),
+		string(absent.Encode()), "the key was not there, so it is not added")
+}
+
 // A date the file wrote as a full timestamp is written back as it was, and one
 // the caller actually moved is written in the form isu writes.
 func TestWriteKeepsTheDateFormTheFileUsed(t *testing.T) {

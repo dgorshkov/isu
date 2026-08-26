@@ -155,13 +155,16 @@ func (r *Registry) Migrate(doc *Document) (bool, error) {
 	for version < CurrentSchema {
 		m, ok := r.migrations[version]
 		if !ok {
-			return false, fmt.Errorf(
+			// changed, not false: an earlier step in the chain may already have
+			// rewritten doc, and a caller told nothing happened would throw the
+			// half-migrated document away.
+			return changed, fmt.Errorf(
 				"%s: nothing knows how to migrate version %d forward to version %d",
 				KeySchema, version, version+1)
 		}
 
 		if err := m.Apply(doc); err != nil {
-			return false, fmt.Errorf("migrating from version %d: %w", version, err)
+			return changed, fmt.Errorf("migrating from version %d: %w", version, err)
 		}
 
 		version++
