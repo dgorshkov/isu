@@ -317,7 +317,7 @@ Ten milestones. Stop for review at the end of each.
 | | milestone | ships | status |
 |---|---|---|---|
 | M0 | Foundations | repo, CI, lint, test harness | done |
-| M1 | Issue files | parse, serialise, validate, version | not started |
+| M1 | Issue files | parse, serialise, validate, version | done |
 | M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | not started |
 | M3 | Derivation | statuses, epics, claims, contention | not started |
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | not started |
@@ -414,9 +414,18 @@ right early is the difference between fast tests and a swamp.
 
 ---
 
-# M1 · Issue files
+# M1 · Issue files ✅
 
-### M1-S1 · Frontmatter parser
+**Status** done — all five stories landed in one pull request rather than five. That was
+asked for explicitly; it is recorded here because §0 says otherwise and the next session
+should not read this milestone as precedent. The milestone boundary rule still applies: M2
+does not start without explicit approval.
+
+### M1-S1 · Frontmatter parser ✅
+**Done** #5, 2026-08-26. Blank lines inside the block are preserved and comments are not part
+of the format — this is not YAML, so a line with no colon is a parse error. `Document.Set`
+flattens line breaks in a value to spaces, because the format has no folding and a value
+carrying one would write a file that does not parse back.
 **Branch** `isu/M1-S1-frontmatter`
 **Build** `internal/issue`: parse `---` delimited key/value frontmatter plus body. Unknown
 keys are preserved verbatim on round-trip. Parsing never panics on malformed input; it
@@ -426,7 +435,13 @@ line endings, unicode values, a 1 MB body. Plus a round-trip property test: pars
 → parse yields an identical struct.
 **Done when** the round-trip test passes on every fixture in `testdata/issues/`.
 
-### M1-S2 · The Issue type and its schema
+### M1-S2 · The Issue type and its schema ✅
+**Done** #5, 2026-08-26. Built in `internal/issue`, not `internal/model` — the latter is
+M3-S1's derivation package, and the coverage gate's own test wrongly said it arrived here.
+`priority` is decoded as written and defaulted at `EffectivePriority()` rather than in the
+struct, or `Encode` would write `priority: p2` into a file whose author never typed it and
+M1-S3's zero-diff property would be gone. `parent:` is checked for shape and not for what it
+names, which is unenforceable from one issue and belongs to M3 or M5.
 **Branch** `isu/M1-S2-schema`
 **Build** the `Issue` struct, the `Type` and `State` enums, and `Validate()` implementing the
 required-field table from section 1. Errors accumulate — return all problems, not the first.
@@ -438,7 +453,11 @@ enum**, bug without repro, **an epic declaring `state:`**, and **a non-epic omit
 **Done when** `Validate()` output is stable, sorted and human-readable, and the epic cases pass
 without the function ever seeing a second issue.
 
-### M1-S3 · Reading and writing an issue folder
+### M1-S3 · Reading and writing an issue folder ✅
+**Done** #5, 2026-08-26. The zero-diff test runs against every fixture in `testdata/issues/`
+and asserts it with `git diff --exit-code` on a real repository. Two things in a folder are
+refused rather than absorbed: a plain file named `comments`, and a directory inside
+`comments/`. `Write` touches README.md only.
 **Branch** `isu/M1-S3-folder-io`
 **Build** load an issue from `issues/<ID>/`, listing attachments and `comments/`. Write an
 issue back, preserving unknown keys and body byte-for-byte where unchanged.
@@ -447,7 +466,14 @@ an unmodified issue produces a zero-length diff (assert with `git diff --exit-co
 **Done when** the zero-diff test passes. This property matters more than it looks: it is what
 keeps pull requests readable.
 
-### M1-S4 · ID generation and `.isu.yml`
+### M1-S4 · ID generation and `.isu.yml` ✅
+**Done** #5, 2026-08-26. **`NewID` takes the prefix**, which this file's signature does not:
+`<PREFIX>-<token>` is what an id is, and the config carrying the prefix landed in the same
+story. `config.Config.NewID(title, owner, created)` is the spelling above, over the pure
+generator. "Zero reads" is proven in two halves — the id is identical inside a 5,000-issue
+repository and in an empty directory, and identical again with the working directory deleted
+out from under the process. Config is read and validated; nothing writes `.isu.yml`, because
+no story asks isu to.
 **Branch** `isu/M1-S4-ids`
 **Build** config loading and validation against the `.isu.yml` table in section 1, plus
 `NewID(title, owner, created)` implementing the token scheme. **`NewID` is pure** — it reads
@@ -463,7 +489,12 @@ value is refused with the key named.
 regeneration is deliberately **not** here — it needs the loaded repo, so it belongs to `isu new`
 in M4-S3.
 
-### M1-S5 · Schema version and migration
+### M1-S5 · Schema version and migration ✅
+**Done** #5, 2026-08-26. The error cannot name "the version of isu that understands it" —
+there is no such build yet — so it names the version found, the version this build reads, and
+what to do about it. The registry writes the `schema:` line after each migration returns, so a
+no-op migration produces a file identical to the one it read apart from that line, which is
+what the version-0 fixture test asserts.
 **Branch** `isu/M1-S5-schema-version`
 **Why** `schema:` is the promise that v1.0.0 is not a format prison, and an untested promise is
 decoration. This story is what makes the field real, and it is cheap now and expensive after
