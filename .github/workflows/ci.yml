@@ -1,6 +1,6 @@
 # The gates themselves live in the Makefile. This file's only job is to say
-# where they run and on what, so that .gitlab-ci.yml can say exactly the same
-# thing without either forge acquiring a check the other does not have.
+# where they run and on what, so that every check it performs is one a
+# contributor can run first with `make`.
 name: CI
 
 on:
@@ -36,8 +36,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # golangci-lint is pinned by the Makefile, and installed the same way on
-      # both forges rather than by a forge-specific action.
+      # golangci-lint is pinned by the Makefile and installed through it, rather
+      # than by an action that would pin the version somewhere else as well.
       - run: make tools
 
       - run: make build

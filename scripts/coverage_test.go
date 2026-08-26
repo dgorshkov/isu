@@ -67,8 +67,10 @@ func TestCoverageGateRejectsAnUncoveredModelPackage(t *testing.T) {
 		"the package floor applies whenever the package exists")
 }
 
-// Until M1-S2 there is no internal/model, and a gate that fails on a package
-// that does not exist yet is a gate nobody can land the first story past.
+// internal/model is M3-S1's derivation package, not M1's — M1 builds
+// internal/issue, which is the on-disk format. So this floor stays skipped for
+// three more milestones, and a gate that failed on a package that does not
+// exist yet is a gate nobody could land a story past.
 func TestCoverageGateSkipsTheModelFloorWhenThePackageIsAbsent(t *testing.T) {
 	out, code := runGate(t, "nomodel")
 

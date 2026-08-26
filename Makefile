@@ -1,6 +1,7 @@
-# Every gate in this project is a make target, and CI on both forges calls
-# these and nothing else — see M0-S3. Logic that lives in a pipeline file can
-# only be run by that pipeline, and then only one of the two forges is honest.
+# Every gate in this project is a make target, and CI calls these and nothing
+# else — see M0-S3. Logic that lives in a pipeline file can only be run by that
+# pipeline, so a contributor cannot run the gates before pushing and the
+# pipeline becomes the only thing that knows whether the tree is green.
 
 GO ?= go
 GOBIN ?= $(shell $(GO) env GOPATH)/bin
@@ -46,6 +47,12 @@ test:
 cover:
 	COVERAGE_PROFILE=$(COVERAGE_PROFILE) sh scripts/coverage.sh
 
+# golangci-lint v2.5.0 needs go >= 1.24.0. The go directive in go.mod is 1.24.0
+# for exactly this reason, so `go install` builds it with the toolchain already
+# installed and never switches. When the directive was 1.23.0 it did switch —
+# to whatever Go had released most recently, resolved fresh on every run — and
+# the gate went red the day one of those releases arrived incomplete. Raising
+# the directive is what removed that; nothing here pins a toolchain.
 tools:
 	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 

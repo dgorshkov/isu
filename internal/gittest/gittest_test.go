@@ -284,3 +284,44 @@ func TestFiveLinesProduceTwoBranchesAndASquashMerge(t *testing.T) {
 	require.Equal(t, "resolve AR-7f3akq\nadd AR-7f3akq", r.Git("log", "--format=%s"))
 	require.ElementsMatch(t, []string{gittest.DefaultBranch, "isu/AR-7f3akq"}, r.Branches())
 }
+
+// A repository the harness never meant to touch must come back untouched.
+//
+// This is not a hypothetical. Run `go test` from a git hook, from
+// `git bisect run`, or from any wrapper that exports GIT_DIR, and every git
+// process the harness starts inherits it. Before env() dropped the whole GIT_*
+// prefix, `New(t)` re-initialised the inherited repository, `Commit` committed
+// into it, and the assertions afterwards read it — so the harness silently
+// operated on the developer's own checkout and the test still passed or failed
+// for reasons having nothing to do with the fixture.
+//
+// Not parallel: t.Setenv is process-wide.
+func TestTheHarnessIgnoresAnInheritedGitEnvironment(t *testing.T) {
+	bystander := gittest.New(t).File("keep.txt", "do not touch").Commit("bystander")
+	before := bystander.Head()
+
+	for name, value := range map[string]string{
+		"GIT_DIR":              filepath.Join(bystander.Dir(), ".git"),
+		"GIT_WORK_TREE":        bystander.Dir(),
+		"GIT_INDEX_FILE":       filepath.Join(bystander.Dir(), ".git", "index"),
+		"GIT_OBJECT_DIRECTORY": filepath.Join(bystander.Dir(), ".git", "objects"),
+		"GIT_NAMESPACE":        "inherited",
+	} {
+		t.Setenv(name, value)
+	}
+
+	r := gittest.New(t).Issue("ISU-7f3akq").Commit("add ISU-7f3akq")
+
+	require.NotEqual(t, bystander.Dir(), r.Dir())
+	require.Equal(t, "add ISU-7f3akq", r.Git("log", "-1", "--format=%s"),
+		"the new repository must be the one the harness built")
+	require.Equal(t, "1", r.Git("rev-list", "--count", "--all"))
+
+	require.Equal(t, before, bystander.Head(),
+		"the harness must not commit into a repository it inherited from the environment")
+	require.Equal(t, "1", bystander.Git("rev-list", "--count", "--all"),
+		"the inherited repository must have gained no commits")
+	require.Equal(t, "bystander", bystander.Git("log", "-1", "--format=%s"))
+	require.Empty(t, bystander.Git("ls-tree", "-r", "--name-only", "HEAD", "--", "issues"),
+		"the inherited repository must have gained no issues")
+}
