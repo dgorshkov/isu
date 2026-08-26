@@ -56,7 +56,7 @@ request per story. Do not skip ahead, do not batch stories, do not merge your ow
 
 | | |
 |---|---|
-| Language | Go 1.23+ |
+| Language | Go 1.24+ |
 | CLI | `spf13/cobra` |
 | TUI | `charmbracelet/bubbletea`, `bubbles`, `lipgloss`, `glamour` |
 | TUI tests | `charmbracelet/x/exp/teatest` |
@@ -65,6 +65,12 @@ request per story. Do not skip ahead, do not batch stories, do not merge your ow
 | Release | `goreleaser` |
 
 That is the entire dependency allowlist. Adding anything else requires asking first.
+
+**The minimum was 1.23 until M1.** `golangci-lint` v2.5.0 needs 1.24 or newer to build, so with a
+1.23 directive `go install` switched toolchains — to whatever Go had released most recently,
+resolved fresh on every CI run — and the lint gate went red the day one of those releases arrived
+incomplete. A gate that fails on a schedule nobody controls is the pipeline §0 warns about, so the
+directive moved to 1.24 rather than the symptom being pinned around.
 
 Frontmatter is parsed by hand (M1-S1) because it is a flat key/value block and the round-trip
 guarantee in M1-S3 is easier to hold without a YAML serialiser reformatting it. `.isu.yml` and

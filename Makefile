@@ -7,21 +7,6 @@ GO ?= go
 GOBIN ?= $(shell $(GO) env GOPATH)/bin
 GOLANGCI_LINT_VERSION ?= v2.5.0
 
-# The toolchain `make tools` builds golangci-lint with.
-#
-# golangci-lint v2.5.0 needs go >= 1.24.0 and this module's go directive asks
-# for 1.23.0, so `go install` triggers Go's toolchain switching. Unpinned, that
-# resolves to whatever Go released most recently — a different compiler on
-# every run, downloaded fresh, and the gate fails for the day whenever one of
-# those releases lands badly. It did exactly that on go1.26.7 ("no such tool
-# compile") and passed again two minutes later on the next commit, which is the
-# worst way for a gate to behave: it teaches people that red means nothing.
-#
-# Pinning it says which compiler builds the linter, the same way
-# GOLANGCI_LINT_VERSION says which linter. It does not change what this module
-# is built or tested with — that stays the go directive.
-GOLANGCI_LINT_TOOLCHAIN ?= go1.24.7
-
 # Prefer a golangci-lint already on PATH; fall back to the one `make tools`
 # installs, so CI needs no PATH surgery of its own.
 GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || echo $(GOBIN)/golangci-lint)
@@ -62,9 +47,14 @@ test:
 cover:
 	COVERAGE_PROFILE=$(COVERAGE_PROFILE) sh scripts/coverage.sh
 
+# golangci-lint v2.5.0 needs go >= 1.24.0. The go directive in go.mod is 1.24.0
+# for exactly this reason, so `go install` builds it with the toolchain already
+# installed and never switches. When the directive was 1.23.0 it did switch —
+# to whatever Go had released most recently, resolved fresh on every run — and
+# the gate went red the day one of those releases arrived incomplete. Raising
+# the directive is what removed that; nothing here pins a toolchain.
 tools:
-	GOTOOLCHAIN=$(GOLANGCI_LINT_TOOLCHAIN) \
-		$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 clean:
 	rm -f $(BINARY) $(COVERAGE_PROFILE) coverage.html
