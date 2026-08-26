@@ -139,7 +139,7 @@ state: open            required except on epics: open | resolved | dropped
 owner: dmitry          required: the human answerable for it
 created: 2026-08-24    required, RFC 3339 date
 priority: p2           optional: p0 | p1 | p2 | p3, default p2
-parent: AR-40b1cc      optional, must name an issue of type: epic
+parent: AR-40b1cc      optional, an id; must name an epic — checked in M5, not M1
 blocked_by: AR-39ka2p  optional, comma-separated
 repro: ...             required when type: bug
 acceptance: ...        required when type: story
@@ -167,6 +167,14 @@ won't-fix, and the difference is the first thing anyone asks.
 `owner` is the accountable human. It is set at triage and an agent must never change it —
 see M5-S4. Who is *working* on an issue right now is a different question, answered by the
 claim ref, not by this field.
+
+`parent` must name an issue of `type: epic`, and **that is a repository-level rule, not a
+field-level one.** `Validate()` in M1-S2 takes one issue and nothing else, so it checks that
+`parent` is shaped like an id and stops there; whether the id resolves, and whether what it
+resolves to is an epic, is a structural check in M5-S2 that has the whole set loaded. The same
+goes for `blocked_by`. Reading the row above as a rule M1 enforces is the mistake this
+paragraph exists to prevent: it would require loading a second issue to validate the first,
+which the milestone explicitly forbids.
 
 ### Type determines what closing it requires
 
@@ -217,10 +225,17 @@ check failure, not a status.
 
 ### IDs
 
-`<PREFIX>-<token>`, prefix from `.isu.yml`. The token is the first six characters of Crockford
-base32 over `sha256(title ‖ owner ‖ created ‖ 8 bytes from crypto/rand)` — lowercase, with
-`i`, `l`, `o` and `u` excluded from the alphabet so nothing is ambiguous read aloud or typed
-from a screenshot.
+`<PREFIX>-<token>`, prefix from `.isu.yml`. The token is the first thirty bits of
+`sha256(title ‖ owner ‖ created ‖ 8 bytes from crypto/rand)`, rendered as six characters of
+Crockford base32 — lowercase, with `i`, `l`, `o` and `u` excluded from the alphabet so nothing
+is ambiguous read aloud or typed from a screenshot.
+
+**‖ is a NUL byte, not concatenation.** Running the fields together makes the boundary between
+two of them imaginary, so a title ending in the owner's name hashes the same as a shorter
+title and a longer owner. `created` is fed in as `YYYY-MM-DD`.
+
+The prefix is part of every issue's **folder name**, so it has to be a legal one: `.isu.yml`
+validation holds it to the same character set an id is held to.
 
 Allocation needs no coordination, no counter and no network round trip, which is the point:
 sequential `max + 1` cannot see issues sitting on unmerged `report/*` branches, so under any
@@ -242,7 +257,7 @@ keys, and an unknown key is a validation error rather than a silent no-op.
 
 | key | type | default | meaning |
 |---|---|---|---|
-| `prefix` | string | — | required; the issue id prefix |
+| `prefix` | string | — | required; the issue id prefix, and a legal folder name |
 | `agents` | list of strings | empty | commit authors treated as agents by M5-S4 |
 | `direct_triage` | bool | `false` | allow `isu triage --push` to write straight to trunk |
 | `stale_days` | int | `7` | a claim older than this is stale |
@@ -251,6 +266,15 @@ keys, and an unknown key is a validation error rather than a silent no-op.
 
 Every one of these is read by a story below, so the file's schema is validated in M1-S4 rather
 than discovered a milestone at a time.
+
+**Open question, raised by M1-S4 and not decided there.** Every story in this document *reads*
+`.isu.yml`; no story *writes* one. There is no `isu init`, so a person adopting isu in an
+existing repository has to hand-write the file before any command works, and `prefix` is
+required, so an absent file is a hard failure rather than a degraded mode. That may be the
+right answer — one required line is not much of a wizard — but it is currently an accident
+rather than a decision, and it needs to be one of: a small `isu init` story in M4, a documented
+copy-and-paste block in M8's docs, or an explicit entry in the out-of-scope list. **Answer this
+before M4-S1**, which is where the command surface stops being cheap to change.
 
 ### Claims
 
@@ -441,7 +465,8 @@ M3-S1's derivation package, and the coverage gate's own test wrongly said it arr
 `priority` is decoded as written and defaulted at `EffectivePriority()` rather than in the
 struct, or `Encode` would write `priority: p2` into a file whose author never typed it and
 M1-S3's zero-diff property would be gone. `parent:` is checked for shape and not for what it
-names, which is unenforceable from one issue and belongs to M3 or M5.
+names: the frontmatter table read as though M1 enforced it, which would mean loading a second
+issue to validate the first, so section 1 now says out loud that it is M5-S2's.
 **Branch** `isu/M1-S2-schema`
 **Build** the `Issue` struct, the `Type` and `State` enums, and `Validate()` implementing the
 required-field table from section 1. Errors accumulate — return all problems, not the first.
@@ -467,19 +492,23 @@ an unmodified issue produces a zero-length diff (assert with `git diff --exit-co
 keeps pull requests readable.
 
 ### M1-S4 · ID generation and `.isu.yml` ✅
-**Done** #5, 2026-08-26. **`NewID` takes the prefix**, which this file's signature does not:
-`<PREFIX>-<token>` is what an id is, and the config carrying the prefix landed in the same
-story. `config.Config.NewID(title, owner, created)` is the spelling above, over the pure
-generator. "Zero reads" is proven in two halves — the id is identical inside a 5,000-issue
-repository and in an empty directory, and identical again with the working directory deleted
-out from under the process. Config is read and validated; nothing writes `.isu.yml`, because
-no story asks isu to.
+**Done** #5, 2026-08-26. **The `NewID` signature below was corrected as this story was
+built** — it read `NewID(title, owner, created)`, which cannot return an id because it is
+never told the prefix. The separator in the id hash was pinned to a NUL byte in section 1 for
+the same reason: it was written as `‖` and never defined. "Zero reads" is proven in two halves
+— the id is identical inside a 5,000-issue repository and in an empty directory, and identical
+again with the working directory deleted out from under the process. Config is read and
+validated; **nothing writes `.isu.yml`** — see the open question under Configuration.
 **Branch** `isu/M1-S4-ids`
 **Build** config loading and validation against the `.isu.yml` table in section 1, plus
-`NewID(title, owner, created)` implementing the token scheme. **`NewID` is pure** — it reads
-nothing, knows about no other issue, and cannot detect a collision, because detecting one means
-loading the repository and the git layer does not exist until M2. No counter, no scan for a
-maximum, no `isu renumber` — ids are permanent from creation.
+`NewID(prefix, title, owner, created)` implementing the token scheme, and
+`config.Config.NewID(title, owner, created)` over it for callers that already hold the
+configuration. **An id is `<PREFIX>-<token>`, so the generator has to be told the prefix**;
+earlier drafts of this line omitted it and described a function that cannot return an id.
+**`NewID` is pure** — it reads nothing, knows about no other issue, and cannot detect a
+collision, because detecting one means loading the repository and the git layer does not exist
+until M2. No counter, no scan for a maximum, no `isu renumber` — ids are permanent from
+creation.
 **Tests first** the same inputs plus different random bytes give different ids; the alphabet
 never emits `i`, `l`, `o` or `u`; `NewID` issues zero reads against a 5,000-issue fixture; an
 imported `PROJ-1234` validates as an id even though nothing would ever generate it; every key
@@ -490,23 +519,29 @@ regeneration is deliberately **not** here — it needs the loaded repo, so it be
 in M4-S3.
 
 ### M1-S5 · Schema version and migration ✅
-**Done** #5, 2026-08-26. The error cannot name "the version of isu that understands it" —
-there is no such build yet — so it names the version found, the version this build reads, and
-what to do about it. The registry writes the `schema:` line after each migration returns, so a
-no-op migration produces a file identical to the one it read apart from that line, which is
-what the version-0 fixture test asserts.
+**Done** #5, 2026-08-26. **Two lines below were corrected as this story was built**: the
+error message cannot name "the version of `isu` that understands it", because that build does
+not exist; and "byte-identical version 1 file" did not say identical to what. Gating runs in
+both directions — an older `schema:` is refused as needing migration rather than read on a
+guess.
 **Branch** `isu/M1-S5-schema-version`
 **Why** `schema:` is the promise that v1.0.0 is not a format prison, and an untested promise is
 decoration. This story is what makes the field real, and it is cheap now and expensive after
 people have repositories.
-**Build** version gating in the reader: a known `schema:` loads, an unknown one is refused with
-a message naming the version of `isu` that understands it and the version it found. Plus a
-`Migration` interface and the registry that dispatches on version, with zero migrations
-registered.
+**Build** version gating in the reader, **in both directions**: a known `schema:` loads, a
+newer one is refused, and an older one is refused as needing migration rather than read on a
+guess. The message names the version it found and the version this build reads. **It cannot
+name "the version of `isu` that understands it"** — that build does not exist yet and nothing
+in this repository can know its number — so it says what to do instead: *upgrade to a build of
+isu that reads version N*. Plus a `Migration` interface and the registry that dispatches on
+version, with zero migrations registered.
 **Tests first** `schema: 1` loads; `schema: 2` is refused and the error names both versions;
 `schema:` missing is refused; `schema: banana` is refused with a parse error rather than a
-panic; a registered no-op migration from a fixture at version 0 produces a byte-identical
-version 1 file.
+panic; a registered no-op migration from a fixture at version 0 produces a version 1 file
+**byte-identical to the fixture apart from the `schema:` line itself** — unknown keys, blank
+lines inside the block, spacing and the body all untouched. The registry writes that line
+after each migration returns, so a migration with nothing to do is an empty method body and
+cannot forget to bump the version or bump it twice.
 **Done when** a `schema: 2` repository fails with an error a human can act on, proven by a test
 rather than by inspection.
 
