@@ -1,6 +1,7 @@
 package repo_test
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,6 +60,38 @@ func TestLoadHistoryRecordsAResolveAndItsRevert(t *testing.T) {
 	require.False(t, entries[0].When.IsZero())
 	require.False(t, entries[0].When.After(entries[2].When), "oldest first")
 	require.Equal(t, issue.StateResolved, entries[1].State)
+
+	require.False(t, entries[0].Terminal())
+	require.True(t, entries[1].Terminal(),
+		"M3-S4 asks whether an earlier trunk commit was terminal, and this is the question")
+	require.False(t, entries[2].Terminal())
+}
+
+// issues/README.md is a file explaining the directory, and a folder nobody can
+// name is not an issue. Neither belongs in a history keyed by id.
+func TestLoadHistoryIgnoresWhatIsNotAnIssue(t *testing.T) {
+	r := gittest.New(t).
+		Issue("AR-7f3akq").
+		File("issues/README.md", "# how this directory works\n").
+		File("issues/not an id/README.md", "---\nschema: 1\n---\n").
+		Commit("an issue and some decoys").
+		File("issues/README.md", "# rewritten\n").
+		Commit("edit the directory's own readme")
+
+	history, err := open(t, r).LoadHistory(t.Context(), gittest.DefaultBranch)
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"AR-7f3akq"}, keys(history))
+}
+
+func keys(history repo.History) []string {
+	out := make([]string, 0, len(history))
+	for id := range history {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+
+	return out
 }
 
 func TestLoadHistoryOnAnIssueThatNeverChangedIsOneEntry(t *testing.T) {
