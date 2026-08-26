@@ -481,6 +481,33 @@ func TestProblemStringWithoutAField(t *testing.T) {
 		issue.Problem{Field: "title", Message: "required"}.String())
 }
 
+// Three things Validate reports that a decoded file cannot produce: the
+// document reader refuses a schema it does not know before Validate ever runs,
+// and the frontmatter parser cannot hand back a title with a line break in it.
+// An Issue built in memory can be all three, and `isu new` builds one.
+func TestValidateAnIssueBuiltInMemory(t *testing.T) {
+	t.Parallel()
+
+	i := &issue.Issue{
+		Schema:    2,
+		ID:        "ISU-7f3akq",
+		Title:     "Two\nlines",
+		Type:      issue.TypeChore,
+		State:     issue.StateOpen,
+		Owner:     "dmitry",
+		Created:   mustDate(t, "2026-08-24"),
+		BlockedBy: []string{"../a", "../b"},
+	}
+
+	require.EqualError(t, i.Validate(), strings.Join([]string{
+		"4 problems:",
+		`  blocked_by: "../a" is not an id`,
+		`  blocked_by: "../b" is not an id`,
+		"  schema: must be 1, found 2",
+		"  title: must be one line",
+	}, "\n"), "two problems about one key sort by message, and both are reported")
+}
+
 // slice copies a case's base lines, because append on a shared backing array
 // makes one table row change another.
 func slice(lines []string) []string {

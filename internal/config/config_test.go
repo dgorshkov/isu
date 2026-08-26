@@ -123,6 +123,12 @@ func TestParseRejects(t *testing.T) {
 			msg:   "prefix: expected a string, found 42",
 		},
 		{
+			name:  "a prefix written as a bool",
+			input: "prefix: true\n",
+			keys:  []string{"prefix"},
+			msg:   "prefix: expected a string, found true",
+		},
+		{
 			name:  "a prefix that cannot be part of a folder name",
 			input: "prefix: my project\n",
 			keys:  []string{"prefix"},
