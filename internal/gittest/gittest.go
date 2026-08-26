@@ -164,14 +164,38 @@ func (r *Repo) Try(args ...string) (string, error) {
 	return out, nil
 }
 
-// env is the environment git runs under: no global or system configuration, no
-// credential prompt, a fixed identity and locale, and the clock Backdate set.
+// env is the environment git runs under: no inherited git configuration of any
+// kind, no credential prompt, a fixed identity and locale, and the clock
+// Backdate set.
+//
+// Every GIT_* variable the test process inherited is dropped rather than
+// overridden. Overriding needs a list of the dangerous ones, and the list is
+// the problem: GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY,
+// GIT_COMMON_DIR and GIT_NAMESPACE all redirect git at a repository other than
+// the one the test built, and the next release of git may add another. A test
+// run from a git hook, from `git bisect run`, or from any tool that exports
+// those inherits them — and what the harness does then is not fail, it is
+// quietly init, commit into and read *the developer's own repository*. Dropping
+// the whole prefix cannot miss one.
+//
+// GIT_TRACE* survives because it changes only what git prints, and
+// `GIT_TRACE=1 go test ./...` is how anybody debugs this package.
 func (r *Repo) env() []string {
 	when := time.Now().Add(-r.offset).Format(time.RFC3339)
 
-	// exec keeps the last value of a duplicated key, so these override anything
-	// the test process inherited.
-	return append(os.Environ(),
+	ambient := os.Environ()
+
+	env := make([]string, 0, len(ambient)+13)
+	for _, entry := range ambient {
+		name, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(name, "GIT_") && !strings.HasPrefix(name, "GIT_TRACE") {
+			continue
+		}
+
+		env = append(env, entry)
+	}
+
+	return append(env,
 		"GIT_CONFIG_GLOBAL="+os.DevNull,
 		"GIT_CONFIG_SYSTEM="+os.DevNull,
 		"GIT_CONFIG_NOSYSTEM=1",

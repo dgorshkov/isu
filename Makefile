@@ -1,6 +1,7 @@
-# Every gate in this project is a make target, and CI on both forges calls
-# these and nothing else — see M0-S3. Logic that lives in a pipeline file can
-# only be run by that pipeline, and then only one of the two forges is honest.
+# Every gate in this project is a make target, and CI calls these and nothing
+# else — see M0-S3. Logic that lives in a pipeline file can only be run by that
+# pipeline, so a contributor cannot run the gates before pushing and the
+# pipeline becomes the only thing that knows whether the tree is green.
 
 GO ?= go
 GOBIN ?= $(shell $(GO) env GOPATH)/bin
