@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dgorshkov/isu/internal/gittest"
-	"github.com/dgorshkov/isu/internal/repo"
 )
 
 // The claim is the first commit on the branch, and PLAN.md's spelling of that

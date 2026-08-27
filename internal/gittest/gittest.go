@@ -190,7 +190,7 @@ func (r *Repo) Try(args ...string) (string, error) {
 // `GIT_TRACE=1 go test ./...` is how anybody debugs this package.
 func (r *Repo) env(base []string) []string {
 	when := time.Now().Add(-r.offset).Format(time.RFC3339)
-	name, email := r.identity()
+	who, email := r.identity()
 
 	env := make([]string, 0, len(base)+13)
 	for _, entry := range base {
@@ -208,9 +208,9 @@ func (r *Repo) env(base []string) []string {
 		"GIT_CONFIG_NOSYSTEM=1",
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_ASKPASS=",
-		"GIT_AUTHOR_NAME="+name,
+		"GIT_AUTHOR_NAME="+who,
 		"GIT_AUTHOR_EMAIL="+email,
-		"GIT_COMMITTER_NAME="+name,
+		"GIT_COMMITTER_NAME="+who,
 		"GIT_COMMITTER_EMAIL="+email,
 		"GIT_AUTHOR_DATE="+when,
 		"GIT_COMMITTER_DATE="+when,

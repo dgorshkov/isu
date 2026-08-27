@@ -62,13 +62,6 @@ var Statuses = []Status{
 // on its own.
 func (s Status) Terminal() bool { return s == StatusDone || s == StatusDropped }
 
-// Claim is one branch claiming one issue: `state: resolved` where trunk says
-// open.
-type Claim struct {
-	// Ref is the full name of the claiming branch.
-	Ref string
-}
-
 // Item is one issue as the board reads it.
 type Item struct {
 	// ID is the folder name, which is what every parent and blocked_by in the
@@ -142,7 +135,14 @@ type Input struct {
 	// History is what trunk has said about each issue over time, from
 	// repo.LoadHistory. It is the only source of `reopened`.
 	History repo.History
-	// Config is the repository's .isu.yml.
+	// Claims is the first commit on each claiming branch, from
+	// repo.LoadFirstCommits, keyed by ref name — usually over the refs
+	// ClaimRefs named. A ref missing from it still claims: the claim is what
+	// the file says, and this only names who made it and when.
+	Claims map[string]repo.FirstCommit
+	// Config is the repository's .isu.yml, which is where stale_days lives.
+	// Pass config.Default() rather than the zero value: a claim is stale once
+	// it is older than StaleDays, and zero days makes every claim stale.
 	Config config.Config
 	// Now is what claim age and staleness are measured against. The zero value
 	// means the clock, so that only the tests have to say.
@@ -214,8 +214,8 @@ func (d *deriver) collect() {
 
 			item.Elsewhere = append(item.Elsewhere, ref)
 
-			if claims(item, at) {
-				item.Claims = append(item.Claims, Claim{Ref: ref})
+			if item.OnTrunk && claimed(item.Issue, at) {
+				item.Claims = append(item.Claims, d.claim(ref))
 			}
 		}
 	}
@@ -256,16 +256,4 @@ func status(i *Item) Status {
 		// open is the least surprising thing it can say.
 		return StatusOpen
 	}
-}
-
-// claims reports whether a ref's copy of an issue is a claim on it.
-//
-// A claim is `state: resolved` on a branch where trunk says open, and that is
-// the only source of `in progress`: `isu claim` writes exactly that before any
-// work starts, so a claimed issue and an issue somebody resolved on a branch
-// without claiming are the same observable fact, read the same way. A branch
-// that exists without the flip is deliberately not a claim — it is somebody's
-// work, and until they say so the board does not speak for them.
-func claims(i *Item, at *issue.Issue) bool {
-	return i.OnTrunk && i.Issue.State == issue.StateOpen && at.State == issue.StateResolved
 }
