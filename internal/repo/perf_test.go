@@ -1,6 +1,7 @@
 package repo_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,6 +27,43 @@ const (
 	boardBudget = 6 * time.Second
 )
 
+// withinBudget holds a measurement to its budget, except in a binary built for
+// coverage, where it reports the number instead.
+//
+// `make cover` runs the whole suite with `-coverpkg=./... -covermode=count`,
+// and two things about that run are not what these budgets are about. Every
+// basic block of internal/gitx carries a counter, the batch parser that reads
+// five thousand blobs included. And every package's tests run at once on one
+// machine — which, since M3, means a second package building a 5,000-issue
+// fixture of its own while this one is being timed.
+//
+// CI found the result rather than anybody predicting it: the 1.5 s budget below
+// was missed by 6% on a macOS runner under `make cover`, in the same run, on
+// the same commit, where `make test` had passed on that machine minutes
+// earlier. A budget measured on an uninstrumented binary cannot honestly be
+// applied to an instrumented one, and a gate that fails on a schedule nobody
+// controls is the pipeline §0 warns about — the kind people learn to ignore.
+//
+// So the clock is asserted where it means something and reported where it does
+// not. Nothing is skipped: CI runs `make test` before `make cover`, so the
+// clock still gates every run on every runner, and the process count — which
+// M2-S5 says is the assertion that actually prevents the regression, because
+// the slow paths differ by process count and not by algorithm — is asserted in
+// both.
+func withinBudget(t *testing.T, what string, took, budget time.Duration) {
+	t.Helper()
+
+	if testing.CoverMode() != "" {
+		t.Logf("%s took %s against a %s budget, not asserted: this binary is "+
+			"instrumented for coverage and the budget was measured without it",
+			what, took, budget)
+
+		return
+	}
+
+	require.Less(t, took, budget, "%s took %s, and the budget is %s", what, took, budget)
+}
+
 // TestLoadRefUnder5000IssuesIsFast is one half of the gate: the clock, and the
 // process count.
 //
@@ -47,8 +85,7 @@ func TestLoadRefUnder5000IssuesIsFast(t *testing.T) {
 
 	require.Equal(t, perfIssues, set.Len())
 	require.Empty(t, set.Broken)
-	require.Less(t, took, loadRefBudget,
-		"LoadRef took %s over %d issues, and the budget is %s", took, perfIssues, loadRefBudget)
+	withinBudget(t, fmt.Sprintf("LoadRef over %d issues", perfIssues), took, loadRefBudget)
 	require.Equal(t, int64(2), loader.Processes(),
 		"one ls-tree and one cat-file --batch, whatever the repository holds")
 }
@@ -81,9 +118,8 @@ func TestLoadBoardOver200BranchesIsFast(t *testing.T) {
 
 	require.Equal(t, perfIssues, board.Trunk.Len())
 	require.Len(t, board.Names(), perfBranches)
-	require.Less(t, took, boardBudget,
-		"LoadBoard took %s over %d issues and %d branches, and the budget is %s",
-		took, perfIssues, perfBranches, boardBudget)
+	withinBudget(t, fmt.Sprintf("LoadBoard over %d issues and %d branches",
+		perfIssues, perfBranches), took, boardBudget)
 }
 
 // Linear in refs, and flat in issues. Three sizes say both things at once:
