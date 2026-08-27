@@ -173,7 +173,7 @@ type Issue struct {
 	State State
 	// Owner is the human answerable for the issue. It is set at triage, and an
 	// agent must never change it. Who is working on it right now is a
-	// different question, answered by the claim ref.
+	// different question, answered by the claiming branch.
 	Owner string
 	// Created is what issue age is computed from. Deriving it by walking
 	// history would cost a git process per issue.
