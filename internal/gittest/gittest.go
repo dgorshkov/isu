@@ -28,14 +28,15 @@
 package gittest
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dgorshkov/isu/internal/gitx"
 )
 
 // DefaultBranch is the trunk of every repository this harness builds. It is
@@ -70,8 +71,12 @@ const localConfig = `
 
 // Repo is a git repository scripted by a test.
 type Repo struct {
-	t      *testing.T
-	dir    string
+	t   testing.TB
+	dir string
+	// git is the one door to the binary. The harness goes through internal/gitx
+	// like everything else does, so that M2-S1's rule — nothing outside that
+	// package builds a git command — is a rule and not an exemption list.
+	git    *gitx.Git
 	remote string
 	// offset moves the clock every later commit is stamped with. See Backdate.
 	offset time.Duration
@@ -82,10 +87,17 @@ type Repo struct {
 // It has no commits: an empty ref is a case the loader in M2 has to handle,
 // and a harness that starts with a commit cannot produce one. The first
 // Commit is what gives the trunk a tip and lets Branch name it.
-func New(t *testing.T) *Repo {
+func New(t testing.TB) *Repo {
 	t.Helper()
 
 	r := &Repo{t: t, dir: t.TempDir()}
+
+	g, err := gitx.New(r.dir, gitx.WithEnv(r.env))
+	if err != nil {
+		t.Fatalf("gittest: %v", err)
+	}
+	r.git = g
+
 	r.Git("init", "--quiet", "-b", DefaultBranch, ".")
 
 	config, err := os.OpenFile(
@@ -146,27 +158,14 @@ func (r *Repo) Git(args ...string) string {
 func (r *Repo) Try(args ...string) (string, error) {
 	r.t.Helper()
 
-	cmd := exec.Command("git", append([]string{"--no-pager"}, args...)...)
-	cmd.Dir = r.dir
-	cmd.Env = r.env()
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	out := strings.TrimRight(stdout.String(), "\n")
-	if err != nil {
-		return out, fmt.Errorf("git %s: %w: %s",
-			strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-	}
-
-	return out, nil
+	return r.git.Output(context.Background(), args...)
 }
 
 // env is the environment git runs under: no inherited git configuration of any
 // kind, no credential prompt, a fixed identity and locale, and the clock
-// Backdate set.
+// Backdate set. gitx has already dropped the variables that would redirect git
+// at another repository; this drops the rest of the prefix and writes the
+// harness's own.
 //
 // Every GIT_* variable the test process inherited is dropped rather than
 // overridden. Overriding needs a list of the dangerous ones, and the list is
@@ -180,13 +179,11 @@ func (r *Repo) Try(args ...string) (string, error) {
 //
 // GIT_TRACE* survives because it changes only what git prints, and
 // `GIT_TRACE=1 go test ./...` is how anybody debugs this package.
-func (r *Repo) env() []string {
+func (r *Repo) env(base []string) []string {
 	when := time.Now().Add(-r.offset).Format(time.RFC3339)
 
-	ambient := os.Environ()
-
-	env := make([]string, 0, len(ambient)+13)
-	for _, entry := range ambient {
+	env := make([]string, 0, len(base)+13)
+	for _, entry := range base {
 		name, _, _ := strings.Cut(entry, "=")
 		if strings.HasPrefix(name, "GIT_") && !strings.HasPrefix(name, "GIT_TRACE") {
 			continue
@@ -219,6 +216,20 @@ func (r *Repo) File(path, content string) *Repo {
 
 	r.write(path, content)
 	r.Git("add", "--", path)
+
+	return r
+}
+
+// WriteFile writes a file without staging it.
+//
+// What is on disk, what is in the index and what is in a commit are three
+// different questions. M2-S3 reads the first of them, so it needs a way to put
+// a file there and leave it there — a file matched by .gitignore cannot be
+// staged at all, and `git add` on one fails rather than adding it.
+func (r *Repo) WriteFile(path, content string) *Repo {
+	r.t.Helper()
+
+	r.write(path, content)
 
 	return r
 }

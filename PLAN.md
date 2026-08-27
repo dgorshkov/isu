@@ -87,7 +87,8 @@ control over the read path; and the fast load path below is only available throu
 `git` is a hard runtime requirement and that is fine for a developer tool.
 
 All git invocation goes through `internal/gitx`. Nothing outside that package may construct
-a `git` command.
+a `git` command — **the test harness included**, which is where M2-S1 found the one
+exception that would otherwise have been written into the rule on its first day.
 
 ### The read path — a hard performance requirement
 
@@ -107,6 +108,14 @@ This is not an optimisation to do later. Measured on 5,000 issues:
 
 `ref:path` costs a tree walk per lookup. Object ids skip it. M2-S5 enforces this with a
 benchmark that fails the build if it regresses.
+
+**The board is a different question and gets a different answer.** The figures above are one
+ref; `isu board` reads trunk and every branch, and listing each ref's whole tree is a million
+entries over 200 branches — measured at 11.4 s in M2-S5, against a 6 s budget. So trunk is
+listed once, each other ref is *diffed* against it, and one `cat-file --batch` reads the
+union of the blobs they name. Git compares trees by object id and skips the subtrees that
+match, so a branch costs its own difference and not the repository. Measured: **1.42 s** for
+5,000 issues over 200 branches.
 
 ---
 
@@ -348,7 +357,7 @@ Ten milestones. Stop for review at the end of each.
 |---|---|---|---|
 | M0 | Foundations | repo, CI, lint, test harness | done |
 | M1 | Issue files | parse, serialise, validate, version | done |
-| M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | not started |
+| M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | done |
 | M3 | Derivation | statuses, epics, claims, contention | not started |
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | not started |
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | not started |
@@ -553,9 +562,33 @@ rather than by inspection.
 
 ---
 
-# M2 · Git layer
+# M2 · Git layer ✅
 
-### M2-S1 · `internal/gitx`
+**Status** done — all five stories landed in one pull request rather than five. That was
+asked for explicitly, as it was for M1. §0 says otherwise, and two milestones running is
+not precedent: the next session should assume one story per pull request unless it is told
+otherwise in the same words. The milestone boundary rule still applies: M3 does not start
+without explicit approval.
+
+**Claim refs are not loaded yet.** M3-S1 names them among its inputs, but M0-S4's note
+already defers them to M3-S3, "which is where what they mean is decided", and M2 did not
+skip ahead of that. `gitx.ForEachRef` lists `refs/claims/` today and has a test that does;
+`repo.Board` grows a field for them in M3-S3, which is the loader growing rather than
+derivation reaching for git — §M3-S1's rule, kept.
+
+### M2-S1 · `internal/gitx` ✅
+**Done** #6, 2026-08-26. `gittest` now runs its own git through this package. The done
+condition below is a grep that must return nothing, and the harness was the one thing that
+would have kept it returning a line; an exemption list would have made the rule advisory on
+the day it was written, so the harness hands `gitx` an environment function instead — the
+only caller of `WithEnv`, and the only legitimate reason for git to see something other
+than what the user configured. `ErrUnknownRevision` is a typed kind, because M2-S2 has to
+tell an unborn HEAD from a typo and the two are the same exit status and nearly the same
+sentence. Three wrappers joined the list below: `Feed`, for the commands that read a stream
+rather than arguments, and `DiffTree`, which M2-S5 turned out to need — plus `Show`, which
+was already named. A "clean environment" means the repository-selecting `GIT_*` variables
+never reach git, and everything else does: the user's config, credential helpers and hooks
+are the whole reason §0 shells out.
 **Branch** `isu/M2-S1-gitx`
 **Build** the only place that executes `git`. Typed wrappers for `ls-tree`, `cat-file --batch`,
 `log`, `rev-parse`, `for-each-ref`, `diff --name-only`, `push`, `show`. Context-aware, with
@@ -565,7 +598,21 @@ asserts the binary is invoked with `--no-pager` and a clean environment.
 **Done when** `grep -r "exec.Command" internal/ | grep -v gitx` returns nothing. Add that
 grep as a test.
 
-### M2-S2 · Load every issue from a ref
+### M2-S2 · Load every issue from a ref ✅
+**Done** #6, 2026-08-26. **The return type below was corrected as this story was built.** It
+reads `map[string]Issue`, and it cannot be one: M2-S3 requires a half-written issue to be
+reported rather than fatal, and a map of the issues that loaded has nowhere to say which
+ones did not. So both loaders return a `Set`, carrying `Issues` and `Broken`. Decoding stays
+separate from validating — a bug with no repro is in `Issues`, because `isu check` cannot
+report what the loader refused to hand it, and only a file that could not be parsed at all
+is in `Broken`. Issues are keyed by **folder name** even where the frontmatter's `id`
+disagrees, because that is what every `parent:` and `blocked_by:` in a repository points at
+and `Validate` already reports the difference. Two cases the story's list does not name and
+the read path forces: two byte-identical issue files are one blob, so the object-id mapping
+is one-to-many or one of them is lost; and an unborn HEAD loads as an empty board while a
+named ref that does not resolve stays an error, or a typo renders as a repository with no
+issues in it. Comments and attachments are not read at a ref — nothing on the board or in a
+derivation reads them.
 **Branch** `isu/M2-S2-load`
 **Build** `repo.LoadRef(ref) map[string]Issue` using the mandated read path: `ls-tree -r` for
 object ids, one `cat-file --batch` fed object ids, stream-parse the output.
@@ -574,7 +621,18 @@ issues present on one ref and absent on another; a blob containing the batch del
 sequence in its body (this will break a naive parser — write that test first).
 **Done when** loading is correct on all of the above.
 
-### M2-S3 · Load from the working tree
+### M2-S3 · Load from the working tree ✅
+**Done** #6, 2026-08-26. **"No git process at all" below is wrong by one, and the line after
+it is why.** Honouring `.gitignore` is in the same sentence, and the two cannot both be
+true: the rules live in the repository, in `$GIT_DIR/info/exclude` and in the user's global
+excludes file, so answering by hand means reimplementing them and then disagreeing with git
+about a corner of them. `git ls-files` answers once, in constant time, and one process is
+still nothing beside the per-blob path. The walk itself needs none: issue folders are one
+level under `issues/`, so it is one directory listing and one read per issue rather than a
+tree walk. A README that is a symlink is refused with a reason rather than resolved — it
+reads as its target on disk and as the target's *path* at a ref, which is the one way these
+two loaders could disagree about a clean checkout. The root is the `Repo`'s rather than an
+argument.
 **Branch** `isu/M2-S3-load-worktree`
 **Why** `isu ui` reads what is on disk, uncommitted edits included. That is a different path
 from `LoadRef`, and a faster one — no git process at all. M6 depends on it, so it is built here
@@ -587,7 +645,21 @@ malformed issue is reported rather than fatal; and a property test asserting `Lo
 and `LoadRef` agree exactly on a clean checkout of a generated repo.
 **Done when** the agreement property holds on a 5,000-issue fixture.
 
-### M2-S4 · The trunk history index
+### M2-S4 · The trunk history index ✅
+**Done** #6, 2026-08-26. **The first test case below was corrected as this story was
+built.** An issue resolved and then reverted holds **three** states at trunk, not two: it
+was open when it was created. The case beside it — an issue never resolved yields one entry
+— is that same creation counted, and under any single rule the two numbers cannot both be
+right. The rule that keeps the second is *one entry per trunk commit at which the value
+changed, its first appearance included*, and collapsing the commits that changed something
+else is what keeps the sequence about states rather than about typo fixes.
+`--first-parent` is load-bearing and the story does not say so. A merge commit shows no
+diff of its own, and under a pathspec git simplifies it away and reports the change at the
+*branch* commit — a commit that was never on trunk, carrying the date the work was written
+rather than the date it landed. The date recorded is the committer date for the same
+reason. A blob that does not parse contributes no state and does not stop the walk, and
+that is told apart from an epic — which parses and declares no state — by the lookup rather
+than by the value, since both would read as the empty string.
 **Branch** `isu/M2-S4-history-index`
 **Why** `reopened` is one of the six statuses, and it is the only one that cannot be answered
 from the current content of any ref. Walking history per issue inside the derivation package
@@ -604,7 +676,25 @@ same logical changes; process count stays constant as the number of issues grows
 **Done when** `LoadHistory` answers reopen for a 5,000-issue repo without a git process per
 issue.
 
-### M2-S5 · The performance gate
+### M2-S5 · The performance gate ✅
+**Done** #6, 2026-08-26. Both gates pass with room: `LoadRef` **273 ms** against 1.5 s, and
+the whole board **1.42 s** against 6 s, on the CI-class machine the branch was built on.
+**The board needed a different algorithm from the one the story implies.** Listing every
+ref's whole tree is a million tree entries and a million map entries over 200 branches, and
+it took 11.4 s against a budget of 6. What the board wants to know about a branch is how it
+differs from trunk, which is a handful of files, and git answers that in time proportional
+to the difference because it compares trees by object id and skips the subtrees that match.
+So trunk is listed once, every other ref is diffed against it, one `cat-file --batch` reads
+the union of the blobs, and each ref's set is trunk's map cloned with its own changes over
+the top. The process count is unchanged at refs + 3 — one `for-each-ref`, one `ls-tree`,
+one `diff-tree` per other ref, one batch — so the assertion the story asks for still holds.
+A consequence worth knowing before M4 writes anything: **an issue is shared between the
+refs whose file is identical**, which is what keeps 200 branches from being a million issue
+files in memory, and makes a `Board` a read model rather than something to write through.
+The fixture generator builds trunk by writing files and staging them once, and its branches
+with a single `git fast-import`; checking out a branch per issue was measured at 133 ms a
+branch against 2 ms, which on 200 branches is half a minute of a test doing nothing anybody
+asked about.
 **Branch** `isu/M2-S5-perf-gate`
 **Build** a generator producing an N-issue, M-ref fixture repo, `BenchmarkLoadRef` and
 `BenchmarkBoard`.
