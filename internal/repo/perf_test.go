@@ -31,32 +31,30 @@ const (
 	// rather than a number per test.
 	//
 	// `make cover` runs the whole suite with `-coverpkg=./... -covermode=count`,
-	// and two things about that run cost wall clock that the read path does not.
-	// Every basic block of internal/gitx carries a counter, the batch parser
-	// that reads five thousand blobs included. And every package's tests run at
-	// once on one machine — which, since M3, means a second package building a
-	// 5,000-issue fixture of its own while this one is being timed.
+	// which puts a counter in every basic block of internal/gitx — the batch
+	// parser that reads five thousand blobs included. Measured on a development
+	// machine, that takes this package from 1.42 s to 3.82 s.
 	//
-	// CI found that rather than anybody predicting it: LoadRef missed the 1.5 s
-	// budget by 6% on a macOS runner under `make cover`, at 1.587 s, in the same
-	// run and on the same commit where `make test` had passed on that machine
-	// minutes earlier.
+	// **It is not what made this gate fail on macOS, and the first draft of this
+	// comment said it was.** LoadRef missed the budget twice there, at 1.587 s
+	// under `make cover` and then at 1.955 s under `make test` — the second in
+	// an uninstrumented binary, which rules instrumentation out as the cause.
+	// What both runs had in common was another package building a 5,000-issue
+	// git fixture on the same runner while this one was being timed. That
+	// contention is gone: the fixture it needed is built in memory now, because
+	// what that test measures is a pure fold and not a repository. The budgets
+	// above are unchanged, and they are the plan's.
 	//
-	// Two is not a model of instrumentation cost. It is a number bracketed by
-	// measurements on both sides, which is the most that can be claimed for it:
-	//
-	//   - below it, the one instrumented measurement anybody has — 1.587 s,
-	//     which is 53% of the 3 s this gives LoadRef;
-	//   - above it, every slower algorithm §0 measured. `cat-file --batch` fed
-	//     `ref:path` took 4.9 s uninstrumented and a `git show` per file 13.7 s,
-	//     both far outside 3 s before instrumentation is added to them; listing
-	//     every ref's whole tree took 11.4 s against the 12 s this gives the
-	//     board, and instrumented it is nowhere near it.
-	//
-	// So the instrumented budget is the looser of the two by design, and it
-	// still separates this algorithm from the ones it replaced — which is what
-	// the gate is for. If a run ever comes back close to it, the failure message
-	// says which budget it was held to, and the factor is one line to revisit.
+	// Two is therefore an allowance for instrumentation and nothing else. It is
+	// not a model of it, but it is bracketed above by every slower algorithm §0
+	// measured: `cat-file --batch` fed `ref:path` took 4.9 s uninstrumented and
+	// a `git show` per file 13.7 s, both outside the 3 s this gives LoadRef
+	// before instrumentation is added to them, and listing every ref's whole
+	// tree took 11.4 s against the 12 s this gives the board. So the
+	// instrumented budget is the looser of the two by design and still separates
+	// this algorithm from the ones it replaced, which is what the gate is for.
+	// A failure names which budget it was held to, and this is one line to
+	// revisit if a run ever comes back close to it.
 	coverFactor = 2
 )
 

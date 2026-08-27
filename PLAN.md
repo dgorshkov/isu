@@ -772,25 +772,30 @@ with a single `git fast-import`; checking out a branch per issue was measured at
 branch against 2 ms, which on 200 branches is half a minute of a test doing nothing anybody
 asked about.
 
-**Amended in #8: the clock is asserted in both passes, and `make cover` gets twice the budget.**
-The numbers above were measured on an uninstrumented binary, and `make cover` runs the suite
-with `-coverpkg=./... -covermode=count` — every basic block of `internal/gitx` carries a
-counter, the batch parser that reads five thousand blobs included — while every package's tests
-run at once on one machine. M3 added a second package that builds a 5,000-issue fixture of its
-own, and on the macOS runner `LoadRef` then missed the 1.5 s budget by **6%**, at 1.587 s,
-under `make cover` — in the same run and on the same commit where `make test` had passed on
-that machine minutes earlier.
+**#8 made this gate fail twice on macOS, and the cause was not what the first fix said it was.**
+`LoadRef` missed the 1.5 s budget at 1.587 s under `make cover`, and then at **1.955 s under
+`make test`** — the second in an uninstrumented binary, which rules instrumentation out.
+Diagnosing the first failure as instrumentation cost was wrong, and the second run is what said
+so. What both runs had in common: M3 added a package whose own gate generated a 5,000-issue
+repository, and Go runs package tests concurrently, so a second 5,000-issue fixture was being
+built on the runner while this one was being timed. **The budgets here are unchanged, and the
+contention is gone** — M3-S2's fixture is built in memory, because what that story measures is
+a pure fold and not a repository.
 
-**Two is not a model of instrumentation cost; it is a number bracketed by measurements on both
-sides**, which is the most that can be claimed for it. Below it sits the one instrumented
-measurement anybody has: 1.587 s, or 53% of the 3 s this gives `LoadRef`. Above it sits every
-slower algorithm §0 measured — `ref:path` at 4.9 s and a `git show` per file at 13.7 s, both
-far outside 3 s before instrumentation is added to them, and listing every ref's whole tree at
-11.4 s against the 12 s this gives the board. So the instrumented budget is the looser of the
-two by design and still separates this algorithm from the ones it replaced, which is what the
-gate is for. A failure names which budget it was held to, and the factor is one line to
-revisit. The process count — which this story says is the assertion that actually prevents the
-regression — is asserted in both passes and is unaffected by any of this.
+**The clock is asserted in both CI passes, with `make cover` given twice the budget.**
+Instrumentation does cost something real — `-coverpkg=./... -covermode=count` takes this
+package from 1.42 s to 3.82 s on a development machine — so the instrumented pass gets its own,
+looser number. Two is an allowance rather than a model, but it is bracketed above by every
+slower algorithm §0 measured: `ref:path` at 4.9 s and a `git show` per file at 13.7 s, both
+outside the 3 s this gives `LoadRef` before instrumentation is added to them, and listing every
+ref's whole tree at 11.4 s against the 12 s this gives the board. So it still separates this
+algorithm from the ones it replaced, which is what the gate is for. A failure names which
+budget it was held to. The process count — which this story says is the assertion that actually
+prevents the regression — is asserted in both passes and was never affected by any of this.
+
+**The lesson worth keeping: a wall-clock gate is a claim about the whole machine, not about the
+code under it.** Any later story that adds a test heavy enough to run beside this one is
+changing this gate's inputs whether it means to or not.
 **Branch** `isu/M2-S5-perf-gate`
 **Build** a generator producing an N-issue, M-ref fixture repo, `BenchmarkLoadRef` and
 `BenchmarkBoard`.
@@ -865,9 +870,16 @@ early is the same answer for *this* epic and a different one for the board — a
 down that nothing else points at would keep whatever status the walk happened to leave it with.
 One case the story does not name: an epic reported on a branch and not yet on trunk reads
 `awaiting triage` rather than folding, because a folder trunk has never seen is a report
-whatever type it declares. The gate is met with room — the generated fixture makes every fifth
-issue an epic, so 5,000 issues is **1,000** epics against the story's 100, and deriving the
-whole board takes **10.4 ms** against a 50 ms budget.
+whatever type it declares. The gate is met with room: every fifth issue is an epic, so 5,000
+issues is **1,000** epics against the story's 100, and deriving the whole board takes **5.2 ms**
+against a 50 ms budget — 10.4 ms when the same measurement was taken over a board that had been
+read out of a repository, where the issues arrive spread across memory rather than allocated in
+one pass. **The fixture is built in memory rather than generated as a repository**,
+and that is not a shortcut: this story measures a fold over issues that are already loaded, and
+generating 5,000 issue folders to read them back is half a minute of git this test does not
+time. It is also half a minute spent on a CI runner that is at that moment timing M2-S5's read
+path in another process — which is exactly how it made that gate fail twice before anybody
+noticed the two were fighting. See M2-S5.
 **Branch** `isu/M3-S2-epics`
 **Build** children indexed once per load, not scanned per parent. Fold child states into every
 `type: epic`. Cycle-safe: a parent cycle must return a value, never recurse forever.

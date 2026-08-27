@@ -1,13 +1,17 @@
 package model_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dgorshkov/isu/internal/gittest"
+	"github.com/dgorshkov/isu/internal/issue"
 	"github.com/dgorshkov/isu/internal/model"
+	"github.com/dgorshkov/isu/internal/repo"
 )
 
 // M3-S2. An epic declares no state; its status is the fold over its children.
@@ -184,29 +188,115 @@ func TestAnEpicOnlyOnABranchIsAwaitingTriage(t *testing.T) {
 	require.Equal(t, model.StatusAwaitingTriage, statusOf(t, derive(t, r), "ISU-40b1cc"))
 }
 
-// The gate PLAN.md M3-S2 sets. The generated fixture makes every fifth issue an
-// epic owning the four before it, so 5,000 issues is a thousand epics — ten
-// times what the story asks for, against the same budget.
+// The gate PLAN.md M3-S2 sets. Every fifth issue is an epic owning the four
+// before it, so 5,000 issues is a thousand epics — ten times what the story
+// asks for, against the same budget.
+//
+// The board is built in memory rather than generated as a repository and read
+// back, and that is not a shortcut. What this story measures is the fold, which
+// is a pure function over issues that are already loaded; generating 5,000
+// issue folders and loading them is half a minute of git doing work this test
+// does not time. It is also half a minute spent on a CI runner that is at that
+// moment timing internal/repo's read path in another process — which is how
+// this test made M2-S5's gate fail twice on macOS before anybody noticed the
+// two were fighting. The issues are still parsed and decoded exactly as a
+// loader would hand them over; only git is gone.
 func TestRollupOverFiveThousandIssuesIsFast(t *testing.T) {
-	const budget = 50 * time.Millisecond
+	const (
+		budget = 50 * time.Millisecond
+		issues = 5000
+	)
 
-	r := gittest.Generate(t, gittest.Spec{Issues: 5000, Prefix: "ISU"})
-	in := load(t, r, time.Now())
+	in := model.Input{
+		Loaded:  generatedBoard(t, issues),
+		History: repo.History{},
+		Config:  defaultConfig(),
+		Now:     time.Now(),
+	}
 
 	started := time.Now()
 	board := model.Derive(in)
 	took := time.Since(started)
 
-	var epics int
+	var epics, children int
 
 	for _, id := range board.IDs() {
-		if board.Items[id].Epic != nil {
+		if epic := board.Items[id].Epic; epic != nil {
 			epics++
+			children += len(epic.Children)
 		}
 	}
 
+	require.Equal(t, issues, len(board.Items))
 	require.Equal(t, 1000, epics)
+	require.Equal(t, 4000, children, "every epic folded the four issues under it")
 	require.Less(t, took, budget,
 		"deriving %d issues with %d epics took %s, and the budget is %s",
 		len(board.Items), epics, took, budget)
+}
+
+// generatedBoard builds a trunk-only board of the given size, shaped like the
+// fixture gittest.Generate writes: the five types in turn, every fifth one an
+// epic, and everything else naming the epic that closes its block of five.
+func generatedBoard(t *testing.T, issues int) *repo.Board {
+	t.Helper()
+
+	set := &repo.Set{Issues: make(map[string]*issue.Issue, issues)}
+
+	for n := range issues {
+		id := gittest.GeneratedID(gittest.DefaultPrefix, n)
+
+		doc, err := issue.Parse([]byte(generatedIssue(id, n, issues)))
+		require.NoError(t, err)
+
+		decoded, err := issue.Decode(doc)
+		require.NoError(t, err)
+
+		decoded.Folder = id
+		require.NoError(t, decoded.Validate(), "the fixture must be a repository somebody could have")
+
+		set.Issues[id] = decoded
+	}
+
+	return &repo.Board{
+		Trunk:   set,
+		Refs:    map[string]*repo.Set{},
+		Changed: map[string][]string{},
+	}
+}
+
+// generatedIssue renders the nth issue file of a set of that many.
+func generatedIssue(id string, n, issues int) string {
+	var b strings.Builder
+
+	kind := []string{"chore", "story", "bug", "spike", "epic"}[n%5]
+
+	fmt.Fprintf(&b, "---\nschema: 1\nid: %s\ntitle: Generated issue %d\ntype: %s\n", id, n, kind)
+
+	// An epic declares no state, and takes its status from its children.
+	if kind != "epic" {
+		b.WriteString("state: open\n")
+	}
+
+	fmt.Fprintf(&b, "owner: %s\ncreated: 2026-08-24\npriority: p%d\n",
+		[]string{"dmitry", "sam", "alex"}[n%3], n%4)
+
+	switch kind {
+	case "bug":
+		b.WriteString("repro: run it twice\n")
+	case "story":
+		b.WriteString("acceptance: the board renders it\n")
+	case "spike":
+		b.WriteString("question: which way round is this\n")
+	}
+
+	// A parent that is not in the set would be a dangling reference, which is
+	// M5-S2's to report and not a fixture's to write.
+	if epic := n - n%5 + 4; kind != "epic" && epic < issues {
+		fmt.Fprintf(&b, "parent: %s\n", gittest.GeneratedID(gittest.DefaultPrefix, epic))
+	}
+
+	fmt.Fprintf(&b, "---\n\nGenerated for a fixture.\n\nThis is issue %d.\n", n)
+
+	return b.String()
 }
