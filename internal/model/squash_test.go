@@ -56,7 +56,7 @@ func TestTheWholeLifecycleUnderSquashMerges(t *testing.T) {
 	require.Equal(t, flip, claimed.Claims[0].Commit)
 
 	// Fix. Real work lands on the claiming branch, which moves its tip.
-	r.Checkout("isu/" + id).
+	r.Checkout("isu/"+id).
 		File("login.go", "package login\n").Commit("retry the login three times").
 		Checkout(gittest.DefaultBranch)
 
