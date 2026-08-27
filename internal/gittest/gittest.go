@@ -347,6 +347,19 @@ func (r *Repo) SquashMerge(branch, subject string) *Repo {
 	return r
 }
 
+// SquashMergeWithBody is SquashMerge with a message body, which is where a
+// commit trailer lives. `isu resolve` writes `Isu-Resolves: <ID>` there, and it
+// is the first of the three tiers that link a trunk commit back to the issue it
+// resolved.
+func (r *Repo) SquashMergeWithBody(branch, subject, body string) *Repo {
+	r.t.Helper()
+
+	r.Git("merge", "--quiet", "--squash", branch)
+	r.Git("commit", "--quiet", "-m", subject, "-m", body)
+
+	return r
+}
+
 // Revert commits the inverse of ref. It is how a test writes the history that
 // makes an issue `reopened`: resolved at one trunk commit, open at a later one,
 // with both facts still in the log.
