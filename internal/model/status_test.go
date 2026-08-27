@@ -6,8 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dgorshkov/isu/internal/config"
 	"github.com/dgorshkov/isu/internal/gittest"
 	"github.com/dgorshkov/isu/internal/model"
+	"github.com/dgorshkov/isu/internal/repo"
 )
 
 // M3-S1. One test per status, then the transitions between them.
@@ -216,11 +218,21 @@ func TestTheBoardIsTheUnionOfTrunkAndEveryBranch(t *testing.T) {
 	require.Equal(t, []string{"ISU-39ka2p", "ISU-40b1cc", "ISU-7f3akq"}, board.IDs())
 }
 
+// A repository with no commits has no trunk ref to name, so it is read through
+// HEAD — M2's rule, kept: an unborn HEAD is an empty board and every other name
+// that does not resolve is a typo worth reporting.
 func TestAnEmptyRepositoryDerivesAnEmptyBoard(t *testing.T) {
-	board := derive(t, gittest.New(t))
+	loader, err := repo.Open(gittest.New(t).Dir())
+	require.NoError(t, err)
+
+	loaded, err := loader.LoadBoard(t.Context(), repo.BoardSpec{})
+	require.NoError(t, err)
+
+	board := model.Derive(model.Input{Loaded: loaded, Config: config.Default()})
 
 	require.Empty(t, board.IDs())
 	require.Empty(t, board.Items)
+	require.Empty(t, board.Names())
 }
 
 // The state a non-epic must declare is missing, so no row of the table matches
@@ -263,7 +275,7 @@ func claimed(t *testing.T, id string) *gittest.Repo {
 	t.Helper()
 
 	return gittest.New(t).
-		Issue(id).Commit("report " + id).
-		Branch("isu/" + id).Checkout("isu/" + id).
+		Issue(id).Commit("report "+id).
+		Branch("isu/"+id).Checkout("isu/"+id).
 		Issue(id, gittest.State("resolved")).Commit("claim " + id)
 }

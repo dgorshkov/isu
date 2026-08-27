@@ -280,6 +280,18 @@ func (r *Repo) Branch(name string) *Repo {
 	return r
 }
 
+// DeleteBranch removes a branch whether or not its commits are reachable from
+// anywhere else. It is what a forge does on merge, and the state several
+// derivations have to be correct in: a claim is released when the work lands,
+// so an issue reads done with the branch that claimed it already gone.
+func (r *Repo) DeleteBranch(name string) *Repo {
+	r.t.Helper()
+
+	r.Git("branch", "--delete", "--force", name)
+
+	return r
+}
+
 // Checkout switches to an existing branch, or to any other committish — a tag
 // or a raw commit id, which detaches HEAD.
 func (r *Repo) Checkout(name string) *Repo {

@@ -40,6 +40,19 @@ type Board struct {
 	// Refs is the issue set at every other ref that matched, keyed by its full
 	// ref name.
 	Refs map[string]*Set
+	// Changed is, for each of those refs, the ids whose file differs from
+	// trunk's — added, modified or gone. It is sorted, and it is the only part
+	// of a ref anything downstream has to look at.
+	//
+	// It exists because derivation is a statement about differences and the
+	// map above is a statement about contents. Asking each ref for its whole
+	// map is five thousand issues two hundred times over, and the answer is
+	// almost always "the same issue trunk has"; the diff that built the ref
+	// already knows which handful of files it was not. So the loader hands the
+	// difference over rather than making M3 rediscover it — which is the same
+	// bargain the read path itself makes, and the reason this field is here
+	// and not a helper in internal/model.
+	Changed map[string][]string
 }
 
 // Names lists the non-trunk refs in name order.
@@ -108,15 +121,32 @@ func (r *Repo) LoadBoard(ctx context.Context, spec BoardSpec) (*Board, error) {
 	}
 
 	board := &Board{
-		Trunk: cache.set(trunkIndex),
-		Refs:  make(map[string]*Set, len(diffs)),
+		Trunk:   cache.set(trunkIndex),
+		Refs:    make(map[string]*Set, len(diffs)),
+		Changed: make(map[string][]string, len(diffs)),
 	}
 
 	for name, changes := range diffs {
 		board.Refs[name] = cache.apply(board.Trunk, changes)
+		board.Changed[name] = changedIDs(changes)
 	}
 
 	return board, nil
+}
+
+// changedIDs names the issues a ref's difference from trunk is about.
+func changedIDs(changes []gitx.Change) []string {
+	ids := make([]string, 0, len(changes))
+
+	for _, change := range changes {
+		if id, ok := issueID(change.Path); ok {
+			ids = append(ids, id)
+		}
+	}
+
+	sort.Strings(ids)
+
+	return ids
 }
 
 // diffRefs asks each ref how it differs from trunk, and registers the blobs
