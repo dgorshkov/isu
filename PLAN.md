@@ -772,19 +772,25 @@ with a single `git fast-import`; checking out a branch per issue was measured at
 branch against 2 ms, which on 200 branches is half a minute of a test doing nothing anybody
 asked about.
 
-**Amended in #8: the clock is asserted in `make test` and reported in `make cover`.** The
-budgets here were measured on an uninstrumented binary, and `make cover` runs the suite with
-`-coverpkg=./... -covermode=count` — every basic block of `internal/gitx` carries a counter,
-the batch parser that reads five thousand blobs included — while every package's tests run at
-once on one machine. M3 added a second package that builds a 5,000-issue fixture of its own,
-and on the macOS runner the 1.5 s budget was then missed by **6%** under `make cover`, in the
-same run and on the same commit where `make test` had passed on that machine minutes earlier.
-A budget measured without instrumentation cannot honestly be applied to a run with it, and a
-gate that fails on a schedule nobody controls is the pipeline §0 warns about. Nothing is
-skipped: CI runs `make test` before `make cover`, so the clock still gates every run on every
-runner, and the process count — which this story says is the assertion that actually prevents
-the regression — is asserted in **both** modes. The instrumented run prints the measurement it
-did not assert, so a real regression stays visible in the log.
+**Amended in #8: the clock is asserted in both passes, and `make cover` gets twice the budget.**
+The numbers above were measured on an uninstrumented binary, and `make cover` runs the suite
+with `-coverpkg=./... -covermode=count` — every basic block of `internal/gitx` carries a
+counter, the batch parser that reads five thousand blobs included — while every package's tests
+run at once on one machine. M3 added a second package that builds a 5,000-issue fixture of its
+own, and on the macOS runner `LoadRef` then missed the 1.5 s budget by **6%**, at 1.587 s,
+under `make cover` — in the same run and on the same commit where `make test` had passed on
+that machine minutes earlier.
+
+**Two is not a model of instrumentation cost; it is a number bracketed by measurements on both
+sides**, which is the most that can be claimed for it. Below it sits the one instrumented
+measurement anybody has: 1.587 s, or 53% of the 3 s this gives `LoadRef`. Above it sits every
+slower algorithm §0 measured — `ref:path` at 4.9 s and a `git show` per file at 13.7 s, both
+far outside 3 s before instrumentation is added to them, and listing every ref's whole tree at
+11.4 s against the 12 s this gives the board. So the instrumented budget is the looser of the
+two by design and still separates this algorithm from the ones it replaced, which is what the
+gate is for. A failure names which budget it was held to, and the factor is one line to
+revisit. The process count — which this story says is the assertion that actually prevents the
+regression — is asserted in both passes and is unaffected by any of this.
 **Branch** `isu/M2-S5-perf-gate`
 **Build** a generator producing an N-issue, M-ref fixture repo, `BenchmarkLoadRef` and
 `BenchmarkBoard`.

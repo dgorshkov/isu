@@ -25,43 +25,53 @@ const (
 	// boardBudget is the whole of LoadBoard on perfIssues issues over
 	// perfBranches branches.
 	boardBudget = 6 * time.Second
+
+	// coverFactor is what the budgets above are multiplied by in a binary built
+	// for coverage. Both budgets get the same factor, so there is one rule here
+	// rather than a number per test.
+	//
+	// `make cover` runs the whole suite with `-coverpkg=./... -covermode=count`,
+	// and two things about that run cost wall clock that the read path does not.
+	// Every basic block of internal/gitx carries a counter, the batch parser
+	// that reads five thousand blobs included. And every package's tests run at
+	// once on one machine — which, since M3, means a second package building a
+	// 5,000-issue fixture of its own while this one is being timed.
+	//
+	// CI found that rather than anybody predicting it: LoadRef missed the 1.5 s
+	// budget by 6% on a macOS runner under `make cover`, at 1.587 s, in the same
+	// run and on the same commit where `make test` had passed on that machine
+	// minutes earlier.
+	//
+	// Two is not a model of instrumentation cost. It is a number bracketed by
+	// measurements on both sides, which is the most that can be claimed for it:
+	//
+	//   - below it, the one instrumented measurement anybody has — 1.587 s,
+	//     which is 53% of the 3 s this gives LoadRef;
+	//   - above it, every slower algorithm §0 measured. `cat-file --batch` fed
+	//     `ref:path` took 4.9 s uninstrumented and a `git show` per file 13.7 s,
+	//     both far outside 3 s before instrumentation is added to them; listing
+	//     every ref's whole tree took 11.4 s against the 12 s this gives the
+	//     board, and instrumented it is nowhere near it.
+	//
+	// So the instrumented budget is the looser of the two by design, and it
+	// still separates this algorithm from the ones it replaced — which is what
+	// the gate is for. If a run ever comes back close to it, the failure message
+	// says which budget it was held to, and the factor is one line to revisit.
+	coverFactor = 2
 )
 
-// withinBudget holds a measurement to its budget, except in a binary built for
-// coverage, where it reports the number instead.
-//
-// `make cover` runs the whole suite with `-coverpkg=./... -covermode=count`,
-// and two things about that run are not what these budgets are about. Every
-// basic block of internal/gitx carries a counter, the batch parser that reads
-// five thousand blobs included. And every package's tests run at once on one
-// machine — which, since M3, means a second package building a 5,000-issue
-// fixture of its own while this one is being timed.
-//
-// CI found the result rather than anybody predicting it: the 1.5 s budget below
-// was missed by 6% on a macOS runner under `make cover`, in the same run, on
-// the same commit, where `make test` had passed on that machine minutes
-// earlier. A budget measured on an uninstrumented binary cannot honestly be
-// applied to an instrumented one, and a gate that fails on a schedule nobody
-// controls is the pipeline §0 warns about — the kind people learn to ignore.
-//
-// So the clock is asserted where it means something and reported where it does
-// not. Nothing is skipped: CI runs `make test` before `make cover`, so the
-// clock still gates every run on every runner, and the process count — which
-// M2-S5 says is the assertion that actually prevents the regression, because
-// the slow paths differ by process count and not by algorithm — is asserted in
-// both.
+// withinBudget holds a measurement to its budget, taking the instrumented
+// budget in a binary built for coverage — see coverFactor.
 func withinBudget(t *testing.T, what string, took, budget time.Duration) {
 	t.Helper()
 
+	held, why := budget, "an uninstrumented binary"
 	if testing.CoverMode() != "" {
-		t.Logf("%s took %s against a %s budget, not asserted: this binary is "+
-			"instrumented for coverage and the budget was measured without it",
-			what, took, budget)
-
-		return
+		held, why = budget*coverFactor, "a binary instrumented for coverage"
 	}
 
-	require.Less(t, took, budget, "%s took %s, and the budget is %s", what, took, budget)
+	require.Less(t, took, held,
+		"%s took %s, and the budget for %s is %s", what, took, why, held)
 }
 
 // TestLoadRefUnder5000IssuesIsFast is one half of the gate: the clock, and the
