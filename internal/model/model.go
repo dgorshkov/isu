@@ -93,12 +93,19 @@ type Item struct {
 	// a branch that edited the file. An issue no branch has touched has none,
 	// which is what keeps two hundred branches from costing every issue a list.
 	Elsewhere []string
+	// Epic is the fold over this issue's children, and is set only on an issue
+	// of type epic.
+	Epic *Epic
 }
 
 // Board is every issue the repository holds, derived.
 type Board struct {
 	// Items are the issues, keyed by id.
 	Items map[string]*Item
+	// Children indexes every issue by the parent it names — including a parent
+	// that is not an epic and a parent that does not exist, both of which are
+	// M5-S2's to report and neither of which this package drops.
+	Children map[string][]string
 
 	// refs are the non-trunk refs this was derived from, in name order. It is
 	// what Elsewhere and Claims are drawn from, and keeping it here means a
@@ -149,13 +156,14 @@ func Derive(in Input) *Board {
 		now = time.Now()
 	}
 
-	d := &deriver{
-		in:    in,
-		now:   now,
-		board: &Board{Items: map[string]*Item{}, refs: in.Loaded.Names()},
-	}
+	d := &deriver{in: in, now: now, board: &Board{
+		Items:    map[string]*Item{},
+		Children: map[string][]string{},
+		refs:     in.Loaded.Names(),
+	}}
 
 	d.collect()
+	d.index()
 	d.status()
 
 	return d.board
@@ -167,6 +175,11 @@ type deriver struct {
 	in    Input
 	now   time.Time
 	board *Board
+	// folding names the epics part-way through their rollup, which is how a
+	// parent cycle is caught rather than recursed into; folded names the ones
+	// whose status is final.
+	folding map[string]bool
+	folded  map[string]bool
 }
 
 // collect turns trunk and the refs into one item per issue.
@@ -209,12 +222,15 @@ func (d *deriver) collect() {
 }
 
 // status walks the table in PLAN.md section 1, in its order, because the rows
-// overlap and the first match wins.
+// overlap and the first match wins. The epics are folded afterwards, over the
+// statuses this leaves behind.
 func (d *deriver) status() {
 	for _, item := range d.board.Items {
 		item.Reopened = Reopened(d.in.History[item.ID])
 		item.Status = status(item)
 	}
+
+	d.rollUp()
 }
 
 func status(i *Item) Status {
@@ -224,15 +240,20 @@ func status(i *Item) Status {
 	case i.OnTrunk && i.Issue.State == issue.StateDropped:
 		return StatusDropped
 	case !i.OnTrunk:
+		// An epic reported on a branch lands here too, and should: a folder
+		// trunk has never seen is a report awaiting triage whatever type it
+		// declares, and folding an untriaged epic's children would answer a
+		// question nobody asked while hiding the one that matters.
 		return StatusAwaitingTriage
 	case len(i.Claims) > 0:
 		return StatusInProgress
 	case i.Reopened:
 		return StatusReopened
 	default:
-		// Everything else on trunk — and an issue whose state is missing or
-		// misspelt, which is `isu check`'s to report. The board still has to
-		// render it, and open is the least surprising thing it can say.
+		// Everything else on trunk — an epic, whose status the rollup replaces
+		// this with, and an issue whose state is missing or misspelt, which is
+		// `isu check`'s to report. The board still has to render that one, and
+		// open is the least surprising thing it can say.
 		return StatusOpen
 	}
 }
