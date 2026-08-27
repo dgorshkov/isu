@@ -98,16 +98,16 @@ func TestDroppedAndOpenedAgainIsNotAReopen(t *testing.T) {
 }
 
 // An issue whose folder was deleted at trunk and written again holds a removal
-// in the middle of its history.
+// in the middle of its history, and the removal does not break the chain.
 //
-// The rule as PLAN.md states it is "any earlier entry was resolved and the
-// latest is open", and applied literally that makes this a reopen: the id is
-// the same, and an id is permanent from creation. The other reading is that a
-// removal ends a file's story, the way M2-S4 documents a rename as one issue
-// ending and another beginning. The document does not decide between them, so
-// this follows the rule as written rather than inventing the exception, and the
-// pull request asks the question.
-func TestAnIssueDeletedAndReportedAgainFollowsTheRuleAsWritten(t *testing.T) {
+// Issues are files, so somebody can remove a folder and commit it, and the id
+// can come back afterwards — by reverting that commit, or by re-running an
+// import, since imported issues keep their source key verbatim and so repeat
+// exactly. Decided in #8, having been asked by this test: an id is permanent
+// from creation, so the same id is the same issue and trunk did resolve it
+// once. The reading that lost was that a removal ends the file's story, as
+// M2-S4 treats a rename; a rename produces a different id and this does not.
+func TestAnIssueDeletedAndReportedAgainIsAReopen(t *testing.T) {
 	r := gittest.New(t).
 		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
 		Issue("ISU-7f3akq", gittest.State("resolved")).Commit("resolve ISU-7f3akq")

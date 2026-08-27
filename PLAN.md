@@ -227,6 +227,15 @@ branch that claimed it was tidied up. `in progress` beats `reopened` because som
 re-fixing an issue needs to show as worked, not as merely broken again — but **reopened
 survives as an annotation** on whatever status wins, so the fact is never lost.
 
+**`reopened` reads every earlier trunk commit, and a deletion in between does not break the
+chain.** Issues are files, so somebody can `git rm` a folder and commit it — there is no
+command for that, but nothing prevents it either — and an id can come back afterwards, whether
+by reverting that commit or by re-running an import, since imported issues keep their source
+key verbatim and so repeat exactly. Decided in #8, after M3-S4 asked: an id is permanent from
+creation, so the same id is the same issue, and trunk did resolve it once. It reads `reopened`.
+The rejected reading was that a removal ends the file's story, the way M2-S4 treats a rename;
+the difference is that a rename produces a *different* id and this does not.
+
 `in progress` has exactly one source, and it is the claim itself: `isu claim` writes
 `state: resolved` on branch `isu/<ID>` before any work starts (see Claims below). So a claimed
 issue and an issue somebody resolved on a branch without claiming are the same observable fact,
@@ -799,12 +808,12 @@ still not precedent: the next session should assume one story per pull request u
 told otherwise in the same words. The milestone boundary rule applies as ever — M4 does not
 start without explicit approval.
 
-**Two corrections and one open question came out of the tests**, and all three are recorded
-where the decision was made rather than only here: the claim lookup in section 1 and M3-S3
-returned the branch tip and is corrected above; the merge-then-revert case reads a different
-status depending on whether the branch was deleted, which M3-S4's test list did not expect; and
-an issue deleted at trunk and reported again is a reopen under the rule as written, which may
-not be what the rule meant. The last of those is the one still needing an answer.
+**Two corrections and one question came out of the tests**, and all three are recorded where
+the decision was made rather than only here: the claim lookup in section 1 and M3-S3 returned
+the branch tip and is corrected above; the merge-then-revert case reads a different status
+depending on whether the branch was deleted, which M3-S4's test list did not expect; and an
+issue deleted at trunk and reported again is a reopen, which M3-S4 asked about and section 1
+now answers. Nothing in M3 is left open.
 
 **Claim refs are not loaded, and now never will be.** M2's note deferred them to M3-S3, "which
 is where what they mean is decided" — and what they mean is nothing: the Claims section was
@@ -907,14 +916,12 @@ with the branch gone and `in progress` with it there. Nothing is lost — the an
 either way — and the board is saying that somebody's branch disagrees with trunk, which is
 exactly the situation.
 
-**Open question, and the one thing in M3 that needs an answer rather than a note.** An issue
-whose folder was deleted at trunk and later written again holds a removal in the middle of its
-history. Under the rule as the table states it — any earlier entry was `resolved` and the
-latest is `open` — that is a reopen, and the id is the same, and an id is permanent from
-creation, so it is the same issue. Under M2-S4's reading of a rename, a removal ends the file's
-story and what follows is a different history. The document does not decide between them, so
-the rule as written stands and the test asserts it; **say which is meant before M5-S2**, which
-is where a check would have to agree with it.
+**A deletion in the middle of an issue's history does not break the reopen chain — asked here,
+answered in #8.** An issue whose folder was deleted at trunk and later written again holds a
+removal between its states. The rule as the table states it makes that a reopen; M2-S4's
+reading of a rename would have made it a different issue's history. The rule as written stands:
+an id is permanent from creation, so the same id is the same issue, and trunk did resolve it
+once. Section 1 now says so where the rule lives, rather than only here.
 
 Two things the list does name and are worth keeping visible: `dropped` at an earlier commit is
 deliberately *not* a reopen, because the table names `resolved` and undropping is a triage
