@@ -33,12 +33,29 @@ func load(t *testing.T, r *gittest.Repo, now time.Time) model.Input {
 	history, err := loader.LoadHistory(ctx, gittest.DefaultBranch)
 	require.NoError(t, err)
 
+	// Which branches claim something is a pure question about what was already
+	// loaded; who claimed and when is one git log each, and it belongs to the
+	// loader. That two-step is the wiring, and it is here so that every test in
+	// this package exercises it rather than the shortest path to its assertion.
+	claims, err := loader.LoadFirstCommits(ctx, gittest.DefaultBranch, model.ClaimRefs(board))
+	require.NoError(t, err)
+
 	return model.Input{
 		Loaded:  board,
 		History: history,
-		Config:  config.Default(),
+		Claims:  claims,
+		Config:  defaultConfig(),
 		Now:     now,
 	}
+}
+
+// defaultConfig is a repository whose .isu.yml sets nothing but the prefix it
+// must set — seven days to a stale claim.
+func defaultConfig() config.Config {
+	cfg := config.Default()
+	cfg.Prefix = gittest.DefaultPrefix
+
+	return cfg
 }
 
 // derive is load plus the derivation, for the tests whose subject is the answer
