@@ -26,8 +26,9 @@ type BoardSpec struct {
 
 // Board is every ref isu reads, loaded together.
 //
-// It is the shape M3-S1 derives statuses from: trunk, every branch, and — once
-// M3-S3 decides what they mean — the claim refs beside them.
+// It is the shape internal/model derives statuses from: trunk, and every branch
+// beside it. There are no claim refs to read — claiming is a branch and a state
+// flip, so a claim is one of the branches already here.
 //
 // Issues are shared between refs. An issue whose file a branch did not touch is
 // the same *issue.Issue at that branch as it is at trunk, because it is the

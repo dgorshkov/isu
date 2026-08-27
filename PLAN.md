@@ -347,12 +347,29 @@ diff, not the field. The earlier draft's objection to writing `resolved` early, 
 claim would then look like a resolution, is not true for this reason.
 
 **Claimant and claim time are the first commit on the claiming branch.**
-`git log <trunk>..isu/<ID> --reverse --max-count=1` is the commit that flipped the state; its
-author is the claimant and its author date is the claim time. That is one git process per
-claiming branch — linear in refs, which is what the board already costs (M2-S5) — where a
-dedicated claim ref would have made it free. It is the one thing this design pays more for.
-The branch *tip* is free from `for-each-ref` and is the **wrong** answer: it moves every time
-the claimant pushes more work, so a claim would never age and `stale_days` would never fire.
+`git log <trunk>..isu/<ID> --reverse` is the commit that flipped the state — the **first**
+record of that walk; its author is the claimant and its author date is the claim time. That is
+one git process per claiming branch — linear in refs, which is what the board already costs
+(M2-S5) — where a dedicated claim ref would have made it free. It is the one thing this design
+pays more for. The branch *tip* is free from `for-each-ref` and is the **wrong** answer: it
+moves every time the claimant pushes more work, so a claim would never age and `stale_days`
+would never fire.
+
+**This paragraph said `--reverse --max-count=1` until M3-S3, and that pair returns the tip.**
+Git applies the limit during the walk, which starts at the tip, and reverses what survived it;
+one commit reversed is that same commit. Measured on a branch of three commits over trunk:
+
+```
+git log --reverse --max-count=1 main..topic  ->  third on branch
+git log --reverse             main..topic  ->  first on branch, second on branch, third on branch
+```
+
+So the spelling above walks the range and takes the first record, which costs a claiming
+branch's own commits rather than a constant. That is affordable — a claiming branch is a few
+commits, not a repository — and it is correct, which the pair is not at any price. The
+correction is the same in M3-S3 below, and `TestLoadFirstCommitsTakesTheFirstCommitAndNotTheTip`
+asserts the commit id rather than only the date, so a lookup that is accidentally right on a
+one-commit branch cannot pass it.
 
 `isu unclaim` flips the state back to `open` on the claiming branch and pushes. **It does not
 delete the branch** — a one-word command must not throw away work. What it releases is the
@@ -401,7 +418,7 @@ Ten milestones. Stop for review at the end of each.
 | M0 | Foundations | repo, CI, lint, test harness | done |
 | M1 | Issue files | parse, serialise, validate, version | done |
 | M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | done |
-| M3 | Derivation | statuses, epics, claims, contention | not started |
+| M3 | Derivation | statuses, epics, claims, contention | done |
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | not started |
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | not started |
 | M6 | TUI | `isu ui` | not started |
@@ -621,6 +638,11 @@ skip ahead of that. `gitx.ForEachRef` lists `refs/claims/` today and has a test 
 `repo.Board` grows a field for them in M3-S3, which is the loader growing rather than
 derivation reaching for git — §M3-S1's rule, kept.
 
+**M3-S3 decided, and the answer was that there is nothing to load.** The Claims section was
+rewritten in #7 to claim by branching and flipping the state, so no `refs/claims/` namespace
+exists to read and the field this paragraph promised was never added. What M3-S3 did add to
+`repo.Board` is `Changed`, for a different reason entirely — see M3-S1.
+
 ### M2-S1 · `internal/gitx` ✅
 **Done** #6, 2026-08-26. `gittest` now runs its own git through this package. The done
 condition below is a grep that must return nothing, and the harness was the one thing that
@@ -755,9 +777,43 @@ single ref; it is not a number the product's main operation can be held to.
 
 ---
 
-# M3 · Derivation
+# M3 · Derivation ✅
 
-### M3-S1 · Status derivation
+**Status** done — all five stories landed in one pull request rather than five. That was asked
+for explicitly, as it was for M1 and M2. §0 says otherwise, and three milestones running is
+still not precedent: the next session should assume one story per pull request unless it is
+told otherwise in the same words. The milestone boundary rule applies as ever — M4 does not
+start without explicit approval.
+
+**Two corrections and one open question came out of the tests**, and all three are recorded
+where the decision was made rather than only here: the claim lookup in section 1 and M3-S3
+returned the branch tip and is corrected above; the merge-then-revert case reads a different
+status depending on whether the branch was deleted, which M3-S4's test list did not expect; and
+an issue deleted at trunk and reported again is a reopen under the rule as written, which may
+not be what the rule meant. The last of those is the one still needing an answer.
+
+**Claim refs are not loaded, and now never will be.** M2's note deferred them to M3-S3, "which
+is where what they mean is decided" — and what they mean is nothing: the Claims section was
+rewritten in #7 to claim by branching and flipping the state, so there is no `refs/claims/`
+namespace to read. `gitx.ForEachRef` can still list one, which is a general wrapper doing its
+job rather than a loose end.
+
+### M3-S1 · Status derivation ✅
+**Done** #8, 2026-08-27. **The loader grew rather than derivation reaching for git**, which is
+§M3-S1's own rule taken at its word: `repo.Board` carries a `Changed` index naming the ids each
+ref differs from trunk on. A board is a statement about differences and a ref's map is a
+statement about contents; asking each ref for its whole map is five thousand issues two hundred
+times over, and the diff that built the ref already knew which handful of files it was not.
+`reopened` landed here rather than in M3-S4, because the table has six rows and this story owns
+the table — the fold sits in `reopen.go`, which is where M3-S4's own tests point. Two cases the
+story's list does not name and the model forces: a branch that *deleted* an issue's folder is
+not evidence about anything, because deriving from an absence would let one branch take an
+issue off everybody's board; and a non-epic whose `state:` is missing or misspelt matches no
+row at all, so it reads `open` and `isu check` reports the file. **"100% branch coverage" is
+measured as 100% of statements**, because that is what `go test -cover` counts and there is no
+branch-coverage mode to turn on; the gate in `scripts/coverage.sh` enforces it, and every row
+of the table has a test of its own on top — including both sides of each `&&` in the ladder,
+which is the part a statement count would otherwise let through.
 **Branch** `isu/M3-S1-status`
 **Build** `internal/model`: given trunk, every branch and the history index from M2-S4, derive
 the six statuses from the table in section 1. **Pure function over loaded inputs — no git calls
@@ -770,7 +826,19 @@ state, which is not a claim and must read `open`**.
 **Done when** the status function has 100% branch coverage. This package is the product; it
 gets a higher bar than the rest.
 
-### M3-S2 · Epic rollup
+### M3-S2 · Epic rollup ✅
+**Done** #8, 2026-08-27. The fold marks each epic with one of three states — not started,
+part-way through, finished — and meeting a part-way one is the cycle: the parent chain came
+back round to where it started, so the answer is a value rather than one more stack frame. An
+epic that is its own parent is the one-node version, and it is the case that blew a stack
+during prototyping. Every child is folded even after the first unfinished one, because stopping
+early is the same answer for *this* epic and a different one for the board — an epic further
+down that nothing else points at would keep whatever status the walk happened to leave it with.
+One case the story does not name: an epic reported on a branch and not yet on trunk reads
+`awaiting triage` rather than folding, because a folder trunk has never seen is a report
+whatever type it declares. The gate is met with room — the generated fixture makes every fifth
+issue an epic, so 5,000 issues is **1,000** epics against the story's 100, and deriving the
+whole board takes **10.4 ms** against a 50 ms budget.
 **Branch** `isu/M3-S2-epics`
 **Build** children indexed once per load, not scanned per parent. Fold child states into every
 `type: epic`. Cycle-safe: a parent cycle must return a value, never recurse forever.
@@ -780,17 +848,28 @@ an issue that is not an epic. The self-parent case blew a stack during prototypi
 before the implementation.
 **Done when** a 5,000-issue fixture rolls up 100 epics in under 50 ms.
 
-### M3-S3 · Claimant, age, staleness, contention
+### M3-S3 · Claimant, age, staleness, contention ✅
+**Done** #8, 2026-08-27. **The lookup below was corrected as this story was built**, and the
+correction is written up in section 1: `--reverse --max-count=1` returns the branch tip, which
+that section calls the wrong answer in the paragraph above the one that spelled it. The range
+is walked and its first record taken instead. The split between the two packages is the other
+thing this story settled: *which* refs claim is a pure question about what was already loaded,
+so `model.ClaimRefs` answers it, and *who* claimed costs a git process each, so
+`repo.LoadFirstCommits` does that over the refs it named. Asking the loader to work both out
+would have made it walk every branch in the repository. A ref with no first commit — nothing
+ahead of trunk — is a lookup with no answer rather than a failure, and a claim whose first
+commit was not looked up is still a claim: the file is the claim, and the lookup only names who
+made it, so dropping the row would hide a claim to protect an annotation.
 **Branch** `isu/M3-S3-claims`
 **Build** a claim is a branch whose issue file says `state: resolved` where trunk says `open`.
 The claimant is the author of the **first commit on that branch** and the claim time is its
 author date; staleness is that date against `stale_days`. An issue is contended when more than
 one branch claims it.
 **The lookup belongs to the loader, not to this package.** `internal/repo` grows a call that
-runs `git log <trunk>..<branch> --reverse --max-count=1` for each claiming branch and hands the
-result over — one process per claiming branch, linear in refs like everything else the board
-does. M3-S1's rule that derivation never calls git has no exceptions, and this is the first
-story that would have been tempted to make one.
+runs `git log <trunk>..<branch> --reverse` for each claiming branch and takes the first record,
+handing the result over — one process per claiming branch, linear in refs like everything else
+the board does. M3-S1's rule that derivation never calls git has no exceptions, and this is the
+first story that would have been tempted to make one.
 **Tests first** a single claim names the claimant and the date the state was flipped, **not the
 branch tip's date** — assert with more work pushed on top, which moves the tip and must not
 move the claim; two claiming branches by different authors read as contended with both named; a
@@ -800,7 +879,34 @@ in progress; a claiming branch deleted after merge leaves the issue reading `don
 **Done when** contention and staleness come out of what M2 already loaded plus one log per
 claiming branch, and nothing in `internal/model` runs git.
 
-### M3-S4 · Reopen detection
+### M3-S4 · Reopen detection ✅
+**Done** #8, 2026-08-27. **The fold itself landed with M3-S1**, because the status table has a
+`reopened` row and that story owns the table; this story is the case matrix over it and the
+purity tests, and it found two things the story's list does not expect.
+
+**Merge-then-revert does not read the same with the branch deleted and without it.** The list
+below asks for the three cases "and the same three with the branch deleted after merge", which
+reads as though the answers match. They do not, and the table is why: a branch left standing
+through a revert still says `resolved` where trunk now says `open`, which is a claim by the
+only definition of one there is, and `in progress` beats `reopened`. So it reads `reopened`
+with the branch gone and `in progress` with it there. Nothing is lost — the annotation survives
+either way — and the board is saying that somebody's branch disagrees with trunk, which is
+exactly the situation.
+
+**Open question, and the one thing in M3 that needs an answer rather than a note.** An issue
+whose folder was deleted at trunk and later written again holds a removal in the middle of its
+history. Under the rule as the table states it — any earlier entry was `resolved` and the
+latest is `open` — that is a reopen, and the id is the same, and an id is permanent from
+creation, so it is the same issue. Under M2-S4's reading of a rename, a removal ends the file's
+story and what follows is a different history. The document does not decide between them, so
+the rule as written stands and the test asserts it; **say which is meant before M5-S2**, which
+is where a check would have to agree with it.
+
+Two things the list does name and are worth keeping visible: `dropped` at an earlier commit is
+deliberately *not* a reopen, because the table names `resolved` and undropping is a triage
+decision rather than a fix that did not hold; and the purity rule got three tests rather than
+one grep — what this package may import, that it may not name a `*repo.Repo`, and that a whole
+derivation moves the repository's process counter by zero.
 **Branch** `isu/M3-S4-reopen`
 **Build** a **pure fold over the M2-S4 history index**: if any earlier entry was
 `state: resolved` and the latest is `open`, the status is `reopened`. No git in this package —
@@ -810,7 +916,23 @@ never-resolved reads as open; **and the same three with the branch deleted after
 a test asserting this package spawns no processes, in the style of the M2-S1 grep test.
 **Done when** reopen is correct with zero branches left in the repo.
 
-### M3-S5 · Squash-merge lifecycle
+### M3-S5 · Squash-merge lifecycle ✅
+**Done** #8, 2026-08-27. The lifecycle passes without changing M3-S1..S4, which is the result
+the story was written to get. **"Build nothing new" is wrong by one function**, and the story's
+own test list is what makes it wrong: it asks for a trailer recovery and a subject fallback,
+and neither existed. `model.Resolves` is that function, and it reads two of section 1's three
+tiers — the two that are in a commit message. The middle tier, the branch name the merge
+recorded, is not in one: it needs the merge's own refs, so it belongs to whatever loads them,
+and M7-S3 already scans for it.
+
+**The subject tier is anchored on the repository's `prefix`, and the anchor is the whole of its
+safety.** An id is letters, digits, a hyphen, an underscore and a full stop — because an
+imported issue keeps its source key verbatim — so every word of an English sentence is a legal
+id, and an unanchored scan would return the first word of every squash commit in the repository
+with total confidence. An empty prefix therefore reads no subjects at all: nothing downstream
+can tell a wrong link from a right one, so "which issue is this about" has to answer nothing
+rather than guess. A trailing full stop is trimmed before the check, since a subject that ends
+in one is ordinary English and an id that ends in one is not something isu generates.
 **Branch** `isu/M3-S5-squash`
 **Build** nothing new. This story exists to prove the model survives the merge strategy most
 teams use.
