@@ -172,7 +172,7 @@ won't-fix, and the difference is the first thing anyone asks.
 
 `owner` is the accountable human. It is set at triage and an agent must never change it —
 see M5-S4. Who is *working* on an issue right now is a different question, answered by the
-claim ref, not by this field.
+claiming branch, not by this field.
 
 `parent` must name an issue of `type: epic`, and **that is a repository-level rule, not a
 field-level one.** `Validate()` in M1-S2 takes one issue and nothing else, so it checks that
@@ -202,28 +202,36 @@ a `parent:` line to a third file.
 
 Never stored. Computed from `state` read across refs. **The rows are ordered and the first
 match wins** — several of them overlap, and without a stated precedence a merged issue whose
-claim ref still exists matches both `done` and `in progress`.
+claiming branch was never deleted matches both `done` and `in progress`.
 
 | status | rule |
 |---|---|
 | `done` | trunk has `state: resolved` |
 | `dropped` | trunk has `state: dropped` |
 | `awaiting triage` | folder exists on a branch, not on trunk |
-| `in progress` | a claim ref exists, or some branch has `state: resolved` where trunk has `open` |
+| `in progress` | some branch has `state: resolved` where trunk has `open` |
 | `reopened` | trunk has `state: open`, and some earlier trunk commit had `resolved` |
-| `open` | on trunk with `state: open`, nothing claims it |
+| `open` | on trunk with `state: open`, and no branch claims it |
 
-Terminal trunk state beats every claim, so a finished issue reads `done` whether or not its
-claim ref was tidied up. `in progress` beats `reopened` because someone actively re-fixing an
-issue needs to show as worked, not as merely broken again — but **reopened survives as an
-annotation** on whatever status wins, so the fact is never lost.
+Terminal trunk state beats every claim, so a finished issue reads `done` whether or not the
+branch that claimed it was tidied up. `in progress` beats `reopened` because someone actively
+re-fixing an issue needs to show as worked, not as merely broken again — but **reopened
+survives as an annotation** on whatever status wins, so the fact is never lost.
 
-`in progress` has two sources because claims are advisory: someone who never ran `isu claim`
-but has pushed a branch that resolves the issue is, observably, working on it.
+`in progress` has exactly one source, and it is the claim itself: `isu claim` writes
+`state: resolved` on branch `isu/<ID>` before any work starts (see Claims below). So a claimed
+issue and an issue somebody resolved on a branch without claiming are the same observable fact,
+read the same way — there is no advisory side-channel to reconcile against what the branches
+say, because there is no second signal.
 
-Annotations on `in progress`: **claimant** (author of the claim commit), **age** (claim commit
-date, or branch tip date when there is no claim), **stale** (older than 7 days), **contended**
-(a claim ref plus a branch by someone else, or two branches, resolving the same issue).
+**A branch that exists without that flip is deliberately not `in progress`.** It is somebody's
+work on a branch, and until they say so by claiming, the board does not speak for them. That is
+also what makes `isu unclaim` mean anything: it flips the state back and leaves the branch
+standing.
+
+Annotations on `in progress`: **claimant** (author of the commit that flipped the state, which
+is the first commit on the claiming branch), **age** (that commit's author date), **stale**
+(older than 7 days), **contended** (two branches claiming the same issue).
 
 An issue of `type: epic` takes its status from a fold over its children. All children terminal
 → resolved, unless all are dropped → dropped. Otherwise open. An epic with no children is a
@@ -284,41 +292,76 @@ before M4-S1**, which is where the command surface stops being cheap to change.
 
 ### Claims
 
+**This section was rewritten after the design it described was tested and found to be paying
+for something it did not need.** The previous version claimed through a parentless commit at
+`refs/claims/<ID>`; what follows is the same guarantee, obtained from a branch, and the
+paragraphs below say why each of the old version's supporting arguments does not hold.
+
 `isu claim AR-7f3akq` does, in this order:
 
-1. build a **parentless commit with an empty tree**, authored by the claimant, subject
-   `claim AR-7f3akq`, and `git push origin <sha>:refs/claims/AR-7f3akq`. **Do this first**,
-   before any work, so the loser wastes nothing.
-2. create branch `isu/AR-7f3akq`. **The issue file is not touched.**
-3. push the branch.
+1. create branch `isu/AR-7f3akq` from trunk;
+2. write `state: resolved` into `issues/AR-7f3akq/README.md` and commit it, subject
+   `claim AR-7f3akq`;
+3. `git push origin isu/AR-7f3akq`. **Do this before any work**, so the loser wastes nothing.
 
-The parentless commit is what makes step 1 a real compare-and-swap. A commit with no parents
-can never be an ancestor of whatever is already at that ref, so a second claimant's push is
-always rejected. Pushing an existing sha — a trunk tip, say — would not be: git would accept it
-as a fast-forward, or as a no-op if both claimants pushed the same commit, and both would
-believe they had won.
+**The push is the compare-and-swap, and the state flip is what makes it one.** Two claimants
+produce two different commits — different author, different timestamp, therefore different
+object ids — so the second push is not a fast-forward and git rejects it. Measured on two
+clones of the same remote:
 
-It also carries the answers M3-S3 needs. The claimant is the commit's author and the claim time
-is its author date, read directly rather than reconstructed by hunting for the commit that
-flipped a field.
+```
+alice's claim commit: 677b54d  (author: alice)
+bob's claim commit:   f7478e5  (author: bob)
 
-Claiming does not mark anything resolved. `isu resolve` is the only command that writes
-`state: resolved`, so a branch that claims an issue and does no work fails the M5-S3 evidence
-check exactly as it should.
+alice:  * [new branch]      isu/AR-7f3akq -> isu/AR-7f3akq
+bob:    ! [rejected]        isu/AR-7f3akq -> isu/AR-7f3akq (fetch first)
+```
 
-`isu unclaim` deletes the claim ref. Claims are advisory for humans and binding for agents.
+**Pushing a bare branch at the trunk tip would not work**, and that is the trap the earlier
+draft was written to avoid: git accepts it as a no-op fast-forward and tells both claimants
+they succeeded, measured as `[new branch]` for the first and `Everything up-to-date` for the
+second, both exit 0. Atomicity comes from committing something nobody else can have committed,
+not from the ref namespace — a claim ref was one way to get that, and a commit that flips the
+state is another. (`--force-with-lease=refs/heads/isu/<ID>:` with an empty expected value is a
+third, rejecting the second push with `stale info`. It is not needed here and is not used.)
 
-**A claim is released when the work lands.** `isu unclaim` does it by hand; the CI template from
-M5-S6 deletes `refs/claims/<ID>` on every push to trunk that leaves the issue terminal. Nothing
-else in this design ever removes a claim ref, so without that sweep every completed issue keeps
-one forever and M5-S5 reports it as a stale claim for the life of the repository. The status
-precedence above keeps the board correct in the meantime; the sweep is what keeps the warnings
-correct.
+**The claim writes `resolved` before the work is done, and that is deliberate.** A branch is a
+proposal, not a fact: `state: resolved` on `isu/<ID>` says *this branch intends to resolve this
+issue*, and it becomes a fact about the repository when the branch merges. Trunk is where state
+is true. Until then the only thing that reads it is a board that renders it as `in progress`.
 
-Some remotes refuse pushes outside `refs/heads/*` and `refs/tags/*`. `isu claim` must tell that
-rejection apart from a lost race and say so plainly — the two look identical in git's output and
-mean opposite things. `--no-claim` is the documented degraded mode: branch, work, and let
-contention surface at pull-request time instead.
+**Claiming does not get you past the evidence check.** M5-S3 requires a change outside
+`issues/` to resolve a bug, a story or a chore, and an artifact in the issue's own folder to
+resolve a spike. A claim changes one line of one README and nothing else, so a branch that
+claimed an issue and did no work fails that check exactly as it should — the check reads the
+diff, not the field. The earlier draft's objection to writing `resolved` early, that every
+claim would then look like a resolution, is not true for this reason.
+
+**Claimant and claim time are the first commit on the claiming branch.**
+`git log <trunk>..isu/<ID> --reverse --max-count=1` is the commit that flipped the state; its
+author is the claimant and its author date is the claim time. That is one git process per
+claiming branch — linear in refs, which is what the board already costs (M2-S5) — where a
+dedicated claim ref would have made it free. It is the one thing this design pays more for.
+The branch *tip* is free from `for-each-ref` and is the **wrong** answer: it moves every time
+the claimant pushes more work, so a claim would never age and `stale_days` would never fire.
+
+`isu unclaim` flips the state back to `open` on the claiming branch and pushes. **It does not
+delete the branch** — a one-word command must not throw away work. What it releases is the
+claim; what it leaves is an ordinary branch the board says nothing about. Claims are advisory
+for humans and binding for agents.
+
+**A claim is released when the work lands, and there is no sweep.** Terminal trunk state wins
+the precedence above, so a merged issue reads `done` whatever its branch still says, and the
+branch is the forge's to delete on merge. Nothing outside `refs/heads/*` accumulates, so
+nothing has to remember to tidy it — where the earlier draft needed a CI job in M5-S6 to delete
+`refs/claims/<ID>`, without which M5-S5 would report a stale claim on every finished issue for
+the life of the repository.
+
+**Nothing here pushes outside `refs/heads/*`.** The remotes that refuse other namespaces are
+not a special case, there is no `--no-claim` degraded mode to build, and a rejected push is
+unambiguous: on a branch it is a lost race and never a policy refusal. The earlier draft paid
+for all three — it needed a mode nobody would exercise, and it needed `isu claim` to tell two
+identical-looking git failures apart and explain which one had happened.
 
 ### Squash-merge safety
 
@@ -429,8 +472,10 @@ file references is defined. This is what stops a gate existing only inside YAML.
 **Done when** the pipeline is green.
 
 ### M0-S4 · The git test harness ✅
-**Done** #4, 2026-08-25. Commits by a second author and claim refs are not in the
-harness yet; they arrive with M3-S3, which is where what they mean is decided.
+**Done** #4, 2026-08-25. Commits by a second author are not in the harness yet; they
+arrive with M3-S3, which is where contention needs them. Claim refs were listed here too
+and are no longer a thing the harness will ever need — a claim is a branch, and the
+harness already builds branches.
 **Branch** `isu/M0-S4-gittest`
 **Why** Every meaningful test in this project builds a real repository. Getting this helper
 right early is the difference between fast tests and a swamp.
@@ -624,14 +669,14 @@ single ref; it is not a number the product's main operation can be held to.
 
 ### M3-S1 · Status derivation
 **Branch** `isu/M3-S1-status`
-**Build** `internal/model`: given trunk, every branch, the claim refs and the history index
-from M2-S4, derive the six statuses from the table in section 1. **Pure function over loaded
-inputs — no git calls inside, and no exceptions to that rule later.** Everything a status needs
-is loaded by M2 and passed in; if a future status needs something else, the loader grows, not
-this package.
+**Build** `internal/model`: given trunk, every branch and the history index from M2-S4, derive
+the six statuses from the table in section 1. **Pure function over loaded inputs — no git calls
+inside, and no exceptions to that rule later.** Everything a status needs is loaded by M2 and
+passed in; if a future status needs something else, the loader grows, not this package.
 **Tests first** one test per status, then the transitions between them. Include: issue on two
-branches, issue on a branch identical to trunk, branch deleted after merge, a claim ref with no
-branch, a branch with no claim ref.
+branches, issue on a branch identical to trunk, branch deleted after merge, a branch that
+resolves an issue trunk has already resolved, and **a branch that exists without flipping the
+state, which is not a claim and must read `open`**.
 **Done when** the status function has 100% branch coverage. This package is the product; it
 gets a higher bar than the rest.
 
@@ -647,17 +692,23 @@ before the implementation.
 
 ### M3-S3 · Claimant, age, staleness, contention
 **Branch** `isu/M3-S3-claims`
-**Build** read `refs/claims/*` in one `for-each-ref`. The claim commit's author is the claimant
-and its author date is the claim time; staleness is that date against the threshold. An issue is
-contended when more than one ref resolves it — two claim refs cannot coexist, so contention in
-practice means a claim ref plus a branch someone else pushed, or two such branches. A branch
-resolving an issue with no claim ref still counts as `in progress`, with the branch tip date
-standing in for the claim time.
-**Tests first** single claim; a claim plus a foreign branch (assert both are named); a claim
-backdated 11 days reads as stale; an unclaimed resolving branch reads as in progress with the
-tip date; a claim ref whose branch was deleted reads as stale rather than vanishing.
-**Done when** contention and staleness come out of the same single scan, and nothing in this
-story needs to hunt for the commit that changed a field.
+**Build** a claim is a branch whose issue file says `state: resolved` where trunk says `open`.
+The claimant is the author of the **first commit on that branch** and the claim time is its
+author date; staleness is that date against `stale_days`. An issue is contended when more than
+one branch claims it.
+**The lookup belongs to the loader, not to this package.** `internal/repo` grows a call that
+runs `git log <trunk>..<branch> --reverse --max-count=1` for each claiming branch and hands the
+result over — one process per claiming branch, linear in refs like everything else the board
+does. M3-S1's rule that derivation never calls git has no exceptions, and this is the first
+story that would have been tempted to make one.
+**Tests first** a single claim names the claimant and the date the state was flipped, **not the
+branch tip's date** — assert with more work pushed on top, which moves the tip and must not
+move the claim; two claiming branches by different authors read as contended with both named; a
+claim backdated 11 days reads as stale; a branch that exists without the state flip is not a
+claim; unclaim — the state flipped back to `open`, branch still standing — stops reading as
+in progress; a claiming branch deleted after merge leaves the issue reading `done` from trunk.
+**Done when** contention and staleness come out of what M2 already loaded plus one log per
+claiming branch, and nothing in `internal/model` runs git.
 
 ### M3-S4 · Reopen detection
 **Branch** `isu/M3-S4-reopen`
@@ -734,22 +785,22 @@ issue blocked by a fully-resolved epic as ready and one blocked by a half-done e
 
 ### M4-S4 · `isu claim` and `isu unclaim`
 **Branch** `isu/M4-S4-claim`
-**Build** the three-step claim from section 1, in that order — parentless claim commit pushed
-to `refs/claims/<ID>` first, then the branch, and **no write to the issue file**. Claim failure
-must be fast, quiet and exit non-zero with a machine-readable reason that distinguishes a lost
-race from a remote that refuses the ref namespace. Build `--no-claim` here too — section 1
-names it the documented degraded mode for those remotes, and a documented mode that no story
-builds is a promise the plan breaks.
-**Tests first** the rejection path **deterministically**: create the claim ref, then claim
-from a second clone and assert the failure names the holder and exits non-zero. **Assert the
-claim commit is parentless**, and assert a claim attempt built on the current trunk tip is
-still rejected — that is the case a fast-forward would silently let through. Repeating a
-network operation a hundred times per CI run buys confidence in the network, not the code — so
-the hundred-run stress variant lives behind `//go:build stress` and is out of the default
-suite. Also: claiming leaves the issue file byte-identical; unclaim releases; claiming an
-already-terminal issue is refused; a remote rejecting `refs/claims/*` produces the namespace
-error and not the race error; **claiming with the remote detached fails without leaving a local
-branch behind**.
+**Build** the three-step claim from section 1, in that order — branch, the state flip committed
+with subject `claim <ID>`, push. Claim failure must be fast, quiet and exit non-zero, naming
+the branch's holder. There is **no ref-namespace failure left to distinguish and no
+`--no-claim` mode to build**: the claim is a branch, so a rejected push is a lost race and
+nothing else. `unclaim` flips the state back to `open` and pushes, and never deletes the
+branch.
+**Tests first** the rejection path **deterministically**: claim from one clone, then claim the
+same issue from a second and assert the failure names the holder and exits non-zero. **Assert
+the pushed branch is not merely the trunk tip** — a push of the bare tip is a no-op
+fast-forward git accepts from both claimants, and the state flip is the whole reason that
+cannot happen here, so the test that would have caught the earlier design belongs in this one.
+Repeating a network operation a hundred times per CI run buys confidence in the network, not
+the code — so the hundred-run stress variant lives behind `//go:build stress` and is out of the
+default suite. Also: claiming an already-terminal issue is refused; unclaim leaves the branch
+and any work on it in place, and leaves the file byte-identical to what trunk says; **claiming
+with the remote detached fails without leaving a local branch behind**.
 **Done when** the deterministic rejection test passes and `make stress` exists for the rest.
 
 ### M4-S5 · `isu resolve` and `isu drop`
@@ -759,8 +810,10 @@ branch behind**.
 Neither command merges anything; both leave a branch for a pull request.
 **Tests first** resolve on a spike without an artifact warns; resolve writes the trailer and it
 survives a squash merge; drop without a reason is refused; drop without a resolution is
-refused; both refuse to run directly on trunk; **resolve on a freshly claimed issue is the
-first thing that writes `resolved` to the file** — the claim did not.
+refused; both refuse to run directly on trunk; **resolve on a freshly claimed issue leaves the
+file byte-identical and writes only the trailer** — the claim already wrote `resolved`, so what
+`resolve` adds is the `Isu-Resolves:` link and the code beside it, and a resolve that changes
+nothing at all outside `issues/` is M5-S3's to reject.
 **Done when** the only way to reach `done` is a merged pull request.
 
 ### M4-S6 · `isu comment`
@@ -838,10 +891,12 @@ A drop that also changes code is a **warn, not a fail** — closing a duplicate 
 request as the fix is a normal thing to do, and refusing it just teaches people to split the
 work into two reviews.
 Only applies to issues the branch actually changed.
-**Tests first** resolved-with-no-code fails; resolved-with-code passes; **a claimed issue whose
-file is untouched is not flagged, because claiming no longer writes to it**; spike with only
-`README.md` fails; spike with `decision.md` passes; drop without `resolution` fails; drop with
-code changes warns and exits 0.
+**Tests first** resolved-with-no-code fails; resolved-with-code passes; **a branch carrying
+nothing but a claim fails, and that is the check doing its job** — claiming writes
+`state: resolved` and touches nothing else, so this check is exactly what separates a claim
+from a resolution and the board's `in progress` from `done`; spike with only `README.md` fails;
+spike with `decision.md` passes; drop without `resolution` fails; drop with code changes warns
+and exits 0.
 **Done when** an agent cannot mark work done without doing it.
 
 ### M5-S4 · Owner immutability
@@ -854,7 +909,7 @@ code changes warns and exits 0.
 
 ### M5-S5 · Contention and staleness reporting
 **Branch** `isu/M5-S5-contention`
-**Build** warn when another ref claims the same issue, naming the branch and holder; warn on
+**Build** warn when another branch claims the same issue, naming the branch and holder; warn on
 claims older than `stale_days`. Both warnings are statements about refs, so both are
 only as true as the last fetch: run `--fetch` in CI, and include the fetch age in the warning
 so a local run that disagrees with CI is self-explaining.
