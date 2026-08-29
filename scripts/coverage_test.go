@@ -49,15 +49,15 @@ func runGate(t *testing.T, fixture string, env ...string) (string, int) {
 	}
 }
 
-func TestCoverageGateRejectsATreeBelowTheProductFloor(t *testing.T) {
+func TestCoverageGateRejectsATreeBelowTheOverallFloor(t *testing.T) {
 	out, code := runGate(t, "lowcoverage")
 
-	require.NotZero(t, code, "a tree under 99%% across the product must fail the gate")
+	require.NotZero(t, code, "a tree under 99%% overall must fail the gate")
 	require.Contains(t, out, "99", "the failure must name the floor it missed")
 }
 
-// The product floor and the internal/model floor are independent gates, and a
-// tree can satisfy either while violating the other. The product floor is
+// The overall floor and the internal/model floor are independent gates, and a
+// tree can satisfy either while violating the other. The overall floor is
 // lowered here so that only the package floor can be what rejects this
 // fixture — which is what the environment knobs are for, and the only way to
 // prove the two are separate rather than one gate wearing two names.
@@ -66,34 +66,9 @@ func TestCoverageGateRejectsAnUncoveredModelPackage(t *testing.T) {
 
 	require.NotZero(t, code, "internal/model under 100%% must fail the gate")
 	require.Contains(t, out, "internal/model", "the failure must name the package")
-	require.Contains(t, out, "80%", "the product floor was met, so it is not what failed")
+	require.Contains(t, out, "80%", "the overall floor was met, so it is not what failed")
 	require.NotContains(t, modelLine(t, out), "skipped",
 		"the package floor applies whenever the package exists")
-}
-
-// The harness carries a floor of its own, below the product's, because its
-// uncovered lines are the t.Fatalf handlers whose whole job is to fail a test
-// — see the note in coverage.sh. Below its own floor it is still rejected.
-func TestCoverageGateRejectsAnUnderTestedHarness(t *testing.T) {
-	out, code := runGate(t, "harnessgap", "COVERAGE_MIN=70")
-
-	require.NotZero(t, code, "internal/gittest under 90%% must fail the gate")
-	require.Contains(t, out, "internal/gittest", "the failure must name the package")
-	require.Contains(t, out, "the harness", "and say what it is being held to")
-}
-
-// The harness's statements are not counted towards the product floor. A tree
-// whose harness is perfect must not thereby clear a product floor its own code
-// misses, and this fixture proves the two totals are separate: its 75% overall
-// is 100% harness and 67% product, so a gate folding them together would let
-// the product through at a floor it does not meet.
-func TestTheHarnessDoesNotDiluteTheProductFloor(t *testing.T) {
-	out, code := runGate(t, "harnessgap",
-		"COVERAGE_MIN=70", "COVERAGE_HARNESS_PKG=calc", "COVERAGE_HARNESS_MIN=0")
-
-	require.NotZero(t, code,
-		"with the harness named as calc, what is left is internal/gittest at 67%%")
-	require.Contains(t, out, "across the product")
 }
 
 // modelLine is the gate's line about internal/model, so that an assertion about
@@ -123,7 +98,6 @@ func TestCoverageGateSkipsTheModelFloorWhenThePackageIsAbsent(t *testing.T) {
 	require.Contains(t, strings.ToLower(out), "skipped",
 		"the gate must say out loud that a floor did not apply")
 	require.Contains(t, out, "internal/model")
-	require.Contains(t, out, "internal/gittest", "the harness floor is skipped the same way")
 }
 
 func TestCoverageGateAcceptsATreeMeetingBothFloors(t *testing.T) {

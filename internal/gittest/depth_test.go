@@ -118,3 +118,50 @@ func TestGenerateLeavesTheCheckoutOnTheImportedHistory(t *testing.T) {
 		"the checkout matches the tip that was imported")
 	require.Equal(t, r.Git("rev-parse", gittest.DefaultBranch), r.Head())
 }
+
+// A generated fixture takes the prefix it was given, and the id helper answers
+// for the default when it is given none — the two halves of one rule, which is
+// the only reason a fixture can be asked for AR-000000 instead of ISU-000000.
+func TestGenerateTakesThePrefixItIsGiven(t *testing.T) {
+	r := gittest.Generate(t, gittest.Spec{Issues: 2, Prefix: "AR"})
+
+	require.Equal(t, "AR-000000", gittest.GeneratedID("AR", 0))
+	require.Equal(t, "ISU-000000", gittest.GeneratedID("", 0),
+		"no prefix is the default one, not an id beginning with a hyphen")
+	require.Contains(t, r.ReadFile("issues/AR-000000/README.md"), "id: AR-000000")
+}
+
+// Asking for more branches than there are issues to resolve gets the branches
+// that could be built and no complaint.
+//
+// An epic has no state and cannot be resolved, so it is not one of them: five
+// issues are four candidates, and the sixth branch has nothing left to claim.
+// The alternative — mapping a branch number straight onto an issue number —
+// would hand two branches the same issue and quietly build fewer than asked.
+func TestGenerateStopsWhenItRunsOutOfIssuesToResolve(t *testing.T) {
+	r := gittest.Generate(t, gittest.Spec{Issues: 5, Branches: 6})
+
+	branches := r.Branches()
+
+	require.Len(t, branches, 5, "four claiming branches, and trunk")
+	require.Contains(t, branches, gittest.DefaultBranch)
+
+	for _, n := range []int{0, 1, 2, 3} {
+		require.Contains(t, branches, "isu/"+gittest.GeneratedID(gittest.DefaultPrefix, n))
+	}
+
+	require.NotContains(t, branches, "isu/"+gittest.GeneratedID(gittest.DefaultPrefix, 4),
+		"the fifth issue is the epic, and an epic cannot be resolved")
+}
+
+// A body without a trailing newline gets one. Every other file this harness
+// writes ends in one, and an issue whose last line is unterminated would be the
+// single fixture that reads differently from everything a person would commit.
+func TestIssueTerminatesABodyThatDoesNot(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq", gittest.Body("no trailing newline")).
+		Commit("report ISU-7f3akq")
+
+	require.Equal(t, "no trailing newline\n",
+		strings.SplitAfter(r.ReadFile("issues/ISU-7f3akq/README.md"), "---\n")[2])
+}

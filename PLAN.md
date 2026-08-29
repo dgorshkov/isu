@@ -482,14 +482,13 @@ carrying `prefix: ISU`.
 package carrying no test file of its own is absent from the profile and raises the
 average by being untested.
 
-**Amended in #8: two floors became three, and the overall one went from 85% to 99%.** The
-figures in the story below are the ones this shipped with; measuring the tree found 85% was not
-a gate at all, since the actual number was 96.9% and twelve points could have gone missing
-unnoticed. The third floor is `internal/gittest`'s, at 90%, and its statements no longer count
-towards the product's — the reasoning is in the definition of done and in `coverage.sh`. The
-gate's own fixtures grew a fourth module, `harnessgap`, and the two tests that isolate one
-floor from another now lower the others through the environment rather than relying on a
-fixture's size to do it, which is what those knobs were put there for.
+**Amended in #8: the overall floor went from 85% to 99%.** The figure in the story below is the
+one this shipped with; measuring the tree found 85% was not a gate at all, since the actual
+number was 96.9% and twelve points could have gone missing unnoticed. Still two floors, still
+across `./...` — the reasoning, including why the test harness is counted rather than exempted,
+is in the definition of done and in `coverage.sh`. The test that isolates the package floor
+from the overall one now lowers the overall floor through the environment rather than relying
+on a fixture's size to do it, which is what those knobs were put there for.
 **Branch** `isu/M0-S2-quality-gates`
 **Build** `.golangci.yml` (errcheck, govet, staticcheck, revive, gofumpt), a `Makefile` with
 `make test lint cover`, and a coverage script enforcing **both** floors from the definition of
@@ -1474,19 +1473,28 @@ already written in this file's history.
 1. The failing test is its own commit, and it precedes the commit that makes it pass.
 2. `go build ./...`, `go vet ./...`, `golangci-lint run`, `go test ./...` all pass at the
    branch head.
-3. Coverage is at or above **99% across the product**, 100% for `internal/model`, and 90% for
-   `internal/gittest`. **Raised from 85% in #8**, where measuring it found the floor was not a
-   gate: the tree stood at 96.9%, so twelve points of coverage could have been deleted without
-   CI noticing, and the number had never once been the thing that caught anything. Closing the
-   gaps that measurement exposed took the product to 99.6%.
+3. Coverage is at or above **99% across `./...`** — the whole module, `cmd/` and the test
+   harness included — and 100% for `internal/model`.
 
-   **The harness is floored separately rather than folded in, and that is a decision.**
-   `internal/gittest` exists to serve tests, and what is uncovered in it is almost entirely the
-   `t.Fatalf` handlers whose whole job is to fail a test; driving those means handing it a
-   counterfeit `testing.TB`, which is machinery built for no reason except to move a number. It
-   is a fifth of the tree, so folding it in would also cost the product a point of headroom it
-   should be spending on code that ships. It is not excused — 90% is a real floor and the gate
-   fails below it — and its statements do not count towards the product's.
+   **Raised from 85% in #8**, where measuring it found the floor was not a gate at all: the
+   tree stood at 96.9%, so twelve points of coverage could have been deleted without CI
+   noticing, and the number had never once been the thing that caught anything. Closing what
+   the measurement exposed — six untested behaviours in the loader, and every error return
+   nobody had ever taken — carried it to 99.2%.
+
+   **99% counts `internal/gittest` too, and that was argued about first.** The harness fails
+   the test rather than returning an error, so its refusals cannot be exercised the ordinary
+   way: calling one from a test fails that test. They are driven instead through a counterfeit
+   `testing.TB` that records the refusal and stops. The case for exempting the harness is that
+   this is machinery built to move a number. The case that won is that a harness nobody has
+   ever seen refuse is a harness whose refusals are a comment, and every fixture in this
+   project trusts them.
+
+   **The headroom is two statements**, so this floor will be the thing that fails a story
+   sooner or later, and that is the point of it. What remains uncovered is `main` calling
+   `os.Exit`, four filesystem failures nothing can provoke portably, and two harness refusals
+   that need a read-only `.git`. A story that adds an error path it cannot reach should expect
+   to argue for it.
 4. The story's own issue file is flipped to `resolved` in the same pull request (from M5-S7,
    which is where issue files start existing).
 5. The pull request describes what changed, what was decided, and anything that needs a call.
