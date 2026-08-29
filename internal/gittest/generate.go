@@ -31,9 +31,13 @@ type Spec struct {
 	// leave untested and a real repository most likely to hit.
 	Commits int
 	// TouchesIssues is how many of those commits change an issue file. Zero
-	// means all of them. Trunk in a real repository is mostly code, and a
-	// commit that touches nothing under issues/ still has to be walked, so the
-	// two costs are separable and worth separating.
+	// means none of them, and asking for more than there are commits fails the
+	// test — a fixture that quietly differs from what was asked for is worse
+	// than one that refuses.
+	//
+	// Trunk in a real repository is mostly code, and a commit that touches
+	// nothing under issues/ still has to be walked, so the two costs are
+	// separable and worth separating.
 	TouchesIssues int
 	// Prefix is the id prefix. Empty means DefaultPrefix.
 	Prefix string
@@ -105,52 +109,62 @@ func (r *Repo) importHistory(prefix string, spec Spec) {
 	r.t.Helper()
 
 	extra := spec.Commits - 1
-	touching := spec.TouchesIssues
-	if touching <= 0 || touching > extra {
-		touching = extra
+	if spec.TouchesIssues > extra {
+		r.t.Fatalf("gittest: asked for %d commits touching an issue, "+
+			"but Commits: %d leaves only %d after the one that writes them",
+			spec.TouchesIssues, spec.Commits, extra)
 	}
 
 	when := time.Now().Add(-r.offset).Unix()
+	who, email := r.identity()
 	head := r.Head()
 
 	var stream strings.Builder
 
 	for n := range extra {
+		// The issue commits go first, so that a fixture asking for a few of
+		// them among many gets a trunk whose recent history is ordinary code —
+		// the shape that makes a walk look cheap until it is not.
+		message := fmt.Sprintf("commit %d", n)
+		path := fmt.Sprintf("src/file%04d.go", n%512)
+		content := fmt.Sprintf("package src\n\n// revision %d\n", n)
+
+		if n < spec.TouchesIssues {
+			which := n % spec.Issues
+			id := GeneratedID(prefix, which)
+
+			message = "resolve " + id
+			path = issuesDir + "/" + id + "/README.md"
+			content = touched(prefix, which, spec.Issues, n/spec.Issues)
+		}
+
 		// A commit record is the ref, who wrote it, the message, and only then
 		// its parent and its files. Only the first names a parent; the rest
 		// continue the branch fast-import is already holding.
 		fmt.Fprintf(&stream, "commit refs/heads/%s\n", DefaultBranch)
-		fmt.Fprintf(&stream,
-			"committer isu tester <tester@example.invalid> %d +0000\n", when+int64(n))
-
-		// The issue commits go first, so that a fixture asking for a few of
-		// them among many gets a trunk whose recent history is ordinary code —
-		// the shape that makes a walk look cheap until it is not.
-		touchesIssue := n < touching
-
-		which := n % spec.Issues
-		id := GeneratedID(prefix, which)
-
-		if touchesIssue {
-			data(&stream, "resolve "+id)
-		} else {
-			data(&stream, fmt.Sprintf("commit %d", n))
-		}
+		fmt.Fprintf(&stream, "committer %s <%s> %d +0000\n", who, email, when+int64(n))
+		data(&stream, message)
 
 		if n == 0 {
 			fmt.Fprintf(&stream, "from %s\n", head)
 		}
 
-		if touchesIssue {
-			fmt.Fprintf(&stream, "M 100644 inline %s/%s/README.md\n", issuesDir, id)
-			data(&stream, touched(prefix, which, spec.Issues, n/spec.Issues))
-
-			continue
-		}
-
-		fmt.Fprintf(&stream, "M 100644 inline src/file%04d.go\n", n%512)
-		data(&stream, fmt.Sprintf("package src\n\n// revision %d\n", n))
+		fmt.Fprintf(&stream, "M 100644 inline %s\n", path)
+		data(&stream, content)
 	}
+
+	r.feed("history", &stream)
+
+	r.Git("reset", "--hard", "--quiet", DefaultBranch)
+}
+
+// feed hands a fast-import stream to git, closing it first.
+//
+// It is one function rather than one per caller because the invocation is the
+// thing worth having in a single place: a change to how this harness talks to
+// fast-import should be made once, not found twice.
+func (r *Repo) feed(what string, stream *strings.Builder) {
+	r.t.Helper()
 
 	stream.WriteString("done\n")
 
@@ -158,10 +172,8 @@ func (r *Repo) importHistory(prefix string, spec Spec) {
 		context.Background(), strings.NewReader(stream.String()),
 		"fast-import", "--quiet", "--done",
 	); err != nil {
-		r.t.Fatalf("gittest: importing history: %v", err)
+		r.t.Fatalf("gittest: importing %s: %v", what, err)
 	}
-
-	r.Git("reset", "--hard", "--quiet", DefaultBranch)
 }
 
 // importBranches builds one branch per issue in a single git process.
@@ -170,6 +182,7 @@ func (r *Repo) importBranches(prefix string, spec Spec) {
 
 	trunk := r.Head()
 	when := time.Now().Add(-r.offset).Unix()
+	who, email := r.identity()
 
 	var stream strings.Builder
 
@@ -199,22 +212,14 @@ func (r *Repo) importBranches(prefix string, spec Spec) {
 		path := issuesDir + "/" + id + "/README.md"
 
 		fmt.Fprintf(&stream, "commit refs/heads/isu/%s\n", id)
-		fmt.Fprintf(&stream,
-			"committer isu tester <tester@example.invalid> %d +0000\n", when)
+		fmt.Fprintf(&stream, "committer %s <%s> %d +0000\n", who, email, when)
 		data(&stream, "resolve "+id)
 		fmt.Fprintf(&stream, "from %s\n", trunk)
 		fmt.Fprintf(&stream, "M 100644 inline %s\n", path)
 		data(&stream, resolvedOnBranch(prefix, which, spec.Issues))
 	}
 
-	stream.WriteString("done\n")
-
-	if _, err := r.git.Feed(
-		context.Background(), strings.NewReader(stream.String()),
-		"fast-import", "--quiet", "--done",
-	); err != nil {
-		r.t.Fatalf("gittest: importing branches: %v", err)
-	}
+	r.feed("branches", &stream)
 }
 
 // data writes a fast-import data block, which is length-prefixed rather than
