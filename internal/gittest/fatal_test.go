@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -137,4 +139,63 @@ func (r *recordingTB) record(said string) {
 	r.said = said
 
 	panic(errRefused)
+}
+
+// stoppingMethods are the testing.TB methods recordingTB intercepts, and
+// helperMethods are the ones it is right to pass through.
+var (
+	stoppingMethods = []string{"Fatal", "Fatalf"}
+	helperMethods   = []string{"Helper", "TempDir"}
+)
+
+// The harness may only reach for a testing.TB method the counterfeit knows
+// about, in the style of M2-S1's grep.
+//
+// Everything recordingTB does not define falls through to the real *testing.T,
+// which is right for Helper and TempDir — neither stops anything, and a real
+// temporary directory cleaned up with the enclosing test is what a fixture
+// wants. It is wrong for anything that fails or stops: an Error or a FailNow
+// added to the harness later would fail the test that is trying to assert the
+// harness failed, and the refusal would go unread while its test still passed.
+//
+// Adding the guard methods to recordingTB instead is the obvious fix and is not
+// available: each would be a statement nothing calls, and the coverage floor
+// leaves two statements of headroom in the whole tree. So the rule is checked
+// where it costs nothing, and whoever trips it is told what to do about it.
+func TestTheHarnessOnlyUsesMethodsTheCounterfeitKnows(t *testing.T) {
+	known := map[string]bool{}
+	for _, m := range append(append([]string{}, stoppingMethods...), helperMethods...) {
+		known[m] = true
+	}
+
+	entries, err := os.ReadDir(".")
+	require.NoError(t, err)
+
+	found := map[string]bool{}
+	calls := regexp.MustCompile(`\b(?:r\.t|t)\.([A-Z][A-Za-z]*)\(`)
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || filepath.Ext(name) != ".go" || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+
+		body, err := os.ReadFile(name)
+		require.NoError(t, err)
+
+		for _, m := range calls.FindAllStringSubmatch(string(body), -1) {
+			require.True(t, known[m[1]],
+				"%s calls t.%s, which recordingTB does not intercept: it would reach the "+
+					"real *testing.T and fail the test asserting the harness failed. Give "+
+					"recordingTB that method, or use one of %v",
+				name, m[1], append(stoppingMethods, helperMethods...))
+
+			found[m[1]] = true
+		}
+	}
+
+	for _, m := range stoppingMethods {
+		require.True(t, found[m], "nothing in the harness calls t.%s any more, "+
+			"so recordingTB intercepts something that no longer exists", m)
+	}
 }
