@@ -54,8 +54,7 @@ func (d *deriver) index() {
 // finished while any part of it is unfinished, and there is no `in progress`
 // epic because an epic has no state to claim.
 func (d *deriver) rollUp() {
-	d.folding = make(map[string]bool, len(d.board.Children))
-	d.folded = make(map[string]bool, len(d.board.Children))
+	d.folding = make(map[string]foldState, len(d.board.Children))
 
 	for _, id := range d.board.IDs() {
 		if d.board.Items[id].Epic != nil {
@@ -63,6 +62,17 @@ func (d *deriver) rollUp() {
 		}
 	}
 }
+
+// foldState is where an epic is in the walk: absent means not started, and the
+// two below are the rest of it. One map rather than two, because "part-way
+// through" and "finished" are the same fact about one epic and holding them
+// apart lets them disagree.
+type foldState uint8
+
+const (
+	folding foldState = iota + 1
+	folded
+)
 
 // fold gives one issue its status, folding an epic's children first.
 //
@@ -83,19 +93,18 @@ func (d *deriver) fold(id string) Status {
 		return item.Status
 	}
 
-	switch {
-	case d.folded[id]:
+	switch d.folding[id] {
+	case folded:
 		return item.Status
-	case d.folding[id]:
+	case folding:
 		item.Epic.Cycle = true
 
 		return StatusOpen
 	}
 
-	d.folding[id] = true
+	d.folding[id] = folding
 	item.Status = d.foldChildren(item.Epic.Children)
-	d.folding[id] = false
-	d.folded[id] = true
+	d.folding[id] = folded
 
 	return item.Status
 }

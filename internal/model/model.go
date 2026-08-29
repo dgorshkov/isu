@@ -175,11 +175,9 @@ type deriver struct {
 	in    Input
 	now   time.Time
 	board *Board
-	// folding names the epics part-way through their rollup, which is how a
-	// parent cycle is caught rather than recursed into; folded names the ones
-	// whose status is final.
-	folding map[string]bool
-	folded  map[string]bool
+	// folding is where each epic is in the rollup, which is how a parent cycle
+	// is caught rather than recursed into. See foldState.
+	folding map[string]foldState
 }
 
 // collect turns trunk and the refs into one item per issue.
@@ -214,7 +212,7 @@ func (d *deriver) collect() {
 
 			item.Elsewhere = append(item.Elsewhere, ref)
 
-			if item.OnTrunk && claimed(item.Issue, at) {
+			if claims(d.in.Loaded, ref, id) {
 				item.Claims = append(item.Claims, d.claim(ref))
 			}
 		}

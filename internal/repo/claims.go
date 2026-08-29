@@ -12,8 +12,6 @@ import (
 // the state to resolved before any work started. Its author is the claimant and
 // its author date is the claim time.
 type FirstCommit struct {
-	// Ref is the branch this was the first commit on.
-	Ref string
 	// OID is the commit.
 	OID string
 	// Author is who wrote it and when. The author date is the claim time — the
@@ -64,7 +62,6 @@ func (r *Repo) LoadFirstCommits(
 		}
 
 		first[ref] = FirstCommit{
-			Ref:     ref,
 			OID:     commits[0].OID,
 			Author:  commits[0].Author,
 			Subject: commits[0].Subject,

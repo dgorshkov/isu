@@ -48,7 +48,6 @@ func TestLoadFirstCommitsTakesTheFirstCommitAndNotTheTip(t *testing.T) {
 
 	got := first["refs/heads/isu/ISU-7f3akq"]
 
-	require.Equal(t, "refs/heads/isu/ISU-7f3akq", got.Ref)
 	require.Equal(t, flip, got.OID)
 	require.Equal(t, "claim ISU-7f3akq", got.Subject)
 	require.Equal(t, "alice", got.Author.Name)

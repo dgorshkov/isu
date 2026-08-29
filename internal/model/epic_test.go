@@ -1,8 +1,6 @@
 package model_test
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -235,9 +233,10 @@ func TestRollupOverFiveThousandIssuesIsFast(t *testing.T) {
 		len(board.Items), epics, took, budget)
 }
 
-// generatedBoard builds a trunk-only board of the given size, shaped like the
-// fixture gittest.Generate writes: the five types in turn, every fifth one an
-// epic, and everything else naming the epic that closes its block of five.
+// generatedBoard builds a trunk-only board of the given size out of the issue
+// files gittest.Generate would write — the renderer itself, not a copy of its
+// shape, so that a change to the fixture's hierarchy reaches this gate instead
+// of leaving it measuring a shape nothing else builds any more.
 func generatedBoard(t *testing.T, issues int) *repo.Board {
 	t.Helper()
 
@@ -246,7 +245,7 @@ func generatedBoard(t *testing.T, issues int) *repo.Board {
 	for n := range issues {
 		id := gittest.GeneratedID(gittest.DefaultPrefix, n)
 
-		doc, err := issue.Parse([]byte(generatedIssue(id, n, issues)))
+		doc, err := issue.Parse([]byte(gittest.GeneratedIssue(gittest.DefaultPrefix, n, issues)))
 		require.NoError(t, err)
 
 		decoded, err := issue.Decode(doc)
@@ -263,40 +262,4 @@ func generatedBoard(t *testing.T, issues int) *repo.Board {
 		Refs:    map[string]*repo.Set{},
 		Changed: map[string][]string{},
 	}
-}
-
-// generatedIssue renders the nth issue file of a set of that many.
-func generatedIssue(id string, n, issues int) string {
-	var b strings.Builder
-
-	kind := []string{"chore", "story", "bug", "spike", "epic"}[n%5]
-
-	fmt.Fprintf(&b, "---\nschema: 1\nid: %s\ntitle: Generated issue %d\ntype: %s\n", id, n, kind)
-
-	// An epic declares no state, and takes its status from its children.
-	if kind != "epic" {
-		b.WriteString("state: open\n")
-	}
-
-	fmt.Fprintf(&b, "owner: %s\ncreated: 2026-08-24\npriority: p%d\n",
-		[]string{"dmitry", "sam", "alex"}[n%3], n%4)
-
-	switch kind {
-	case "bug":
-		b.WriteString("repro: run it twice\n")
-	case "story":
-		b.WriteString("acceptance: the board renders it\n")
-	case "spike":
-		b.WriteString("question: which way round is this\n")
-	}
-
-	// A parent that is not in the set would be a dangling reference, which is
-	// M5-S2's to report and not a fixture's to write.
-	if epic := n - n%5 + 4; kind != "epic" && epic < issues {
-		fmt.Fprintf(&b, "parent: %s\n", gittest.GeneratedID(gittest.DefaultPrefix, epic))
-	}
-
-	fmt.Fprintf(&b, "---\n\nGenerated for a fixture.\n\nThis is issue %d.\n", n)
-
-	return b.String()
 }

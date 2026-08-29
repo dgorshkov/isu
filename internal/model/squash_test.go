@@ -217,13 +217,6 @@ func TestResolvesRefusesATrailerThatDoesNotNameAnID(t *testing.T) {
 	require.Equal(t, model.TierNone, tier)
 }
 
-func TestTierNamesItself(t *testing.T) {
-	require.Equal(t, "none", model.TierNone.String())
-	require.Equal(t, "trailer", model.TierTrailer.String())
-	require.Equal(t, "subject", model.TierSubject.String())
-	require.Equal(t, "tier(7)", model.Tier(7).String())
-}
-
 // resolvingCommit is the trunk commit at which the issue's file first said
 // resolved, out of the history index M2-S4 builds.
 func resolvingCommit(t *testing.T, r *gittest.Repo, id string) string {

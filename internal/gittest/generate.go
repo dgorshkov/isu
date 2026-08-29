@@ -76,14 +76,26 @@ func Generate(t testing.TB, spec Spec) *Repo {
 
 	for n := range spec.Issues {
 		id := GeneratedID(prefix, n)
-		r.write(issuesDir+"/"+id+"/"+"README.md", generated(prefix, n, spec.Issues))
+		r.write(issuesDir+"/"+id+"/"+"README.md", GeneratedIssue(prefix, n, spec.Issues))
 	}
 
 	r.Git("add", "--all")
 	r.Commit(fmt.Sprintf("%d issues", spec.Issues))
 
-	if spec.Commits > 1 {
-		r.importHistory(prefix, spec)
+	// Commits is 0 or 1 for the fixture that is only the commit above, so the
+	// depth to add is one less than whichever was meant. The check runs either
+	// way: a fixture asking for issue commits it cannot have should hear so
+	// whether or not it also asked for depth, and routing the check past the
+	// zero case is how "TouchesIssues: 3" with no Commits was silently ignored.
+	extra := max(spec.Commits, 1) - 1
+	if spec.TouchesIssues > extra {
+		r.t.Fatalf("gittest: asked for %d commits touching an issue, "+
+			"but Commits: %d leaves only %d after the one that writes them",
+			spec.TouchesIssues, spec.Commits, extra)
+	}
+
+	if extra > 0 {
+		r.importHistory(prefix, spec, extra)
 	}
 
 	if spec.Branches > 0 {
@@ -105,15 +117,8 @@ func Generate(t testing.TB, spec Spec) *Repo {
 // the checkout is brought back to the new tip afterwards — otherwise every
 // later `git add` in the same repository would try to revert the history this
 // just wrote.
-func (r *Repo) importHistory(prefix string, spec Spec) {
+func (r *Repo) importHistory(prefix string, spec Spec, extra int) {
 	r.t.Helper()
-
-	extra := spec.Commits - 1
-	if spec.TouchesIssues > extra {
-		r.t.Fatalf("gittest: asked for %d commits touching an issue, "+
-			"but Commits: %d leaves only %d after the one that writes them",
-			spec.TouchesIssues, spec.Commits, extra)
-	}
 
 	when := time.Now().Add(-r.offset).Unix()
 	who, email := r.identity()
@@ -124,10 +129,10 @@ func (r *Repo) importHistory(prefix string, spec Spec) {
 	for n := range extra {
 		// The issue commits go first, so that a fixture asking for a few of
 		// them among many gets a trunk whose recent history is ordinary code —
-		// the shape that makes a walk look cheap until it is not.
-		message := fmt.Sprintf("commit %d", n)
-		path := fmt.Sprintf("src/file%04d.go", n%512)
-		content := fmt.Sprintf("package src\n\n// revision %d\n", n)
+		// the shape that makes a walk look cheap until it is not. Which also
+		// means they are the iterations a default-then-override would throw
+		// away, so this branches rather than overwriting.
+		var message, path, content string
 
 		if n < spec.TouchesIssues {
 			which := n % spec.Issues
@@ -136,6 +141,10 @@ func (r *Repo) importHistory(prefix string, spec Spec) {
 			message = "resolve " + id
 			path = issuesDir + "/" + id + "/README.md"
 			content = touched(prefix, which, spec.Issues, n/spec.Issues)
+		} else {
+			message = fmt.Sprintf("commit %d", n)
+			path = fmt.Sprintf("src/file%04d.go", n%512)
+			content = fmt.Sprintf("package src\n\n// revision %d\n", n)
 		}
 
 		// A commit record is the ref, who wrote it, the message, and only then
@@ -234,8 +243,16 @@ func generatedType(n int) string {
 	return []string{"chore", "story", "bug", "spike", "epic"}[n%5]
 }
 
-// generated renders the nth issue of a set that holds issues of them.
-func generated(prefix string, n, issues int) string {
+// GeneratedIssue is the nth issue file of a set of that many, as Generate
+// writes it: the five types in turn, every fifth one an epic, and everything
+// else naming the epic that closes its block of five.
+//
+// Exported because a test that wants this shape without a repository — M3-S2's
+// rollup gate builds its board in memory — would otherwise keep a hand-copy of
+// it, and a hand-copy is a second definition of "the fixture's shape" that
+// nothing holds to the first. Change the block-of-five rule here and a gate
+// measuring the old shape would go on claiming to measure this one.
+func GeneratedIssue(prefix string, n, issues int) string {
 	spec := &issueSpec{values: map[string]string{}}
 	spec.set("schema", "1")
 	spec.set("id", GeneratedID(prefix, n))
@@ -276,7 +293,7 @@ func generated(prefix string, n, issues int) string {
 // branch that did the work looks like.
 func resolvedOnBranch(prefix string, n, issues int) string {
 	return strings.Replace(
-		generated(prefix, n, issues), "\nstate: open\n", "\nstate: resolved\n", 1)
+		GeneratedIssue(prefix, n, issues), "\nstate: open\n", "\nstate: resolved\n", 1)
 }
 
 // touched is the nth issue after the revisionth trunk commit to change it: the
@@ -296,6 +313,6 @@ func touched(prefix string, n, issues, revision int) string {
 	}
 
 	return strings.Replace(
-		generated(prefix, n, issues), "\nstate: open\n", "\nstate: "+state+"\n", 1) +
+		GeneratedIssue(prefix, n, issues), "\nstate: open\n", "\nstate: "+state+"\n", 1) +
 		fmt.Sprintf("\nRevised %d times.\n", revision+1)
 }

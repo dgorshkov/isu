@@ -66,13 +66,8 @@ func ClaimRefs(loaded *repo.Board) []string {
 	var refs []string
 
 	for _, ref := range loaded.Names() {
-		set := loaded.Refs[ref]
-
 		for _, id := range loaded.Changed[ref] {
-			on, carried := set.Get(id)
-			at, onTrunk := loaded.Trunk.Get(id)
-
-			if carried && onTrunk && claimed(at, on) {
+			if claims(loaded, ref, id) {
 				refs = append(refs, ref)
 
 				break
@@ -81,6 +76,27 @@ func ClaimRefs(loaded *repo.Board) []string {
 	}
 
 	return refs
+}
+
+// claims reports whether a ref claims an issue, as the loaded board has them.
+//
+// It is the only place that question is asked. Deriving asks it while building
+// the board and ClaimRefs asks it before the board exists, and the two walks
+// are not the same walk — one is also assembling items — so what they share is
+// the rule and nothing else. Written twice, narrowing one of them would hand
+// repo.LoadFirstCommits a different set of refs from the one derivation is
+// about to annotate, and the claim would come back with no claimant while the
+// issue still read `in progress`: a disagreement that shows up as an
+// annotation quietly going missing.
+func claims(loaded *repo.Board, ref, id string) bool {
+	onBranch, carried := loaded.Refs[ref].Get(id)
+	if !carried {
+		return false
+	}
+
+	atTrunk, onTrunk := loaded.Trunk.Get(id)
+
+	return onTrunk && claimed(atTrunk, onBranch)
 }
 
 // claim is one ref's claim, annotated with whoever made it.

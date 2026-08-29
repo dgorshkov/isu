@@ -256,16 +256,22 @@ func TestNowDefaultsToTheClock(t *testing.T) {
 		statusOf(t, model.Derive(in), "ISU-7f3akq"))
 }
 
+// Two of the six are terminal, and the assertion walks model.Statuses rather
+// than a list of its own — a seventh status would otherwise be added to the
+// table and to the precedence ordering while this test went on checking six.
 func TestStatusTerminalIsTheTwoAnIssueDoesNotComeBackFrom(t *testing.T) {
-	require.True(t, model.StatusDone.Terminal())
-	require.True(t, model.StatusDropped.Terminal())
+	terminal := map[model.Status]bool{model.StatusDone: true, model.StatusDropped: true}
 
-	for _, status := range []model.Status{
-		model.StatusAwaitingTriage, model.StatusInProgress,
-		model.StatusReopened, model.StatusOpen,
-	} {
-		require.False(t, status.Terminal(), "%s is not terminal", status)
+	require.Len(t, model.Statuses, 6, "the table in PLAN.md section 1 has six rows")
+
+	for _, status := range model.Statuses {
+		require.Equal(t, terminal[status], status.Terminal(),
+			"%s is terminal: %t", status, terminal[status])
 	}
+
+	require.Equal(t, model.StatusDone, model.Statuses[0],
+		"the ordering is the table's, and done wins every contest it is in")
+	require.Equal(t, model.StatusOpen, model.Statuses[len(model.Statuses)-1])
 }
 
 // claimed is the fixture most of this package needs: an issue on trunk, and a

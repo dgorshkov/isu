@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dgorshkov/isu/internal/issue"
@@ -29,19 +28,6 @@ const (
 	// so this is a fallback and not a convention anybody should rely on.
 	TierSubject
 )
-
-func (t Tier) String() string {
-	switch t {
-	case TierNone:
-		return "none"
-	case TierTrailer:
-		return "trailer"
-	case TierSubject:
-		return "subject"
-	default:
-		return fmt.Sprintf("tier(%d)", int(t))
-	}
-}
 
 // Resolves recovers the issues a trunk commit says it resolved.
 //
@@ -72,12 +58,10 @@ func Resolves(prefix, subject, body string) ([]string, Tier) {
 		return ids, TierTrailer
 	}
 
-	if prefix == "" {
-		return nil, TierNone
-	}
-
-	if ids := subjectIDs(prefix, subject); len(ids) > 0 {
-		return ids, TierSubject
+	if prefix != "" {
+		if ids := subjectIDs(prefix, subject); len(ids) > 0 {
+			return ids, TierSubject
+		}
 	}
 
 	return nil, TierNone
