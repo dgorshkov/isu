@@ -1490,11 +1490,13 @@ already written in this file's history.
    ever seen refuse is a harness whose refusals are a comment, and every fixture in this
    project trusts them.
 
-   **The headroom is two statements**, so this floor will be the thing that fails a story
-   sooner or later, and that is the point of it. What remains uncovered is `main` calling
-   `os.Exit`, four filesystem failures nothing can provoke portably, and two harness refusals
-   that need a read-only `.git`. A story that adds an error path it cannot reach should expect
-   to argue for it.
+   **The headroom is three statements**, so this floor will be the thing that fails a story
+   sooner or later, and that is the point of it. Eleven statements remain uncovered, and each
+   one needs the filesystem to fail underneath it: `main` calling `os.Exit`; the loader's
+   `os.Stat` and `os.ReadFile` on a path it has just walked to (four); the harness failing to
+   open, write or close the `.git/config` it has just initialised (four); the harness's
+   `gitx.New` on a fresh `TempDir`; and `os.Rename` moving a remote aside. A story that adds an
+   error path it cannot reach should expect to argue for it.
 4. The story's own issue file is flipped to `resolved` in the same pull request (from M5-S7,
    which is where issue files start existing).
 5. The pull request describes what changed, what was decided, and anything that needs a call.

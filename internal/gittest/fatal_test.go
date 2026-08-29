@@ -86,6 +86,23 @@ func TestTheHarnessRefusesMoreTouchingCommitsThanCommits(t *testing.T) {
 	require.Contains(t, said, "only 4")
 }
 
+// The one refusal that comes from git rather than from an argument check:
+// fast-import rejecting the stream the harness built.
+//
+// A prefix with a space in it writes `issues/A B-000000/README.md`, which is a
+// legal path, and asks for `refs/heads/isu/A B-000000`, which is not a legal
+// ref name. So trunk is built and the branch import is what fails — the arm
+// that reports which of the two streams git turned down, and the reason a
+// fixture that cannot be built stops here instead of handing back a repository
+// with the branches quietly missing.
+func TestTheHarnessFailsTheTestWhenFastImportRejectsTheStream(t *testing.T) {
+	said := refusal(t, func(tb testing.TB) {
+		gittest.Generate(tb, gittest.Spec{Issues: 1, Branches: 1, Prefix: "A B"})
+	})
+
+	require.Contains(t, said, "importing branches")
+}
+
 // refusal runs fn with a testing.TB that records the harness's refusal and
 // stops there, and returns what it said.
 //
