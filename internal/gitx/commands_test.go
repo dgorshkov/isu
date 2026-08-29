@@ -1,6 +1,9 @@
 package gitx_test
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -390,4 +393,30 @@ func TestPushReportsAnUnreachableRemote(t *testing.T) {
 
 	err := open(t, r).Push(t.Context(), "origin", "HEAD:refs/heads/main")
 	require.Error(t, err)
+}
+
+// A ref line git could not have written is refused rather than parsed into
+// something plausible.
+//
+// The parser splits each line into four NUL-separated fields, and a line with
+// any other shape means git's output is not what this build expects — a future
+// format, or a binary that is not git. Guessing at it would put a ref name of
+// the wrong half of a line into a board.
+func TestForEachRefRefusesALineThatIsNotARef(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the shim is a shell script; CI is linux and macos")
+	}
+
+	dir := t.TempDir()
+	shim := filepath.Join(dir, "git")
+	require.NoError(t, os.WriteFile(shim, []byte(
+		"#!/bin/sh\nprintf 'refs/heads/main\\n'\n"), 0o700))
+
+	g, err := gitx.New(dir, gitx.WithBinary(shim))
+	require.NoError(t, err)
+
+	_, err = g.ForEachRef(t.Context(), "refs/heads/")
+
+	require.ErrorContains(t, err, "is not a ref")
+	require.ErrorContains(t, err, "refs/heads/main")
 }

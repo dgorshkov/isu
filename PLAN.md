@@ -481,6 +481,15 @@ carrying `prefix: ISU`.
 **Done** #4, 2026-08-25. The profile is built with `-coverpkg=./...`, without which a
 package carrying no test file of its own is absent from the profile and raises the
 average by being untested.
+
+**Amended in #8: two floors became three, and the overall one went from 85% to 99%.** The
+figures in the story below are the ones this shipped with; measuring the tree found 85% was not
+a gate at all, since the actual number was 96.9% and twelve points could have gone missing
+unnoticed. The third floor is `internal/gittest`'s, at 90%, and its statements no longer count
+towards the product's — the reasoning is in the definition of done and in `coverage.sh`. The
+gate's own fixtures grew a fourth module, `harnessgap`, and the two tests that isolate one
+floor from another now lower the others through the environment rather than relying on a
+fixture's size to do it, which is what those knobs were put there for.
 **Branch** `isu/M0-S2-quality-gates`
 **Build** `.golangci.yml` (errcheck, govet, staticcheck, revive, gofumpt), a `Makefile` with
 `make test lint cover`, and a coverage script enforcing **both** floors from the definition of
@@ -998,6 +1007,15 @@ and nothing else in the plan so much as mentions fetching.
 **Tests first** golden-file tests for help output; a test asserting every registered command
 accepts `--json`; a test asserting JSON output is valid and matches the documented schema; a
 test asserting `--fetch` is a no-op against a repo with no remote rather than an error.
+
+**The end-to-end harness ships with the first command, not after the last.** Noted in #8, where
+measuring coverage found the honest gap: everything through M3 is tested end to end *through the
+stack* — a real git repository, no mocks anywhere, M3-S5 walking a whole lifecycle — but nothing
+is tested end to end *through the product*, because there is no product yet. `cmd/isu` is one
+line delegating to a `run` that takes its streams as arguments, which is the shape that makes
+this cheap; M4-S1 is where that stops being a convenience and becomes the thing every later
+story's test is written against. A milestone that builds eight commands and writes its first
+end-to-end test at M4-S8 has seven commands nobody ever ran.
 **Done when** adding a command without `--json` fails the test suite.
 
 ### M4-S2 · `isu board` and `isu show`
@@ -1456,7 +1474,19 @@ already written in this file's history.
 1. The failing test is its own commit, and it precedes the commit that makes it pass.
 2. `go build ./...`, `go vet ./...`, `golangci-lint run`, `go test ./...` all pass at the
    branch head.
-3. Coverage is at or above 85% overall, 100% for `internal/model`.
+3. Coverage is at or above **99% across the product**, 100% for `internal/model`, and 90% for
+   `internal/gittest`. **Raised from 85% in #8**, where measuring it found the floor was not a
+   gate: the tree stood at 96.9%, so twelve points of coverage could have been deleted without
+   CI noticing, and the number had never once been the thing that caught anything. Closing the
+   gaps that measurement exposed took the product to 99.6%.
+
+   **The harness is floored separately rather than folded in, and that is a decision.**
+   `internal/gittest` exists to serve tests, and what is uncovered in it is almost entirely the
+   `t.Fatalf` handlers whose whole job is to fail a test; driving those means handing it a
+   counterfeit `testing.TB`, which is machinery built for no reason except to move a number. It
+   is a fifth of the tree, so folding it in would also cost the product a point of headroom it
+   should be spending on code that ships. It is not excused — 90% is a real floor and the gate
+   fails below it — and its statements do not count towards the product's.
 4. The story's own issue file is flipped to `resolved` in the same pull request (from M5-S7,
    which is where issue files start existing).
 5. The pull request describes what changed, what was decided, and anything that needs a call.
