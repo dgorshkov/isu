@@ -94,8 +94,15 @@ func readyItems(v *view) []*model.Item {
 // in progress means somebody is on it, and awaiting triage is a report nobody
 // has accepted yet — handing an agent work out of the inbox would be handing it
 // work nobody agreed to.
+//
+// An epic is excluded whatever its rollup says. It has no state of its own and
+// is finished when its children are, so it is never a thing to pick up: an
+// agent handed one would have nothing to do and no way to say it was done.
+//
+// So is an issue trunk cannot decode. Handing somebody an issue nobody can read
+// is handing them a parse error.
 func workable(item *model.Item) bool {
-	if item.Broken != nil {
+	if item.Broken != nil || item.Epic != nil {
 		return false
 	}
 

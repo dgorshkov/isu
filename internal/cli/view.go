@@ -174,6 +174,14 @@ func created(item *model.Item) time.Time {
 	return item.Issue.Created
 }
 
+// taken reports whether an id is already in use on any ref isu can see, which
+// is what `isu new` regenerates against.
+func (v *view) taken(id string) bool {
+	_, ok := v.board.Get(id)
+
+	return ok
+}
+
 // refNames lists the non-trunk refs the board was derived from.
 func (v *view) refNames() []string {
 	names := v.board.Names()

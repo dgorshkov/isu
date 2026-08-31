@@ -172,7 +172,7 @@ func (s *session) draft(v *view, opts *newOptions, owner string) (*issue.Issue, 
 		draft.State = issue.StateOpen
 	}
 
-	id, err := s.allocate(v, draft)
+	id, err := s.allocate(v.taken, draft)
 	if err != nil {
 		return nil, err
 	}
@@ -194,14 +194,14 @@ func (s *session) draft(v *view, opts *newOptions, owner string) (*issue.Issue, 
 // of the issue's own fields. A duplicate that survives this — two clones
 // creating an issue in the same moment — stays a hard CI failure, and is rare
 // enough to be an incident rather than a routine.
-func (s *session) allocate(v *view, draft *issue.Issue) (string, error) {
+func (s *session) allocate(taken func(string) bool, draft *issue.Issue) (string, error) {
 	for range collisionAttempts {
 		id, err := s.cfg.NewID(draft.Title, draft.Owner, draft.Created)
 		if err != nil {
 			return "", err
 		}
 
-		if _, taken := v.board.Get(id); !taken {
+		if !taken(id) {
 			return id, nil
 		}
 	}
