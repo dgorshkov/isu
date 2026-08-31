@@ -851,7 +851,16 @@ the table — the fold sits in `reopen.go`, which is where M3-S4's own tests poi
 story's list does not name and the model forces: a branch that *deleted* an issue's folder is
 not evidence about anything, because deriving from an absence would let one branch take an
 issue off everybody's board; and a non-epic whose `state:` is missing or misspelt matches no
-row at all, so it reads `open` and `isu check` reports the file. **"100% branch coverage" is
+row at all, so it reads `open` and `isu check` reports the file. **A trunk file that will not
+decode at all is the same answer with an annotation**, added after review: the folder is
+trunk's, so the issue is `OnTrunk` and reads `open`, and `Item.Broken` says why nothing more
+can be said about it. Derivation first read only `Set.Issues`, which dropped the issue from
+the board entirely — undoing, silently and for the one issue somebody most needs to hear
+about, the loader's deliberate choice at §2 that a half-written issue must not blind the whole
+board. Where a branch carries a readable copy it is rendered from, but never believed: the
+issue used to read `awaiting triage`, calling a years-old issue a report trunk has never seen,
+and a branch saying `resolved` must not finish an issue whose trunk state nobody can read.
+**"100% branch coverage" is
 measured as 100% of statements**, because that is what `go test -cover` counts and there is no
 branch-coverage mode to turn on; the gate in `scripts/coverage.sh` enforces it, and every row
 of the table has a test of its own on top — including both sides of each `&&` in the ladder,
@@ -908,7 +917,11 @@ so `model.ClaimRefs` answers it, and *who* claimed costs a git process each, so
 would have made it walk every branch in the repository. A ref with no first commit — nothing
 ahead of trunk — is a lookup with no answer rather than a failure, and a claim whose first
 commit was not looked up is still a claim: the file is the claim, and the lookup only names who
-made it, so dropping the row would hide a claim to protect an annotation.
+made it, so dropping the row would hide a claim to protect an annotation. **A zero
+`Input.Config` means the default rather than zero days**, added after review: `StaleAfter()` of
+zero makes every claim stale the instant it is made, and `Derive` already defaulted the sibling
+zero value `Now`. A zero value that silently flags every row on the board as abandoned is a
+footgun, and documenting it is not as good as not having it.
 **Branch** `isu/M3-S3-claims`
 **Build** a claim is a branch whose issue file says `state: resolved` where trunk says `open`.
 The claimant is the author of the **first commit on that branch** and the claim time is its
@@ -979,7 +992,29 @@ id, and an unanchored scan would return the first word of every squash commit in
 with total confidence. An empty prefix therefore reads no subjects at all: nothing downstream
 can tell a wrong link from a right one, so "which issue is this about" has to answer nothing
 rather than guess. A trailing full stop is trimmed before the check, since a subject that ends
-in one is ordinary English and an id that ends in one is not something isu generates.
+in one is ordinary English and an id that ends in one is not something isu generates. A run of
+two or more stops ends an id wherever it appears, because `..` is no part of any key; a single
+interior one is left alone, because `ISU-1.2` is a key somebody could have imported and
+truncating it would turn a right link into a wrong one.
+
+**A revert is the one commit whose subject means the opposite of what it says**, and the
+subject tier skips it — `git revert` quotes the subject it undid verbatim, so the anchor is
+present and points backwards, and M7-S3 would record the commit that un-resolved an issue as
+one that resolved it. `Reapply "…"` is skipped with it. The trailer tier is deliberately *not*
+guarded: git writes the body of a revert itself and does not carry the original trailers over,
+so an `Isu-Resolves:` on one was put there by somebody who meant it.
+
+**How a trailer's value is read cost two attempts, and the second is the rule.** Splitting on a
+comma alone is isu's own habit mistaken for a convention — git says nothing about what goes
+inside a trailer value — so `Isu-Resolves: ISU-7f3akq ISU-39ka2p` named nothing, fell through
+to the subject tier, and resolved whatever the forge had put there instead. The first fix
+demanded every token look like a key, which broke the ids that do not: `4821` from a GitHub
+import and `ISU_7f3akq` are ids, `ValidID` admits them on purpose, and dropping them
+reintroduced the same wrong link through another door. So the rule depends on how many things
+are in the value: a comma-separated element is judged only by `ValidID`, and an element holding
+several words must be all key-shaped, because `the login one` is three legal ids and reading
+the value as one token was the only thing filtering prose out. A value folded across indented
+lines is read whole, per git's own grammar, rather than losing every claim after the first.
 **Branch** `isu/M3-S5-squash`
 **Build** nothing new. This story exists to prove the model survives the merge strategy most
 teams use.

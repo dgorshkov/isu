@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dgorshkov/isu/internal/config"
 	"github.com/dgorshkov/isu/internal/gittest"
 	"github.com/dgorshkov/isu/internal/model"
 	"github.com/dgorshkov/isu/internal/repo"
@@ -75,6 +76,29 @@ func TestAClaimYoungerThanStaleDaysIsNot(t *testing.T) {
 
 	require.False(t, item(t, board, "ISU-7f3akq").Claims[0].Stale)
 	require.False(t, item(t, board, "ISU-7f3akq").Stale())
+}
+
+// A caller who wires up Input without a config gets the default rather than
+// zero days, because zero days makes every claim stale the instant it is made.
+//
+// Derive already defaulted the sibling zero value — Now — so a board where
+// every single claim came back flagged abandoned, with no error and nothing to
+// notice it by, was the one zero value here that quietly changed every row.
+func TestAZeroConfigDoesNotMakeEveryClaimStale(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
+		Branch("isu/ISU-7f3akq").Checkout("isu/ISU-7f3akq").
+		As("alice").Backdate(3).
+		Issue("ISU-7f3akq", gittest.State("resolved")).Commit("claim ISU-7f3akq").
+		Backdate(0).Checkout(gittest.DefaultBranch)
+
+	in := load(t, r, time.Now())
+	in.Config = config.Config{}
+
+	got := item(t, model.Derive(in), "ISU-7f3akq")
+
+	require.False(t, got.Claims[0].Stale, "three days old, against the default seven")
+	require.False(t, got.Stale())
 }
 
 func TestTwoBranchesClaimingOneIssueAreContendedAndBothNamed(t *testing.T) {

@@ -58,13 +58,34 @@ func Resolves(prefix, subject, body string) ([]string, Tier) {
 		return ids, TierTrailer
 	}
 
-	if prefix != "" {
+	// A revert quotes the subject it undid, verbatim and in full, so the
+	// anchor this tier relies on is present and points the wrong way round: the
+	// commit that un-resolved an issue would be read as one that resolved it.
+	// M7-S3 scans years of history for exactly these, and a revert is the one
+	// commit in that history whose subject means the opposite of what it says.
+	//
+	// The trailer tier is not guarded, and needs no guard: git writes `This
+	// reverts commit <oid>.` as the body and does not carry the original
+	// trailers over, so an Isu-Resolves on a revert was put there by a person
+	// who meant it.
+	if prefix != "" && !reverts(subject) {
 		if ids := subjectIDs(prefix, subject); len(ids) > 0 {
 			return ids, TierSubject
 		}
 	}
 
 	return nil, TierNone
+}
+
+// reverts reports whether a subject is one git composed to undo another.
+//
+// `git revert` writes `Revert "<subject>"`, and since 2.36 `git cherry-pick`
+// writes `Reapply "<subject>"` for a revert of a revert. Both quote a subject
+// that may itself name an issue, and neither is a commit that resolved one.
+func reverts(subject string) bool {
+	subject = strings.TrimSpace(subject)
+
+	return strings.HasPrefix(subject, `Revert "`) || strings.HasPrefix(subject, `Reapply "`)
 }
 
 // trailerIDs reads every Isu-Resolves line out of a commit body.
@@ -111,11 +132,22 @@ func trailerIDs(body string) []string {
 		}
 	}
 
+	// Whether the line being read continues the trailer above it. Git's trailer
+	// grammar folds a value across lines when the later ones are indented, and
+	// a list of several claims is exactly the value long enough for somebody's
+	// editor to wrap it — so reading only the first line would drop every claim
+	// after it, at the tier this package treats as authoritative.
+	folded := false
+
 	for line := range strings.Lines(body) {
-		token, value, ok := strings.Cut(line, ":")
-		if !ok || !strings.EqualFold(strings.TrimSpace(token), ResolvesTrailer) {
+		value, ok := trailerValue(line, folded)
+		if !ok {
+			folded = false
+
 			continue
 		}
+
+		folded = true
 
 		for _, element := range strings.Split(value, ",") {
 			words := strings.FieldsFunc(element, func(r rune) bool { return !idRune(r) })
@@ -134,6 +166,25 @@ func trailerIDs(body string) []string {
 	}
 
 	return ids
+}
+
+// trailerValue returns the part of a line that is an Isu-Resolves value.
+//
+// A line opens the trailer when its token matches, without regard to case, as
+// git matches a trailer's — so a human typing the line by hand does not have to
+// match isu's capitals. A line continues one already open when it begins with
+// whitespace, which is git's own folding rule; anything else closes it.
+func trailerValue(line string, folded bool) (string, bool) {
+	if folded && strings.TrimSpace(line) != "" && (line[0] == ' ' || line[0] == '\t') {
+		return line, true
+	}
+
+	token, value, ok := strings.Cut(line, ":")
+	if !ok || !strings.EqualFold(strings.TrimSpace(token), ResolvesTrailer) {
+		return "", false
+	}
+
+	return value, true
 }
 
 // allKeyShaped reports whether every word looks like an issue key rather than
@@ -163,7 +214,17 @@ func subjectIDs(prefix, subject string) []string {
 		// not something isu generates — but a sentence that ends in one is
 		// ordinary English, so the two are told apart here rather than by
 		// hoping nobody writes a subject with punctuation.
+		//
+		// A run of two or more is punctuation whatever follows it: `..` is not
+		// a legal id on its own and no tracker keys on one, so an ellipsis in
+		// `fixes ISU-7f3akq...and more` ends the id rather than continuing it.
+		// A single interior stop is left alone, because `ISU-1.2` is a key
+		// somebody could have imported and truncating it would turn a right
+		// link into a wrong one — the one outcome worth more than a missed id.
 		name := strings.TrimRight(word, ".")
+		if at := strings.Index(name, ".."); at >= 0 {
+			name = strings.TrimRight(name[:at], ".")
+		}
 
 		if !strings.HasPrefix(name, prefix+"-") || len(name) <= len(prefix)+1 {
 			continue

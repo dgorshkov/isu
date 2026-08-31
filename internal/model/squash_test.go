@@ -275,6 +275,78 @@ func TestResolvesRefusesATrailerThatDoesNotNameAnID(t *testing.T) {
 	}
 }
 
+// Git folds a trailer's value across lines when the later ones are indented,
+// and a list of several claims is exactly the value long enough for an editor
+// to wrap. Reading only the first line dropped every claim after it — at the
+// tier this package treats as authoritative and never re-checks.
+func TestResolvesReadsATrailerFoldedAcrossLines(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "Retry the login (#42)",
+		"Isu-Resolves: ISU-7f3akq,\n  ISU-40b1cc,\n\tISU-39ka2p\n")
+
+	require.Equal(t, []string{"ISU-7f3akq", "ISU-40b1cc", "ISU-39ka2p"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A line that is not indented ends the trailer, so an ordinary paragraph after
+// one does not get read as more of its value.
+func TestResolvesStopsFoldingAtAnUnindentedLine(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
+		"Isu-Resolves: ISU-7f3akq\nISU-40b1cc was not part of this\n")
+
+	require.Equal(t, []string{"ISU-7f3akq"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A revert quotes the subject it undid, verbatim, so the prefix anchor is
+// present and points the wrong way round. M7-S3 scans years of history for
+// these, and this package's own fixtures revert resolving commits — a commit
+// that un-resolved an issue must not be recorded as one that resolved it.
+func TestResolvesReadsNoSubjectOutOfARevert(t *testing.T) {
+	for _, subject := range []string{
+		`Revert "ISU-7f3akq: retry the login three times"`,
+		`Reapply "ISU-7f3akq: retry the login three times"`,
+	} {
+		t.Run(subject, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix, subject,
+				"This reverts commit 0123456789abcdef.\n")
+
+			require.Empty(t, ids)
+			require.Equal(t, model.TierNone, tier)
+		})
+	}
+}
+
+// The trailer needs no such guard, and must not have one: git writes the body
+// of a revert itself and does not carry the original trailers over, so an
+// Isu-Resolves on a revert was put there by somebody who meant it.
+func TestResolvesStillReadsATrailerOnARevert(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix,
+		`Revert "ISU-7f3akq: retry the login three times"`,
+		"This reverts commit 0123456789abcdef.\n\nIsu-Resolves: ISU-40b1cc\n")
+
+	require.Equal(t, []string{"ISU-40b1cc"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A full stop is a legal id character, so an id followed straight by an
+// ellipsis used to swallow the words after it and return an id matching
+// nothing — losing the real link in the process.
+//
+// A run of two or more stops is punctuation whatever follows it. A single
+// interior one is left alone, because `ISU-1.2` is a key somebody could have
+// imported and truncating it would turn a right link into a wrong one.
+func TestResolvesEndsASubjectIDAtAnEllipsisAndNotAtASingleStop(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "Fix ISU-7f3akq...and more", "")
+	require.Equal(t, []string{"ISU-7f3akq"}, ids)
+	require.Equal(t, model.TierSubject, tier)
+
+	ids, _ = model.Resolves(gittest.DefaultPrefix, "Fix ISU-7f3akq. Thanks", "")
+	require.Equal(t, []string{"ISU-7f3akq"}, ids, "a stop at the end of a word still ends it")
+
+	ids, _ = model.Resolves(gittest.DefaultPrefix, "Fix ISU-1.2 today", "")
+	require.Equal(t, []string{"ISU-1.2"}, ids, "an interior stop may be part of an imported key")
+}
+
 // The other half of that rule, and the half the first attempt at it broke.
 //
 // ValidID is permissive on purpose — an imported issue keeps its source key

@@ -38,15 +38,18 @@ func (e *Epic) Empty() bool { return e == nil || len(e.Children) == 0 }
 // A parent that is not an epic, and a parent that does not exist, are both kept
 // here rather than dropped. Both are M5-S2's to report, and a derivation that
 // quietly forgets them leaves the checker with nothing to report.
+// An issue with no readable file anywhere names no parent and is no epic. It
+// is on the board because trunk carries the folder, and it is skipped here
+// because there is nothing in it to read, not because it does not count.
 func (d *deriver) index() {
-	for _, id := range d.board.IDs() {
-		if parent := d.board.Items[id].Issue.Parent; parent != "" {
-			d.board.Children[parent] = append(d.board.Children[parent], id)
+	for _, id := range d.ids {
+		if item := d.board.Items[id]; item.Issue != nil && item.Issue.Parent != "" {
+			d.board.Children[item.Issue.Parent] = append(d.board.Children[item.Issue.Parent], id)
 		}
 	}
 
 	for id, item := range d.board.Items {
-		if item.Issue.Type == issue.TypeEpic {
+		if item.Issue != nil && item.Issue.Type == issue.TypeEpic {
 			item.Epic = &Epic{Children: d.board.Children[id]}
 		}
 	}
@@ -61,7 +64,7 @@ func (d *deriver) index() {
 func (d *deriver) rollUp() {
 	d.folding = make(map[string]foldState, len(d.board.Children))
 
-	for _, id := range d.board.IDs() {
+	for _, id := range d.ids {
 		if d.board.Items[id].Epic != nil {
 			d.fold(id)
 		}

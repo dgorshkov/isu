@@ -89,6 +89,16 @@ type Item struct {
 	// Epic is the fold over this issue's children, and is set only on an issue
 	// of type epic.
 	Epic *Epic
+	// Broken is why trunk's copy of this issue could not be read, where it
+	// could not. It is an annotation rather than a status because the file
+	// being unreadable is a fact about the file, not about the work: `isu
+	// check` reports it, and the board still has to render the row.
+	//
+	// An issue is not dropped for having one. The loader keeps a broken file
+	// deliberately — a half-written issue must not blind the whole board — and
+	// forgetting it here would undo that, silently, for the one issue somebody
+	// most needs to hear about.
+	Broken *repo.Broken
 }
 
 // Board is every issue the repository holds, derived.
@@ -99,6 +109,10 @@ type Board struct {
 	// that is not an epic and a parent that does not exist, both of which are
 	// M5-S2's to report and neither of which this package drops.
 	Children map[string][]string
+	// Broken is trunk's unreadable issue files, keyed by id. It is the same
+	// fact as Item.Broken, indexed for a caller that wants to report what is
+	// wrong with the repository rather than walk it looking.
+	Broken map[string]repo.Broken
 
 	// refs are the non-trunk refs this was derived from, in name order. It is
 	// what Elsewhere and Claims are drawn from, and keeping it here means a
@@ -141,8 +155,11 @@ type Input struct {
 	// the file says, and this only names who made it and when.
 	Claims map[string]repo.FirstCommit
 	// Config is the repository's .isu.yml, which is where stale_days lives.
-	// Pass config.Default() rather than the zero value: a claim is stale once
-	// it is older than StaleDays, and zero days makes every claim stale.
+	// A zero StaleDays means the default rather than zero days, so that a
+	// caller who has not loaded a config yet gets a board where nothing is
+	// spuriously abandoned — the same courtesy Now gets below, for the same
+	// reason: a zero value that silently changes every row is a footgun, and
+	// documenting it is not as good as not having it.
 	Config config.Config
 	// Now is what claim age and staleness are measured against. The zero value
 	// means the clock, so that only the tests have to say.
@@ -156,13 +173,25 @@ func Derive(in Input) *Board {
 		now = time.Now()
 	}
 
+	if in.Config.StaleDays == 0 {
+		in.Config.StaleDays = config.DefaultStaleDays
+	}
+
 	d := &deriver{in: in, now: now, board: &Board{
 		Items:    map[string]*Item{},
 		Children: map[string][]string{},
+		Broken:   map[string]repo.Broken{},
 		refs:     in.Loaded.Names(),
 	}}
 
 	d.collect()
+
+	// Sorted once and handed to both phases. They need the same order for the
+	// same reason — a board that renders differently on two runs over one
+	// repository is a board nobody can diff — and nothing adds an item after
+	// collect, so sorting it again would be the same answer for twice the work.
+	d.ids = d.board.IDs()
+
 	d.index()
 	d.status()
 
@@ -175,6 +204,9 @@ type deriver struct {
 	in    Input
 	now   time.Time
 	board *Board
+	// ids is every issue in id order, sorted once by Derive and read by the
+	// phases that need a deterministic walk.
+	ids []string
 	// folding is where each epic is in the rollup, which is how a parent cycle
 	// is caught rather than recursed into. See foldState.
 	folding map[string]foldState
@@ -189,6 +221,19 @@ type deriver struct {
 func (d *deriver) collect() {
 	for id, i := range d.in.Loaded.Trunk.Issues {
 		d.board.Items[id] = &Item{ID: id, Issue: i, OnTrunk: true}
+	}
+
+	// A folder trunk carries whose file will not decode is still a folder trunk
+	// carries. It goes in before the refs below so that a branch holding a
+	// readable copy attaches to it rather than reporting it as something trunk
+	// has never seen — which is what an unreadable file used to turn a
+	// years-old issue into.
+	for _, broken := range d.in.Loaded.Trunk.Broken {
+		d.board.Broken[broken.ID] = broken
+
+		if _, known := d.board.Items[broken.ID]; !known {
+			d.board.Items[broken.ID] = &Item{ID: broken.ID, OnTrunk: true, Broken: &broken}
+		}
 	}
 
 	for _, ref := range d.board.refs {
@@ -208,6 +253,14 @@ func (d *deriver) collect() {
 			if !known {
 				item = &Item{ID: id, Issue: at}
 				d.board.Items[id] = item
+			}
+
+			// Trunk carries this one but could not read it, so the ref's copy
+			// is the best there is to render — a title and a type, rather than
+			// a row that is only an id. It does not make the ref's copy true:
+			// status below reads the annotation, not this.
+			if item.Issue == nil {
+				item.Issue = at
 			}
 
 			item.Elsewhere = append(item.Elsewhere, ref)
@@ -233,6 +286,14 @@ func (d *deriver) status() {
 
 func status(i *Item) Status {
 	switch {
+	case i.Broken != nil:
+		// Trunk has the folder and cannot read the file, so every row below
+		// this one is a question about a `state:` nobody can see. Open is what
+		// the table already says for a state that is missing or misspelt, and
+		// the annotation is what tells a reader the difference; deriving `done`
+		// from a branch's copy of a file trunk cannot read would be a claim
+		// about trunk that trunk never made.
+		return StatusOpen
 	case i.OnTrunk && i.Issue.State == issue.StateResolved:
 		return StatusDone
 	case i.OnTrunk && i.Issue.State == issue.StateDropped:
