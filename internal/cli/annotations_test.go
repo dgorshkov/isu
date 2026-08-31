@@ -236,3 +236,32 @@ func TestTwoIssuesThatCannotBeDecodedStillSortAndRender(t *testing.T) {
 	require.Contains(t, got.stdout, "ISU-brokeB")
 	require.Empty(t, readyIDs(t, r.Dir()))
 }
+
+func TestTheAnnotatedFixtureDoesNotDependOnTheClock(t *testing.T) {
+	t.Parallel()
+
+	// The two claims this fixture exists to produce differ in whether anybody
+	// can be named as the claimant, and that difference has to come from the
+	// commit graph rather than from how fast the machine wrote it.
+	//
+	// It did not, once. The squash merge below used to carry the same subject
+	// as the commit it squashed, so on a machine that wrote both inside one
+	// second git gave them one object id, the branch became an ancestor of
+	// trunk, and a claim by a named person read as a claim by nobody. It passed
+	// on git 2.43 and failed on git 2.55, which is the worst way to find out.
+	//
+	// Asserting the shape rather than the rendering is what makes that
+	// impossible to reintroduce quietly: a golden file would go on matching on
+	// whichever machine happened to agree with it.
+	r := annotated(t)
+
+	require.NotEmpty(t,
+		r.Git("log", gittest.DefaultBranch+"..refs/heads/isu/ISU-revert", "--format=%H"),
+		"a squashed branch is not an ancestor of trunk, so its claim has a "+
+			"first commit and therefore a claimant")
+
+	require.Empty(t,
+		r.Git("log", gittest.DefaultBranch+"..refs/heads/isu/ISU-ghostc", "--format=%H"),
+		"a merged branch is an ancestor of trunk, so its claim has no first "+
+			"commit and nobody to name — which is still a claim")
+}
