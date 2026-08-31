@@ -1,0 +1,28 @@
+triage sets everything about an issue other than its state: its owner, the
+epic it belongs to, what it waits on, and its priority.
+
+It writes a triage/<id> branch for a pull request, like everything else here.
+--push writes straight to trunk instead, and is refused unless .isu.yml sets
+direct_triage: true — the field is how a team says out loud that triage is not a
+code review.
+
+The body and any keys isu does not know survive byte for byte. This rewrites the
+lines it was asked to and nothing else.
+
+Usage:
+  isu triage <id> [flags]
+
+Flags:
+      --blocked-by strings   the issues it waits on, replacing what is there
+  -h, --help                 help for triage
+      --owner string         the human answerable for it
+      --parent string        the epic it belongs to
+      --priority string      p0, p1, p2 or p3
+      --push                 commit straight to trunk instead of onto a branch
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

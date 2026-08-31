@@ -1,0 +1,18 @@
+board derives a status for every issue from what trunk and every branch say
+about it, and groups them.
+
+Nothing here is stored. An issue file carries a state, which is one ref's claim
+about one issue; a status is what the repository as a whole says.
+
+Usage:
+  isu board [flags]
+
+Flags:
+  -h, --help   help for board
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

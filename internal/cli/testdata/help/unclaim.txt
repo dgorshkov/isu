@@ -1,0 +1,18 @@
+unclaim flips the issue's state back to open on isu/<id> and pushes.
+
+It does not delete the branch. A one-word command must not throw away work:
+what it releases is the claim, and what it leaves is an ordinary branch the
+board says nothing about.
+
+Usage:
+  isu unclaim <id> [flags]
+
+Flags:
+  -h, --help   help for unclaim
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

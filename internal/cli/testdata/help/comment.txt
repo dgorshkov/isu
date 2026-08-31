@@ -1,0 +1,23 @@
+comment appends comments/<date>-<author>-<nn>.md to an issue's folder.
+
+Comments are append-only, one file each. The two-digit sequence is not
+decoration: without it a second comment by the same author on the same day
+silently overwrites the first, and this picks the next one by looking at what is
+already there.
+
+The issue's own README is never touched. With no -m, your $EDITOR is opened on
+an empty file and an empty file means nothing was written.
+
+Usage:
+  isu comment <id> [flags]
+
+Flags:
+  -h, --help             help for comment
+  -m, --message string   the comment (default: open $EDITOR)
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

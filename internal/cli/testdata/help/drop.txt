@@ -1,0 +1,21 @@
+drop writes state: dropped into the issue on the branch you are on, with the
+reason and the resolution the schema requires.
+
+dropped on its own cannot tell a duplicate from a won't-fix, and the difference
+is the first thing anyone asks — so --resolution is required and is one of
+wontfix, duplicate, works-as-intended or fixed-elsewhere.
+
+Usage:
+  isu drop <id> [flags]
+
+Flags:
+  -h, --help                help for drop
+      --reason string       why, in a sentence (required)
+      --resolution string   wontfix, duplicate, works-as-intended or fixed-elsewhere (required)
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

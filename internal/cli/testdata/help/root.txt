@@ -1,0 +1,38 @@
+isu is an issue tracker with no database.
+
+Issues are folders inside the repository, so the pull request that fixes a bug
+also closes it, in the same diff. Status is never stored: it is derived from
+what trunk and every branch say about an issue, which is why a claim is a branch
+and not a row in a table.
+
+Every command supports --json, because half the people reading this are agents.
+The shape is documented in docs/json.md and is a contract.
+
+Usage:
+  isu [flags]
+  isu [command]
+
+Available Commands:
+  board       every issue, grouped by derived status
+  claim       say you are working on an issue, before you start
+  comment     add a comment to an issue
+  drop        say an issue will not be fixed, and why
+  help        Help about any command
+  init        write .isu.yml, so that everything else works
+  new         file a new issue
+  ready       the issues nothing is blocking, most urgent first
+  resolve     say this branch fixes an issue
+  show        one issue in full
+  triage      set who owns an issue, what blocks it, and how urgent it is
+  unclaim     release a claim, keeping the branch
+
+Flags:
+      --fetch         update remote refs before reading
+  -h, --help          help for isu
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)
+  -v, --version       version for isu
+
+Use "isu [command] --help" for more information about a command.
