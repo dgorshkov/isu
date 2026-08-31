@@ -52,6 +52,11 @@ every consumer write the same defensive branch.
 | `priority` | string | `p0`…`p3`, with the default applied |
 | `parent` | string | the epic it belongs to, or empty |
 | `blocked_by` | array of string | the issues it waits on |
+| `repro` | string | how to reproduce it; required on a bug |
+| `acceptance` | string | what done looks like; required on a story |
+| `question` | string | what is being answered; required on a spike |
+| `reason` | string | why it was dropped |
+| `resolution` | string | `wontfix`, `duplicate`, `works-as-intended` or `fixed-elsewhere` |
 | `on_trunk` | bool | its folder exists at trunk |
 | `reopened` | bool | trunk resolved it once and says open now |
 | `contended` | bool | more than one branch claims it |
@@ -60,6 +65,11 @@ every consumer write the same defensive branch.
 | `elsewhere` | array of string | the non-trunk refs whose copy differs from trunk's |
 | `epic` | `Epic` or null | what its children add up to; null unless `type` is `epic` |
 | `broken` | `Broken` or null | why trunk's copy will not decode; null when it does |
+
+The five fields above `on_trunk` are on every issue rather than only on
+`isu show`, because `isu ready --json | head -1` is meant to be the whole
+briefing: an agent picking work up needs the acceptance criteria or the repro
+before it needs anything else. The markdown body is one `isu show` away.
 
 `status` is one of `done`, `dropped`, `awaiting triage`, `in progress`,
 `reopened` or `open`. The rows are ordered and the first match wins, so a merged

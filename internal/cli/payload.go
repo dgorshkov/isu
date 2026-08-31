@@ -46,14 +46,23 @@ type Issue struct {
 	Priority  string   `json:"priority"`
 	Parent    string   `json:"parent"`
 	BlockedBy []string `json:"blocked_by"`
-	OnTrunk   bool     `json:"on_trunk"`
-	Reopened  bool     `json:"reopened"`
-	Contended bool     `json:"contended"`
-	Stale     bool     `json:"stale"`
-	Claims    []Claim  `json:"claims"`
-	Elsewhere []string `json:"elsewhere"`
-	Epic      *Epic    `json:"epic"`
-	Broken    *Broken  `json:"broken"`
+	// The fields a type requires, which are what somebody picking this up has
+	// to read before they can start. They are one line each and they are on
+	// every issue rather than only on `isu show`, because `isu ready --json |
+	// head -1` is meant to be the whole briefing.
+	Repro      string   `json:"repro"`
+	Acceptance string   `json:"acceptance"`
+	Question   string   `json:"question"`
+	Reason     string   `json:"reason"`
+	Resolution string   `json:"resolution"`
+	OnTrunk    bool     `json:"on_trunk"`
+	Reopened   bool     `json:"reopened"`
+	Contended  bool     `json:"contended"`
+	Stale      bool     `json:"stale"`
+	Claims     []Claim  `json:"claims"`
+	Elsewhere  []string `json:"elsewhere"`
+	Epic       *Epic    `json:"epic"`
+	Broken     *Broken  `json:"broken"`
 }
 
 // Claim is one branch claiming one issue.
@@ -205,6 +214,12 @@ func asIssue(item *model.Item, now time.Time) Issue {
 		if !item.Issue.Created.IsZero() {
 			out.Created = item.Issue.Created.Format(time.DateOnly)
 		}
+
+		out.Repro = item.Issue.Repro
+		out.Acceptance = item.Issue.Acceptance
+		out.Question = item.Issue.Question
+		out.Reason = item.Issue.Reason
+		out.Resolution = string(item.Issue.Resolution)
 
 		out.BlockedBy = append(out.BlockedBy, item.Issue.BlockedBy...)
 	}

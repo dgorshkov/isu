@@ -276,6 +276,11 @@ func showFields(v *view, payload ShowPayload) [][]string {
 	rows = appendField(rows, "owner", item.Owner)
 	rows = appendField(rows, "created", item.Created)
 	rows = appendField(rows, "priority", item.Priority)
+	rows = appendField(rows, "repro", item.Repro)
+	rows = appendField(rows, "acceptance", item.Acceptance)
+	rows = appendField(rows, "question", item.Question)
+	rows = appendField(rows, "reason", item.Reason)
+	rows = appendField(rows, "resolution", item.Resolution)
 
 	if payload.Parent != nil {
 		rows = append(rows, []string{"parent", linkText(*payload.Parent)})
@@ -318,7 +323,10 @@ func statusLine(item Issue) string {
 
 	var notes []string
 
-	if item.Reopened {
+	// `reopened` is an annotation as well as a status, so that the fact
+	// survives losing the precedence contest to in progress. When it won that
+	// contest, saying it twice is not saying it more clearly.
+	if item.Reopened && item.Status != string(model.StatusReopened) {
 		notes = append(notes, "reopened")
 	}
 

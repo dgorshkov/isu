@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/dgorshkov/isu/internal/model"
 )
 
 func (a *app) boardCmd() *cobra.Command {
@@ -109,7 +111,7 @@ func boardNote(item Issue) string {
 		parts = append(parts, claimed)
 	}
 
-	if item.Reopened {
+	if item.Reopened && item.Status != string(model.StatusReopened) {
 		parts = append(parts, "reopened")
 	}
 

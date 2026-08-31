@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -375,7 +374,7 @@ func TestTheWorkingDirectoryIsUsedWhenNoRepositoryIsNamed(t *testing.T) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 		Dir:    r.Dir(),
-		Now:    func() time.Time { return clock },
+		Now:    now,
 		Getenv: func(string) string { return "" },
 	})
 
