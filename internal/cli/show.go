@@ -118,10 +118,11 @@ func (s *session) showPayload(
 
 // folder reads what lives beside an issue: the attachments, and the comments.
 //
-// It comes off disk when isu is reading HEAD and the folder is there, and out
-// of git otherwise. That is what makes `isu comment` followed by `isu show` do
-// the obvious thing — a comment is a file, and it is a file before it is a
-// commit — while `--ref` still shows what that ref actually holds.
+// It comes off disk when the folder is there and nobody named a ref, and out of
+// git otherwise. That is what makes `isu comment` followed by `isu show` do the
+// obvious thing — a comment is a file, and it is a file before it is a commit —
+// while `--ref` still shows what that ref actually holds and an issue reported
+// on a branch nobody has checked out is readable at all.
 //
 // Neither path is on the read path PLAN.md §0 measures. That path exists
 // because five thousand issues cost five thousand lookups; one issue's folder
@@ -129,7 +130,7 @@ func (s *session) showPayload(
 func (s *session) folder(ctx context.Context, item *model.Item) ([]string, []Text, error) {
 	dir := filepath.Join(s.root, filepath.FromSlash(issueDir(item.ID)))
 
-	if s.trunk == "HEAD" {
+	if s.app.ref == "" {
 		if _, err := os.Stat(dir); err == nil {
 			return loadFolderFromDisk(dir)
 		}
@@ -138,18 +139,70 @@ func (s *session) folder(ctx context.Context, item *model.Item) ([]string, []Tex
 	return s.loadFolderFromRef(ctx, item)
 }
 
+// loadFolderFromDisk lists what is beside an issue on disk.
+//
+// It walks the directory rather than going through issue.Load, which decodes
+// the README on the way past. What is beside an issue is not a fact about the
+// issue: a half-written README must not take an issue's attachments and its
+// comments off the screen, least of all for the one issue somebody most needs
+// to hear about. The board already says the file will not decode, and `isu
+// show` prints that beside the folder rather than instead of it.
 func loadFolderFromDisk(dir string) ([]string, []Text, error) {
-	folder, err := issue.Load(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading %s: %w", dir, err)
+	}
+
+	attachments := []string{}
+
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == issue.ReadmeName {
+			continue
+		}
+
+		attachments = append(attachments, entry.Name())
+	}
+
+	comments, err := readComments(filepath.Join(dir, issue.CommentsDir))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	comments := make([]Text, 0, len(folder.Comments))
-	for _, c := range folder.Comments {
-		comments = append(comments, Text{Name: c.Name, Body: c.Body})
+	sort.Strings(attachments)
+
+	return attachments, comments, nil
+}
+
+// readComments reads an issue's comments/ directory, which is allowed not to
+// exist: most issues have nothing said about them.
+func readComments(dir string) ([]Text, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []Text{}, nil
+		}
+
+		return nil, fmt.Errorf("reading %s: %w", dir, err)
 	}
 
-	return append([]string{}, folder.Attachments...), comments, nil
+	comments := make([]Text, 0, len(entries))
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), issue.CommentExt) {
+			continue
+		}
+
+		body, err := os.ReadFile(filepath.Join(dir, entry.Name())) //nolint:gosec // a path just walked
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", entry.Name(), err)
+		}
+
+		comments = append(comments, Text{Name: entry.Name(), Body: string(body)})
+	}
+
+	sort.Slice(comments, func(i, j int) bool { return comments[i].Name < comments[j].Name })
+
+	return comments, nil
 }
 
 // loadFolderFromRef reads the folder as a ref holds it, which is the only place
