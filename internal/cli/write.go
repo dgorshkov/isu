@@ -63,15 +63,8 @@ func (s *session) commitOn(ctx context.Context, spec commitSpec) (string, error)
 
 	ref := "refs/heads/" + spec.branch
 
-	old, base := gitx.ZeroOID, spec.base
-
-	tip, err := s.git.RevParse(ctx, ref)
-	switch {
-	case err == nil:
-		old, base = tip, tip
-	case errors.Is(err, gitx.ErrUnknownRevision):
-		// The branch is not there yet, so it starts where the caller said.
-	default:
+	old, base, parents, err := s.startFrom(ctx, ref, spec.base)
+	if err != nil {
 		return "", err
 	}
 
@@ -85,15 +78,6 @@ func (s *session) commitOn(ctx context.Context, spec commitSpec) (string, error)
 		return "", err
 	}
 
-	var parents []string
-
-	parent, err := s.git.RevParse(ctx, base)
-	if err == nil {
-		parents = append(parents, parent)
-	} else if !errors.Is(err, gitx.ErrUnknownRevision) {
-		return "", err
-	}
-
 	commit, err := s.git.CommitTree(ctx, tree, parents, spec.message)
 	if err != nil {
 		return "", err
@@ -104,6 +88,38 @@ func (s *session) commitOn(ctx context.Context, spec commitSpec) (string, error)
 	}
 
 	return commit, nil
+}
+
+// startFrom works out what a commit on ref hangs off: the value the ref must
+// still have for the update to be safe, the tree to build over, and the parents.
+//
+// A branch that is already there is all three answers at once — it is where the
+// new commit starts, what it must not have moved from, and its parent — so it
+// is looked up once. A branch that is not there starts where the caller said,
+// and a caller's base that does not resolve either is an empty repository,
+// whose first commit has no parent at all.
+func (s *session) startFrom(
+	ctx context.Context, ref, wanted string,
+) (old, base string, parents []string, err error) {
+	tip, err := s.git.RevParse(ctx, ref)
+
+	switch {
+	case err == nil:
+		return tip, tip, []string{tip}, nil
+	case !errors.Is(err, gitx.ErrUnknownRevision):
+		return "", "", nil, err
+	}
+
+	start, err := s.git.RevParse(ctx, wanted)
+
+	switch {
+	case err == nil:
+		return gitx.ZeroOID, wanted, []string{start}, nil
+	case !errors.Is(err, gitx.ErrUnknownRevision):
+		return "", "", nil, err
+	}
+
+	return gitx.ZeroOID, "", nil, nil
 }
 
 // commitHere stages changes in the working tree and commits them where HEAD
@@ -224,6 +240,17 @@ func (s *session) mustNotBeTrunk(ctx context.Context, cmd *cobra.Command) error 
 	trunk, err := s.trunkBranch(ctx)
 	if err != nil {
 		return err
+	}
+
+	if s.trunk == "HEAD" {
+		// isu is reading whatever HEAD is as trunk, because this repository's
+		// trunk is called neither main nor master and origin never said. It
+		// therefore cannot tell whether this branch is trunk, and guessing
+		// wrong in either direction is worse than asking.
+		return usagef(cmd,
+			"isu cannot tell what trunk is called here — it is neither main nor "+
+				"master, and there is no origin/HEAD to ask — so it cannot tell "+
+				"whether %s writes onto it. Name trunk with --ref", cmd.Name())
 	}
 
 	if current != "" && current == trunk {

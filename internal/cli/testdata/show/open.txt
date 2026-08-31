@@ -4,7 +4,7 @@ ISU-openly  Login retries drop the second attempt
   type      bug
   state     open
   owner     dmitry
-  created   2026-08-01
+  created   <date>
   priority  p1
   repro     post twice
   parent    ISU-epical  Make login reliable (open)

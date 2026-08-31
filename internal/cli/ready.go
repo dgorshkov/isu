@@ -102,7 +102,7 @@ func readyItems(v *view) []*model.Item {
 // So is an issue trunk cannot decode. Handing somebody an issue nobody can read
 // is handing them a parse error.
 func workable(item *model.Item) bool {
-	if item.Broken != nil || item.Epic != nil {
+	if item.Issue == nil || item.Broken != nil || item.Epic != nil {
 		return false
 	}
 
@@ -118,11 +118,10 @@ func workable(item *model.Item) bool {
 // A blocker naming an issue this repository does not have counts as blocking.
 // It is M5-S2's to report, and until somebody does, "I am waiting on something
 // nobody can find" is not a reason to hand the work out.
+//
+// The issue is never nil here: workable rejected that above, which is the same
+// question asked once rather than in both halves of the same condition.
 func unblocked(v *view, item *model.Item) bool {
-	if item.Issue == nil {
-		return false
-	}
-
 	for _, id := range item.Issue.BlockedBy {
 		blocker, ok := v.board.Get(id)
 		if !ok || !blocker.Status.Terminal() {

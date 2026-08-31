@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/dgorshkov/isu/internal/model"
 )
 
 // theme is how output is coloured, which is a decision about the terminal
@@ -149,60 +147,4 @@ func columns(rows [][]string, indent string) []string {
 	}
 
 	return lines
-}
-
-// annotations are the facts a status alone does not carry: that this issue has
-// been resolved before, that two people are on it, that whoever said they were
-// on it has gone quiet, and that trunk's copy of the file will not decode.
-//
-// They are annotations rather than statuses because each of them survives
-// losing the precedence contest in PLAN.md's table — the fact is never lost
-// just because another row matched first.
-func annotations(item *model.Item) []string {
-	var notes []string
-
-	if item.Reopened {
-		notes = append(notes, "reopened")
-	}
-
-	if item.Contended() {
-		notes = append(notes, "contended")
-	}
-
-	if item.Stale() {
-		notes = append(notes, "stale")
-	}
-
-	if item.Broken != nil {
-		notes = append(notes, "unreadable")
-	}
-
-	return notes
-}
-
-// claimLine says who is on an issue and since when.
-func claimLine(item *model.Item, now time.Time) string {
-	if len(item.Claims) == 0 {
-		return ""
-	}
-
-	parts := make([]string, 0, len(item.Claims))
-
-	for _, claim := range item.Claims {
-		who := claim.Claimant
-		if who == "" {
-			// A claim whose first commit was not looked up is still a claim:
-			// the file is the claim, and the lookup only names who made it.
-			who = "someone"
-		}
-
-		when := ""
-		if !claim.When.IsZero() {
-			when = " " + age(now.Sub(claim.When))
-		}
-
-		parts = append(parts, who+when)
-	}
-
-	return "claimed by " + strings.Join(parts, ", ")
 }

@@ -197,13 +197,23 @@ func (g *Git) Config(ctx context.Context, key string) (string, error) {
 // commands that refuse to write from it say so themselves, in their own words,
 // rather than passing git's on.
 func (g *Git) CurrentBranch(ctx context.Context) (string, error) {
-	out, err := g.output(ctx, "symbolic-ref", "--quiet", "--short", "HEAD")
+	return g.SymbolicRef(ctx, "HEAD")
+}
+
+// SymbolicRef is what a symbolic ref points at, shortened, or the empty string
+// when it is not one.
+//
+// refs/remotes/origin/HEAD is the caller that matters beside HEAD itself: it is
+// where a clone records what the forge calls its default branch, and it is the
+// only thing in a repository that knows trunk is called `develop`.
+func (g *Git) SymbolicRef(ctx context.Context, name string) (string, error) {
+	out, err := g.output(ctx, "symbolic-ref", "--quiet", "--short", name)
 	if err == nil {
 		return out, nil
 	}
 
-	// --quiet makes "HEAD is not a symbolic ref" exit 1 and say nothing, which
-	// is the one failure that is an answer rather than a problem.
+	// --quiet makes "not a symbolic ref" exit 1 and say nothing, which is the
+	// one failure that is an answer rather than a problem.
 	var gitErr *Error
 	if errors.As(err, &gitErr) && gitErr.ExitCode == 1 && gitErr.Stderr == "" {
 		return "", nil

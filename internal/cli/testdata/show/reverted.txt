@@ -1,0 +1,14 @@
+ISU-revert  The fix did not hold
+
+  status    in progress (reopened)
+  type      chore
+  state     open
+  owner     dmitry
+  created   <date>
+  priority  p2
+  branches  refs/heads/isu/ISU-revert
+  trunk     main
+
+  claimed by someone on refs/heads/isu/ISU-revert
+
+no remote refs

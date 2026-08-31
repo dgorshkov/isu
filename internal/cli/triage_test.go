@@ -274,3 +274,52 @@ func atoi(t *testing.T, s string) int {
 
 	return n
 }
+
+func TestTriageOfAReportThatIsOnlyOnABranch(t *testing.T) {
+	t.Parallel()
+
+	// The case triage exists for. `awaiting triage` is defined as a folder
+	// trunk has never seen, so reading the issue at trunk would make the
+	// command fail on precisely the issues it was built to answer.
+	r := triageable(t, "prefix: ISU\n")
+	r.Branch("report/ISU-report").Checkout("report/ISU-report").
+		Issue("ISU-report", gittest.Owner("support"), gittest.Type("bug"),
+			gittest.Field("repro", "it 500s"), gittest.Title("Filed on Friday")).
+		Commit("report ISU-report").
+		Checkout(gittest.DefaultBranch)
+
+	require.Equal(t, "awaiting triage", statusOf(t, r.Dir(), "ISU-report"))
+
+	isu(t, r.Dir(), "triage", "ISU-report", "--owner", "dmitry", "--priority", "p0").ok(t)
+
+	payload := decode[ShowPayload](t,
+		isu(t, r.Dir(), "--json", "--ref", "triage/ISU-report", "show", "ISU-report").ok(t))
+
+	require.Equal(t, "dmitry", payload.Issue.Owner)
+	require.Equal(t, "p0", payload.Issue.Priority)
+	require.Equal(t, "Filed on Friday", payload.Issue.Title, "and the report itself came with it")
+}
+
+func TestPushAcceptsAReportOntoTrunk(t *testing.T) {
+	t.Parallel()
+
+	// Six reports filed on a Friday should not wait for Monday's review queue.
+	r := triageable(t, "prefix: ISU\ndirect_triage: true\n")
+	r.Branch("report/ISU-report").Checkout("report/ISU-report").
+		Issue("ISU-report", gittest.Owner("support"), gittest.Type("bug"),
+			gittest.Field("repro", "it 500s"), gittest.Title("Filed on Friday")).
+		Commit("report ISU-report").
+		Checkout(gittest.DefaultBranch)
+
+	isu(t, r.Dir(), "triage", "ISU-report", "--owner", "dmitry", "--push").ok(t)
+
+	require.Equal(t, "open", statusOf(t, r.Dir(), "ISU-report"),
+		"accepting a report is putting it on trunk")
+	require.Contains(t, r.ReadFile("issues/ISU-report/README.md"), "owner: dmitry")
+}
+
+func statusOf(t *testing.T, dir, id string) string {
+	t.Helper()
+
+	return decode[ShowPayload](t, isu(t, dir, "--json", "show", id).ok(t)).Issue.Status
+}

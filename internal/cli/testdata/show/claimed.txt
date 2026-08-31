@@ -4,7 +4,7 @@ ISU-inprog  Board renders epics
   type        story
   state       open
   owner       alice
-  created     2026-08-01
+  created     <date>
   priority    p2
   acceptance  the epic shows its children
   branches    refs/heads/isu/ISU-inprog

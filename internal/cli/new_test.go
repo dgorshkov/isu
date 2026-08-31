@@ -171,8 +171,10 @@ func TestNewRefusesATypeWhoseRequiredFieldIsMissing(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := isu(t, r.Dir(), append([]string{"new", "--no-branch",
-				"--title", "Needs a field"}, tt.args...)...)
+			got := isu(t, r.Dir(), append([]string{
+				"new", "--no-branch",
+				"--title", "Needs a field",
+			}, tt.args...)...)
 
 			require.Equal(t, 2, got.code)
 			require.Contains(t, got.stderr, tt.want)

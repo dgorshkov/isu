@@ -1,0 +1,17 @@
+ISU-conten  Two people want this
+
+  status    in progress (contended)
+  type      chore
+  state     open
+  owner     dmitry
+  created   <date>
+  priority  p2
+  branches  refs/heads/alice/ISU-conten
+            refs/heads/bob/ISU-conten
+  trunk     main
+
+  claimed by alice on refs/heads/alice/ISU-conten, <when>
+
+  claimed by bob on refs/heads/bob/ISU-conten, <when>
+
+no remote refs

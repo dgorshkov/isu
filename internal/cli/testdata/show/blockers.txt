@@ -1,0 +1,14 @@
+ISU-oddity  Waits on two things
+
+  status      open
+  type        chore
+  state       open
+  owner       dmitry
+  created     <date>
+  priority    urgent
+  parent      ISU-cyclic  Its own parent (open)
+  blocked_by  ISU-conten  Two people want this (in progress)
+              ISU-stalec  Somebody said they were on it (in progress)
+  trunk       main
+
+no remote refs

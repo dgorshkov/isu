@@ -39,7 +39,8 @@ import (
 // was written and as four hundred days old a year later.
 //
 // What that costs is golden files with a timestamp in them, so golden scrubs
-// the two things that cannot be stable: RFC 3339 moments and object ids.
+// the three things that cannot be stable: RFC 3339 moments, dates and object
+// ids.
 func now() time.Time { return time.Now() }
 
 // today is the date isu stamps on anything it creates during a test.
@@ -241,10 +242,19 @@ func osOpenDevNull() (*os.File, error) {
 	return os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 }
 
-// The two things in isu's output that cannot be the same twice: a moment, and
-// an object id. Everything else in a golden file is the review.
+// The three things in isu's output that cannot be the same twice: a moment, a
+// date, and an object id. Everything else in a golden file is the review.
+//
+// Dates are here for the same reason moments are, and the reason is worth
+// stating because it is not obvious: a fixture ages its issues relative to the
+// real clock — gittest stamps a commit with a date and not with an offset — so
+// an issue created "forty days ago" renders a different date tomorrow. A golden
+// file that pinned it would pass on the afternoon it was recorded and fail at
+// the next midnight, which is the worst kind of failing test: one that blames
+// whoever happened to run it.
 var (
 	moments = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})`)
+	dates   = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
 	oids    = regexp.MustCompile(`\b[0-9a-f]{8,40}\b`)
 )
 
@@ -255,6 +265,7 @@ var (
 // commit written eight milliseconds ago is not.
 func scrub(s string) string {
 	s = moments.ReplaceAllString(s, "<when>")
+	s = dates.ReplaceAllString(s, "<date>")
 
 	return oids.ReplaceAllString(s, "<oid>")
 }

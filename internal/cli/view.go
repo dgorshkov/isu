@@ -182,12 +182,9 @@ func (v *view) taken(id string) bool {
 	return ok
 }
 
-// refNames lists the non-trunk refs the board was derived from.
+// refNames lists the non-trunk refs the board was derived from. It is empty
+// rather than null in a repository with no branches beside trunk, which is what
+// the JSON contract promises of every list in it.
 func (v *view) refNames() []string {
-	names := v.board.Names()
-	if names == nil {
-		return []string{}
-	}
-
-	return names
+	return v.board.Names()
 }

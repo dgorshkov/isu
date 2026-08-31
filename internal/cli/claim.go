@@ -90,8 +90,8 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 
 	branch := claimBranchPrefix + id
 
-	if err := s.branchIsFree(ctx, branch, item); err != nil {
-		return err
+	if taken := s.branchIsFree(ctx, branch, item); taken != nil {
+		return taken
 	}
 
 	flipped, err := s.readIssueAt(ctx, s.trunk, id)
@@ -180,7 +180,7 @@ func (s *session) claimHolder(ctx context.Context, branch string) string {
 	const fetched = "refs/isu/contended"
 
 	spec := "+refs/heads/" + branch + ":" + fetched
-	if err := s.git.Fetch(ctx, remotes[0], spec); err != nil {
+	if fetchErr := s.git.Fetch(ctx, remotes[0], spec); fetchErr != nil {
 		return ""
 	}
 
@@ -221,12 +221,12 @@ func (a *app) unclaim(cmd *cobra.Command, id string) error {
 	branch := claimBranchPrefix + id
 	ref := "refs/heads/" + branch
 
-	if _, err := s.git.RevParse(ctx, ref); err != nil {
-		if errors.Is(err, gitx.ErrUnknownRevision) {
+	if _, missing := s.git.RevParse(ctx, ref); missing != nil {
+		if errors.Is(missing, gitx.ErrUnknownRevision) {
 			return fmt.Errorf("there is no %s here, so there is no claim of yours to release", branch)
 		}
 
-		return err
+		return missing
 	}
 
 	claimed, err := s.readIssueAt(ctx, ref, id)

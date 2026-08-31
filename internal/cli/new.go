@@ -100,8 +100,8 @@ func (a *app) create(cmd *cobra.Command, opts *newOptions) error {
 		return err
 	}
 
-	if err := checkParent(cmd, v.board, opts.parent); err != nil {
-		return err
+	if wrong := checkParent(cmd, v.board, opts.parent); wrong != nil {
+		return wrong
 	}
 
 	draft, err := s.draft(v, opts, owner)
@@ -112,8 +112,8 @@ func (a *app) create(cmd *cobra.Command, opts *newOptions) error {
 	file := change{path: readmePath(draft.ID), blob: draft.Encode()}
 
 	if opts.noBranch {
-		if _, err := s.stage(ctx, []change{file}); err != nil {
-			return err
+		if _, wrote := s.stage(ctx, []change{file}); wrote != nil {
+			return wrote
 		}
 
 		return a.reportWrite(Write{ID: draft.ID, Paths: []string{file.path}})
@@ -124,12 +124,12 @@ func (a *app) create(cmd *cobra.Command, opts *newOptions) error {
 	// The files are written before the switch so that a switch that cannot
 	// happen — a branch of that name already there — leaves the working tree
 	// carrying the report rather than losing it.
-	if _, err := s.stage(ctx, []change{file}); err != nil {
-		return err
+	if _, wrote := s.stage(ctx, []change{file}); wrote != nil {
+		return wrote
 	}
 
-	if err := s.git.Switch(ctx, branch, true); err != nil {
-		return err
+	if switched := s.git.Switch(ctx, branch, true); switched != nil {
+		return switched
 	}
 
 	commit, err := s.git.Commit(ctx, "report "+draft.ID+"\n\n"+draft.Title+"\n")

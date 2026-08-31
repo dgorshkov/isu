@@ -133,8 +133,18 @@ func TestEveryCommandSpeaksJSON(t *testing.T) {
 // documented is every payload type docs/json.md has to describe. Adding one and
 // forgetting the document is the drift this test exists to prevent.
 var documented = []any{
-	Failure{}, Issue{}, Claim{}, Epic{}, Broken{}, Freshness{},
-	BoardPayload{}, Group{}, ShowPayload{}, Text{}, Link{}, Write{},
+	Failure{},
+	Issue{},
+	Claim{},
+	Epic{},
+	Broken{},
+	Freshness{},
+	BoardPayload{},
+	Group{},
+	ShowPayload{},
+	Text{},
+	Link{},
+	Write{},
 }
 
 func TestJSONDocumentsEveryField(t *testing.T) {

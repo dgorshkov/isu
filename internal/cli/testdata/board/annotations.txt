@@ -1,0 +1,11 @@
+main · 6 issues · no remote refs
+
+in progress (4)
+  ISU-conten  p2  chore  Two people want this           dmitry · claimed by alice, bob · contended
+  ISU-revert  p2  chore  The fix did not hold           dmitry · claimed by someone · reopened
+  ISU-stalec  p2  chore  Somebody said they were on it  dmitry · claimed by alice · stale
+  ISU-ghostc  p2  chore  Claimed from behind            dmitry · claimed by someone · reopened
+
+open (2)
+  ISU-cyclic  p2      epic   Its own parent       dmitry · 2 children · parent cycle
+  ISU-oddity  urgent  chore  Waits on two things  dmitry

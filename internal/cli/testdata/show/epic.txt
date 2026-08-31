@@ -3,7 +3,7 @@ ISU-epical  Make login reliable
   status    open
   type      epic
   owner     dmitry
-  created   2026-08-01
+  created   <date>
   priority  p2
   trunk     main
 

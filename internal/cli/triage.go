@@ -9,6 +9,7 @@ import (
 
 	"github.com/dgorshkov/isu/internal/config"
 	"github.com/dgorshkov/isu/internal/issue"
+	"github.com/dgorshkov/isu/internal/model"
 )
 
 type triageOptions struct {
@@ -83,12 +84,13 @@ func (a *app) triage(cmd *cobra.Command, id string, opts *triageOptions) error {
 		return err
 	}
 
-	if _, ok := v.board.Get(id); !ok {
+	item, ok := v.board.Get(id)
+	if !ok {
 		return fmt.Errorf("no issue %s on %s or any branch beside it", id, v.trunkName)
 	}
 
-	if err := checkParent(cmd, v.board, opts.parent); err != nil {
-		return err
+	if wrong := checkParent(cmd, v.board, opts.parent); wrong != nil {
+		return wrong
 	}
 
 	branch, base, err := s.triageTarget(ctx, id, opts.push)
@@ -96,15 +98,20 @@ func (a *app) triage(cmd *cobra.Command, id string, opts *triageOptions) error {
 		return err
 	}
 
-	target, err := s.readIssueAt(ctx, base, id)
+	// The issue is read from wherever it is and written where it is going, and
+	// those are not the same ref for the case triage exists for. An untriaged
+	// report is a folder on a branch that trunk has never seen — that is what
+	// `awaiting triage` means — so reading it at trunk would make the command
+	// fail on precisely the issues it was built to answer.
+	target, err := s.readIssueAt(ctx, source(item, base), id)
 	if err != nil {
 		return err
 	}
 
 	applyTriage(target, opts)
 
-	if err := target.Validate(); err != nil {
-		return err
+	if invalid := target.Validate(); invalid != nil {
+		return invalid
 	}
 
 	commit, err := s.commitOn(ctx, commitSpec{
@@ -129,6 +136,19 @@ func (a *app) triage(cmd *cobra.Command, id string, opts *triageOptions) error {
 		ID: id, Branch: branch, Commit: commit,
 		Paths: []string{readmePath(id)}, Pushed: pushed,
 	})
+}
+
+// source is the ref an issue's current file should be read from: trunk where
+// trunk has it, and otherwise the first branch that does.
+//
+// An issue that is only on a branch is the ordinary case for triage rather than
+// an edge of it: `awaiting triage` is defined as a folder trunk has never seen.
+func source(item *model.Item, base string) string {
+	if item.OnTrunk || len(item.Elsewhere) == 0 {
+		return base
+	}
+
+	return item.Elsewhere[0]
 }
 
 // triageTarget is which branch this edit lands on and where it starts.

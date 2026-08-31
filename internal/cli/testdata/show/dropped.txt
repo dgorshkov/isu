@@ -4,7 +4,7 @@ ISU-dropit  Rewrite it in another language
   type        chore
   state       dropped
   owner       dmitry
-  created     2026-08-11
+  created     <date>
   priority    p2
   reason      we like this one
   resolution  wontfix

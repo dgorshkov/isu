@@ -4,7 +4,7 @@ ISU-reopen  Upgrade the linter
   type      chore
   state     open
   owner     alice
-  created   2026-08-21
+  created   <date>
   priority  p2
   trunk     main
 

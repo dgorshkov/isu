@@ -43,8 +43,8 @@ func (a *app) resolve(cmd *cobra.Command, id string) error {
 		return err
 	}
 
-	if err := s.mustNotBeTrunk(ctx, cmd); err != nil {
-		return err
+	if onTrunk := s.mustNotBeTrunk(ctx, cmd); onTrunk != nil {
+		return onTrunk
 	}
 
 	target, err := s.readIssueHere(id)
@@ -67,8 +67,8 @@ func (a *app) resolve(cmd *cobra.Command, id string) error {
 	message := fmt.Sprintf("resolve %s\n\n%s\n\n%s: %s\n",
 		id, target.Title, model.ResolvesTrailer, id)
 
-	if _, err := s.stage(ctx, []change{{path: readmePath(id), blob: target.Encode()}}); err != nil {
-		return err
+	if _, wrote := s.stage(ctx, []change{{path: readmePath(id), blob: target.Encode()}}); wrote != nil {
+		return wrote
 	}
 
 	commit, err := s.git.CommitAllowingEmpty(ctx, message)
@@ -157,8 +157,8 @@ func (a *app) drop(cmd *cobra.Command, id, reason, resolution string) error {
 		return err
 	}
 
-	if err := s.mustNotBeTrunk(ctx, cmd); err != nil {
-		return err
+	if onTrunk := s.mustNotBeTrunk(ctx, cmd); onTrunk != nil {
+		return onTrunk
 	}
 
 	target, err := s.readIssueHere(id)

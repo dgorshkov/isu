@@ -50,7 +50,7 @@ func (a *app) comment(cmd *cobra.Command, id, message string) error {
 	}
 
 	dir := issueDirOf(s, id)
-	if _, err := os.Stat(dir); err != nil {
+	if _, missing := os.Stat(dir); missing != nil {
 		return fmt.Errorf(
 			"no issue %s in the working tree: a comment is a file in the issue's own "+
 				"folder, so the folder has to be here to put one in", id)

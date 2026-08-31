@@ -29,6 +29,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -320,10 +321,14 @@ func (a *app) open(ctx context.Context) (*session, error) {
 	return s, nil
 }
 
-// conventionalTrunks are what a repository's trunk is called when nobody says.
-// Two names rather than a survey: anything else is one `--ref` away, and a
-// guessing game with five entries is a guessing game that gets one wrong.
+// conventionalTrunks are what a repository's trunk is called when nothing else
+// says. Two names rather than a survey: a guessing game with five entries is a
+// guessing game that gets one wrong.
 var conventionalTrunks = []string{"main", "master"}
+
+// originHEAD is where a clone records what the forge calls its default branch.
+// It is the only thing in a repository that knows trunk is called `develop`.
+const originHEAD = "refs/remotes/origin/HEAD"
 
 // defaultTrunk decides which ref isu treats as trunk.
 //
@@ -334,20 +339,32 @@ var conventionalTrunks = []string{"main", "master"}
 // questions with "it does not". It also leaves `isu resolve` unable to tell
 // that it is about to write straight onto trunk, which is the one thing it
 // refuses to do.
+//
+// The remote's own answer is read before the conventional names, because a
+// repository whose trunk is called `develop` has said so once, to git, and
+// making somebody repeat it to isu on every command is not a default.
 func defaultTrunk(ctx context.Context, git *gitx.Git, given string) string {
 	if given != "" {
 		return given
 	}
 
-	for _, name := range conventionalTrunks {
+	names := conventionalTrunks
+
+	if remote, err := git.SymbolicRef(ctx, originHEAD); err == nil && remote != "" {
+		if _, branch, ok := strings.Cut(remote, "/"); ok {
+			names = append([]string{branch}, names...)
+		}
+	}
+
+	for _, name := range names {
 		if _, err := git.RevParse(ctx, "refs/heads/"+name); err == nil {
 			return name
 		}
 	}
 
-	// A repository whose trunk is called something else, or that has no commits
-	// at all. HEAD is the honest answer to both, and --ref is the fix for the
-	// first.
+	// A repository whose trunk is called something else and has no origin to
+	// ask, or one with no commits at all. HEAD is the honest answer to both,
+	// and --ref is the fix for the first.
 	return "HEAD"
 }
 

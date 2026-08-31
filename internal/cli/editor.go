@@ -41,12 +41,12 @@ func (a *app) editorText(ctx context.Context, s *session) (string, error) {
 	defer func() { _ = os.RemoveAll(dir) }()
 
 	path := filepath.Join(dir, "COMMENT_EDITMSG.md")
-	if err := os.WriteFile(path, nil, 0o600); err != nil {
-		return "", fmt.Errorf("making room for the comment: %w", err)
+	if wrote := os.WriteFile(path, nil, 0o600); wrote != nil {
+		return "", fmt.Errorf("making room for the comment: %w", wrote)
 	}
 
-	if err := a.runEditor(ctx, s, path); err != nil {
-		return "", err
+	if edited := a.runEditor(ctx, s, path); edited != nil {
+		return "", edited
 	}
 
 	written, err := os.ReadFile(path) //nolint:gosec // a path this function made
