@@ -18,22 +18,11 @@ import (
 // under are the repository's own, which is the whole reason PLAN.md §0 shells
 // out to git rather than linking a reimplementation of it.
 
-// open binds a Git to a repository the harness built, exactly as a command
-// would.
-func open(t *testing.T, dir string) *gitx.Git {
-	t.Helper()
-
-	g, err := gitx.New(dir)
-	require.NoError(t, err)
-
-	return g
-}
-
 func TestBuildTreeWritesWithoutTouchingTheWorkingTree(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 	before := r.ReadFile("issues/ISU-aaaaaa/README.md")
 
 	tree, err := g.BuildTree(t.Context(), gittest.DefaultBranch, []gitx.TreeEdit{{
@@ -63,7 +52,7 @@ func TestBuildTreeAddsAPathThatIsNotThereYet(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).File("go.mod", "module x\n").Commit("first")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	tree, err := g.BuildTree(t.Context(), gittest.DefaultBranch, []gitx.TreeEdit{{
 		Path: "issues/ISU-bbbbbb/README.md",
@@ -84,7 +73,7 @@ func TestBuildTreeFromNothingIsTheFirstCommit(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t)
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	tree, err := g.BuildTree(t.Context(), "", []gitx.TreeEdit{{
 		Path: "issues/ISU-cccccc/README.md",
@@ -105,7 +94,7 @@ func TestBuildTreeReportsABaseThatDoesNotResolve(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	_, err := g.BuildTree(t.Context(), "no-such-ref", []gitx.TreeEdit{{
 		Path: "a.md", Blob: []byte("x"),
@@ -117,7 +106,7 @@ func TestBuildTreeKeepsTheModeItIsGiven(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).File("go.mod", "module x\n").Commit("first")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	tree, err := g.BuildTree(t.Context(), gittest.DefaultBranch, []gitx.TreeEdit{
 		{Path: "run.sh", Blob: []byte("#!/bin/sh\n"), Mode: "100755"},
@@ -140,7 +129,7 @@ func TestUpdateRefRefusesToOverwriteWhatItWasToldWasThere(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa").Branch("side")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	// ZeroOID means "must not exist". side does, so this is refused — which is
 	// how `isu claim` finds out it lost a race locally before it ever pushes.
@@ -151,7 +140,7 @@ func TestDeleteRefRemovesABranch(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa").Branch("side")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	require.NoError(t, g.DeleteRef(t.Context(), "refs/heads/side"))
 	require.NotContains(t, r.Branches(), "side")
@@ -161,7 +150,7 @@ func TestHashObjectWritesABlobAndReturnsItsID(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).File("go.mod", "module x\n").Commit("first")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	oid, err := g.HashObject(t.Context(), []byte("hello\n"))
 	require.NoError(t, err)
@@ -176,7 +165,7 @@ func TestAddAndCommitWriteThroughTheWorkingTree(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	r.WriteFile("issues/ISU-aaaaaa/README.md", "edited\n")
 	require.NoError(t, g.Add(t.Context(), "issues/ISU-aaaaaa/README.md"))
@@ -193,7 +182,7 @@ func TestCommitRefusesAnEmptyIndex(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	// A command that meant to change a file and did not must say so rather than
 	// write an empty commit somebody has to explain later.
@@ -205,7 +194,7 @@ func TestCurrentBranchNamesTheBranchAndSaysNothingWhenDetached(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	branch, err := g.CurrentBranch(t.Context())
 	require.NoError(t, err)
@@ -222,7 +211,7 @@ func TestCurrentBranchOnARepositoryWithNoCommitsNamesTheUnbornBranch(t *testing.
 	t.Parallel()
 
 	r := gittest.New(t)
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	branch, err := g.CurrentBranch(t.Context())
 	require.NoError(t, err)
@@ -233,7 +222,7 @@ func TestSwitchCreatesAndMoves(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	require.NoError(t, g.Switch(t.Context(), "report/ISU-aaaaaa", true))
 	require.Equal(t, "report/ISU-aaaaaa", r.Git("rev-parse", "--abbrev-ref", "HEAD"))
@@ -249,7 +238,7 @@ func TestRemotesListsThemAndIsEmptyWithoutOne(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa")
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	remotes, err := g.Remotes(t.Context())
 	require.NoError(t, err)
@@ -266,7 +255,7 @@ func TestFetchUpdatesRemoteTrackingRefs(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa").WithRemote()
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	// Throw the remote-tracking ref away, so that finding it again is evidence
 	// the fetch did something rather than evidence the push already had.
@@ -284,7 +273,7 @@ func TestFetchReportsARemoteThatDoesNotAnswer(t *testing.T) {
 	t.Parallel()
 
 	r := gittest.New(t).Issue("ISU-aaaaaa").Commit("add ISU-aaaaaa").WithRemote().DetachRemote()
-	g := open(t, r.Dir())
+	g := open(t, r)
 
 	require.Error(t, g.Fetch(t.Context(), "origin"))
 }
