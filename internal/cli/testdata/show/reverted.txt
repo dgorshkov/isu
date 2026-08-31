@@ -9,6 +9,6 @@ ISU-revert  The fix did not hold
   branches  refs/heads/isu/ISU-revert
   trunk     main
 
-  claimed by someone on refs/heads/isu/ISU-revert
+  claimed by isu tester on refs/heads/isu/ISU-revert, <when>
 
 no remote refs

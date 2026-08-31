@@ -68,22 +68,39 @@ func annotated(t *testing.T) *gittest.Repo {
 	// not read the same with the branch gone and without it — with it there,
 	// the branch still says resolved where trunk now says open, which is a
 	// claim by the only definition there is.
+	//
+	// A squash rather than a merge commit, because a merge cannot be reverted
+	// without saying which side to keep — and because the whole point of
+	// PLAN.md's squash-merge safety is that the two read the same.
+	//
+	// **The squash subject must differ from the branch's, and that is not
+	// cosmetic.** Given the same subject, the squash commit and the commit it
+	// squashed have the same tree, the same parent, the same author and the
+	// same message, so on a machine fast enough to write both inside one second
+	// git gives them one object id — and the branch is then an ancestor of
+	// trunk, which makes this a claim nobody made rather than a claim by the
+	// person who made it. That is the identical collision M4-S4 found in the
+	// claim design itself, met here in a fixture: the same commit written twice
+	// is one commit, and a test that depends on the clock to keep them apart
+	// passes on a laptop and fails on a runner.
 	r.Branch("isu/ISU-revert").Checkout("isu/ISU-revert").
 		Issue("ISU-revert", gittest.Owner("dmitry"), gittest.Type("chore"),
 			gittest.Title("The fix did not hold"), gittest.State("resolved")).
 		Commit("resolve ISU-revert").
 		Checkout(gittest.DefaultBranch).
-		SquashMerge("isu/ISU-revert", "resolve ISU-revert")
+		SquashMerge("isu/ISU-revert", "land the fix for ISU-revert")
 
-	// A squash rather than a merge commit, because a merge cannot be reverted
-	// without saying which side to keep — and because the whole point of
-	// PLAN.md's squash-merge safety is that the two read the same.
 	r.Revert(r.Head())
 
 	// A claim with nobody named: the branch says resolved where trunk says
 	// open, and there is nothing ahead of trunk on it to look an author up in.
 	// PLAN.md M3-S3 is explicit that this is still a claim — the file is the
 	// claim, and the lookup only names who made it.
+	//
+	// This one is a real merge rather than a squash, which is what makes the
+	// empty range a fact about the graph rather than about how fast the machine
+	// is: a merge commit takes the branch as a parent, so the branch is an
+	// ancestor of trunk on every runner.
 	r.Branch("isu/ISU-ghostc").Checkout("isu/ISU-ghostc").
 		Issue("ISU-ghostc", gittest.Owner("dmitry"), gittest.Type("chore"),
 			gittest.Title("Claimed from behind"), gittest.State("resolved")).
