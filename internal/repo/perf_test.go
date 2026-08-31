@@ -1,6 +1,7 @@
 package repo_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,7 +25,52 @@ const (
 	// boardBudget is the whole of LoadBoard on perfIssues issues over
 	// perfBranches branches.
 	boardBudget = 6 * time.Second
+
+	// coverFactor is what the budgets above are multiplied by in a binary built
+	// for coverage. Both budgets get the same factor, so there is one rule here
+	// rather than a number per test.
+	//
+	// `make cover` runs the whole suite with `-coverpkg=./... -covermode=count`,
+	// which puts a counter in every basic block of internal/gitx — the batch
+	// parser that reads five thousand blobs included. Measured on a development
+	// machine, that takes this package from 1.42 s to 3.82 s.
+	//
+	// **It is not what made this gate fail on macOS, and the first draft of this
+	// comment said it was.** LoadRef missed the budget twice there, at 1.587 s
+	// under `make cover` and then at 1.955 s under `make test` — the second in
+	// an uninstrumented binary, which rules instrumentation out as the cause.
+	// What both runs had in common was another package building a 5,000-issue
+	// git fixture on the same runner while this one was being timed. That
+	// contention is gone: the fixture it needed is built in memory now, because
+	// what that test measures is a pure fold and not a repository. The budgets
+	// above are unchanged, and they are the plan's.
+	//
+	// Two is therefore an allowance for instrumentation and nothing else. It is
+	// not a model of it, but it is bracketed above by every slower algorithm §0
+	// measured: `cat-file --batch` fed `ref:path` took 4.9 s uninstrumented and
+	// a `git show` per file 13.7 s, both outside the 3 s this gives LoadRef
+	// before instrumentation is added to them, and listing every ref's whole
+	// tree took 11.4 s against the 12 s this gives the board. So the
+	// instrumented budget is the looser of the two by design and still separates
+	// this algorithm from the ones it replaced, which is what the gate is for.
+	// A failure names which budget it was held to, and this is one line to
+	// revisit if a run ever comes back close to it.
+	coverFactor = 2
 )
+
+// withinBudget holds a measurement to its budget, taking the instrumented
+// budget in a binary built for coverage — see coverFactor.
+func withinBudget(t *testing.T, what string, took, budget time.Duration) {
+	t.Helper()
+
+	held, why := budget, "an uninstrumented binary"
+	if testing.CoverMode() != "" {
+		held, why = budget*coverFactor, "a binary instrumented for coverage"
+	}
+
+	require.Less(t, took, held,
+		"%s took %s, and the budget for %s is %s", what, took, why, held)
+}
 
 // TestLoadRefUnder5000IssuesIsFast is one half of the gate: the clock, and the
 // process count.
@@ -47,8 +93,7 @@ func TestLoadRefUnder5000IssuesIsFast(t *testing.T) {
 
 	require.Equal(t, perfIssues, set.Len())
 	require.Empty(t, set.Broken)
-	require.Less(t, took, loadRefBudget,
-		"LoadRef took %s over %d issues, and the budget is %s", took, perfIssues, loadRefBudget)
+	withinBudget(t, fmt.Sprintf("LoadRef over %d issues", perfIssues), took, loadRefBudget)
 	require.Equal(t, int64(2), loader.Processes(),
 		"one ls-tree and one cat-file --batch, whatever the repository holds")
 }
@@ -81,9 +126,8 @@ func TestLoadBoardOver200BranchesIsFast(t *testing.T) {
 
 	require.Equal(t, perfIssues, board.Trunk.Len())
 	require.Len(t, board.Names(), perfBranches)
-	require.Less(t, took, boardBudget,
-		"LoadBoard took %s over %d issues and %d branches, and the budget is %s",
-		took, perfIssues, perfBranches, boardBudget)
+	withinBudget(t, fmt.Sprintf("LoadBoard over %d issues and %d branches",
+		perfIssues, perfBranches), took, boardBudget)
 }
 
 // Linear in refs, and flat in issues. Three sizes say both things at once:

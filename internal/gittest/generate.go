@@ -22,6 +22,23 @@ type Spec struct {
 	// Branches is how many branches to build over trunk. Each resolves one
 	// issue, taking them in turn from the start of the set.
 	Branches int
+	// Commits is how many commits trunk's history holds, the one that writes
+	// the issues included. Zero and one both mean that single commit.
+	//
+	// Every other dimension here is bounded by what a repository holds today.
+	// This one is bounded by how long the repository has existed, and it only
+	// ever grows — which makes it the dimension a fixture is most likely to
+	// leave untested and a real repository most likely to hit.
+	Commits int
+	// TouchesIssues is how many of those commits change an issue file. Zero
+	// means none of them, and asking for more than there are commits fails the
+	// test — a fixture that quietly differs from what was asked for is worse
+	// than one that refuses.
+	//
+	// Trunk in a real repository is mostly code, and a commit that touches
+	// nothing under issues/ still has to be walked, so the two costs are
+	// separable and worth separating.
+	TouchesIssues int
 	// Prefix is the id prefix. Empty means DefaultPrefix.
 	Prefix string
 }
@@ -59,11 +76,27 @@ func Generate(t testing.TB, spec Spec) *Repo {
 
 	for n := range spec.Issues {
 		id := GeneratedID(prefix, n)
-		r.write(issuesDir+"/"+id+"/"+"README.md", generated(prefix, n, spec.Issues))
+		r.write(issuesDir+"/"+id+"/"+"README.md", GeneratedIssue(prefix, n, spec.Issues))
 	}
 
 	r.Git("add", "--all")
 	r.Commit(fmt.Sprintf("%d issues", spec.Issues))
+
+	// Commits is 0 or 1 for the fixture that is only the commit above, so the
+	// depth to add is one less than whichever was meant. The check runs either
+	// way: a fixture asking for issue commits it cannot have should hear so
+	// whether or not it also asked for depth, and routing the check past the
+	// zero case is how "TouchesIssues: 3" with no Commits was silently ignored.
+	extra := max(spec.Commits, 1) - 1
+	if spec.TouchesIssues > extra {
+		r.t.Fatalf("gittest: asked for %d commits touching an issue, "+
+			"but Commits: %d leaves only %d after the one that writes them",
+			spec.TouchesIssues, spec.Commits, extra)
+	}
+
+	if extra > 0 {
+		r.importHistory(prefix, spec, extra)
+	}
 
 	if spec.Branches > 0 {
 		r.importBranches(prefix, spec)
@@ -72,12 +105,93 @@ func Generate(t testing.TB, spec Spec) *Repo {
 	return r
 }
 
+// importHistory lengthens trunk to spec.Commits, in one git process.
+//
+// The commits that touch an issue flip its state, taking issues in turn and
+// wrapping; the rest write a file outside issues/, which is what most of a real
+// trunk is. Both have to be walked to answer a question about history, and only
+// one of them costs a blob read, so a fixture that made every commit an issue
+// commit would measure the wrong half.
+//
+// fast-import moves the ref without touching the index or the working tree, so
+// the checkout is brought back to the new tip afterwards — otherwise every
+// later `git add` in the same repository would try to revert the history this
+// just wrote.
+func (r *Repo) importHistory(prefix string, spec Spec, extra int) {
+	r.t.Helper()
+
+	when := time.Now().Add(-r.offset).Unix()
+	who, email := r.identity()
+	head := r.Head()
+
+	var stream strings.Builder
+
+	for n := range extra {
+		// The issue commits go first, so that a fixture asking for a few of
+		// them among many gets a trunk whose recent history is ordinary code —
+		// the shape that makes a walk look cheap until it is not. Which also
+		// means they are the iterations a default-then-override would throw
+		// away, so this branches rather than overwriting.
+		var message, path, content string
+
+		if n < spec.TouchesIssues {
+			which := n % spec.Issues
+			id := GeneratedID(prefix, which)
+
+			message = "resolve " + id
+			path = issuesDir + "/" + id + "/README.md"
+			content = touched(prefix, which, spec.Issues, n/spec.Issues)
+		} else {
+			message = fmt.Sprintf("commit %d", n)
+			path = fmt.Sprintf("src/file%04d.go", n%512)
+			content = fmt.Sprintf("package src\n\n// revision %d\n", n)
+		}
+
+		// A commit record is the ref, who wrote it, the message, and only then
+		// its parent and its files. Only the first names a parent; the rest
+		// continue the branch fast-import is already holding.
+		fmt.Fprintf(&stream, "commit refs/heads/%s\n", DefaultBranch)
+		fmt.Fprintf(&stream, "committer %s <%s> %d +0000\n", who, email, when+int64(n))
+		data(&stream, message)
+
+		if n == 0 {
+			fmt.Fprintf(&stream, "from %s\n", head)
+		}
+
+		fmt.Fprintf(&stream, "M 100644 inline %s\n", path)
+		data(&stream, content)
+	}
+
+	r.feed("history", &stream)
+
+	r.Git("reset", "--hard", "--quiet", DefaultBranch)
+}
+
+// feed hands a fast-import stream to git, closing it first.
+//
+// It is one function rather than one per caller because the invocation is the
+// thing worth having in a single place: a change to how this harness talks to
+// fast-import should be made once, not found twice.
+func (r *Repo) feed(what string, stream *strings.Builder) {
+	r.t.Helper()
+
+	stream.WriteString("done\n")
+
+	if _, err := r.git.Feed(
+		context.Background(), strings.NewReader(stream.String()),
+		"fast-import", "--quiet", "--done",
+	); err != nil {
+		r.t.Fatalf("gittest: importing %s: %v", what, err)
+	}
+}
+
 // importBranches builds one branch per issue in a single git process.
 func (r *Repo) importBranches(prefix string, spec Spec) {
 	r.t.Helper()
 
 	trunk := r.Head()
 	when := time.Now().Add(-r.offset).Unix()
+	who, email := r.identity()
 
 	var stream strings.Builder
 
@@ -107,22 +221,14 @@ func (r *Repo) importBranches(prefix string, spec Spec) {
 		path := issuesDir + "/" + id + "/README.md"
 
 		fmt.Fprintf(&stream, "commit refs/heads/isu/%s\n", id)
-		fmt.Fprintf(&stream,
-			"committer isu tester <tester@example.invalid> %d +0000\n", when)
+		fmt.Fprintf(&stream, "committer %s <%s> %d +0000\n", who, email, when)
 		data(&stream, "resolve "+id)
 		fmt.Fprintf(&stream, "from %s\n", trunk)
 		fmt.Fprintf(&stream, "M 100644 inline %s\n", path)
 		data(&stream, resolvedOnBranch(prefix, which, spec.Issues))
 	}
 
-	stream.WriteString("done\n")
-
-	if _, err := r.git.Feed(
-		context.Background(), strings.NewReader(stream.String()),
-		"fast-import", "--quiet", "--done",
-	); err != nil {
-		r.t.Fatalf("gittest: importing branches: %v", err)
-	}
+	r.feed("branches", &stream)
 }
 
 // data writes a fast-import data block, which is length-prefixed rather than
@@ -137,8 +243,16 @@ func generatedType(n int) string {
 	return []string{"chore", "story", "bug", "spike", "epic"}[n%5]
 }
 
-// generated renders the nth issue of a set that holds issues of them.
-func generated(prefix string, n, issues int) string {
+// GeneratedIssue is the nth issue file of a set of that many, as Generate
+// writes it: the five types in turn, every fifth one an epic, and everything
+// else naming the epic that closes its block of five.
+//
+// Exported because a test that wants this shape without a repository — M3-S2's
+// rollup gate builds its board in memory — would otherwise keep a hand-copy of
+// it, and a hand-copy is a second definition of "the fixture's shape" that
+// nothing holds to the first. Change the block-of-five rule here and a gate
+// measuring the old shape would go on claiming to measure this one.
+func GeneratedIssue(prefix string, n, issues int) string {
 	spec := &issueSpec{values: map[string]string{}}
 	spec.set("schema", "1")
 	spec.set("id", GeneratedID(prefix, n))
@@ -179,5 +293,26 @@ func generated(prefix string, n, issues int) string {
 // branch that did the work looks like.
 func resolvedOnBranch(prefix string, n, issues int) string {
 	return strings.Replace(
-		generated(prefix, n, issues), "\nstate: open\n", "\nstate: resolved\n", 1)
+		GeneratedIssue(prefix, n, issues), "\nstate: open\n", "\nstate: resolved\n", 1)
+}
+
+// touched is the nth issue after the revisionth trunk commit to change it: the
+// state flipped back and forth, and the revision written into the body.
+//
+// The body is what makes this honest. Writing the same bytes twice records no
+// diff the second time, because git compares blobs by object id — so a deep
+// history built out of repeated content is a deep history git can walk almost
+// for free, and a measurement taken on one is a measurement of deduplication
+// rather than of depth. Every change here is a blob nothing else in the
+// repository shares, which is what an issue edited over years actually looks
+// like.
+func touched(prefix string, n, issues, revision int) string {
+	state := "resolved"
+	if revision%2 == 1 {
+		state = "open"
+	}
+
+	return strings.Replace(
+		GeneratedIssue(prefix, n, issues), "\nstate: open\n", "\nstate: "+state+"\n", 1) +
+		fmt.Sprintf("\nRevised %d times.\n", revision+1)
 }

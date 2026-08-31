@@ -69,6 +69,13 @@ const localConfig = `
 	detachedHead = false
 `
 
+// defaultAuthor and defaultEmail write every commit a test does not attribute
+// to somebody by name.
+const (
+	defaultAuthor = "isu tester"
+	defaultEmail  = "tester@example.invalid"
+)
+
 // Repo is a git repository scripted by a test.
 type Repo struct {
 	t   testing.TB
@@ -80,6 +87,8 @@ type Repo struct {
 	remote string
 	// offset moves the clock every later commit is stamped with. See Backdate.
 	offset time.Duration
+	// author writes every later commit. See As.
+	author string
 }
 
 // New creates an empty repository on DefaultBranch under t.TempDir().
@@ -181,6 +190,7 @@ func (r *Repo) Try(args ...string) (string, error) {
 // `GIT_TRACE=1 go test ./...` is how anybody debugs this package.
 func (r *Repo) env(base []string) []string {
 	when := time.Now().Add(-r.offset).Format(time.RFC3339)
+	who, email := r.identity()
 
 	env := make([]string, 0, len(base)+13)
 	for _, entry := range base {
@@ -198,15 +208,25 @@ func (r *Repo) env(base []string) []string {
 		"GIT_CONFIG_NOSYSTEM=1",
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_ASKPASS=",
-		"GIT_AUTHOR_NAME=isu tester",
-		"GIT_AUTHOR_EMAIL=tester@example.invalid",
-		"GIT_COMMITTER_NAME=isu tester",
-		"GIT_COMMITTER_EMAIL=tester@example.invalid",
+		"GIT_AUTHOR_NAME="+who,
+		"GIT_AUTHOR_EMAIL="+email,
+		"GIT_COMMITTER_NAME="+who,
+		"GIT_COMMITTER_EMAIL="+email,
 		"GIT_AUTHOR_DATE="+when,
 		"GIT_COMMITTER_DATE="+when,
 		"TZ=UTC",
 		"LC_ALL=C",
 	)
+}
+
+// identity is who git is running as: whoever As last named, or the harness's
+// own tester.
+func (r *Repo) identity() (name, email string) {
+	if r.author == "" {
+		return defaultAuthor, defaultEmail
+	}
+
+	return r.author, strings.ReplaceAll(r.author, " ", "-") + "@example.invalid"
 }
 
 // File writes a file, creating parent directories, and stages it. The path is
@@ -280,6 +300,18 @@ func (r *Repo) Branch(name string) *Repo {
 	return r
 }
 
+// DeleteBranch removes a branch whether or not its commits are reachable from
+// anywhere else. It is what a forge does on merge, and the state several
+// derivations have to be correct in: a claim is released when the work lands,
+// so an issue reads done with the branch that claimed it already gone.
+func (r *Repo) DeleteBranch(name string) *Repo {
+	r.t.Helper()
+
+	r.Git("branch", "--delete", "--force", name)
+
+	return r
+}
+
 // Checkout switches to an existing branch, or to any other committish — a tag
 // or a raw commit id, which detaches HEAD.
 func (r *Repo) Checkout(name string) *Repo {
@@ -311,6 +343,19 @@ func (r *Repo) SquashMerge(branch, subject string) *Repo {
 
 	r.Git("merge", "--quiet", "--squash", branch)
 	r.Git("commit", "--quiet", "-m", subject)
+
+	return r
+}
+
+// SquashMergeWithBody is SquashMerge with a message body, which is where a
+// commit trailer lives. `isu resolve` writes `Isu-Resolves: <ID>` there, and it
+// is the first of the three tiers that link a trunk commit back to the issue it
+// resolved.
+func (r *Repo) SquashMergeWithBody(branch, subject, body string) *Repo {
+	r.t.Helper()
+
+	r.Git("merge", "--quiet", "--squash", branch)
+	r.Git("commit", "--quiet", "-m", subject, "-m", body)
 
 	return r
 }
@@ -358,6 +403,20 @@ func (r *Repo) DetachRemote() *Repo {
 	if err := os.Rename(r.remote, r.remote+detachedSuffix); err != nil {
 		r.t.Fatalf("gittest: detaching the remote: %v", err)
 	}
+
+	return r
+}
+
+// As names who authors and commits everything after it, with an email derived
+// from the name. As("") returns to the harness's own identity.
+//
+// Contention is two people claiming the same issue, and a claimant is whoever
+// wrote the commit that flipped the state. A fixture whose commits are all by
+// the same person can script neither.
+func (r *Repo) As(name string) *Repo {
+	r.t.Helper()
+
+	r.author = name
 
 	return r
 }

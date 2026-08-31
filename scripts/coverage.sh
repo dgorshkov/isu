@@ -3,20 +3,30 @@
 #
 # Two floors, both enforced here and neither able to hide behind the other:
 #
-#   * 85% across the whole module, cmd/ included;
-#   * 100% for internal/model, once that package exists.
+#   * 99% across the whole module, cmd/ and the test harness included;
+#   * 100% for internal/model.
+#
+# **99% counts everything, internal/gittest included, and that is deliberate.**
+# The harness fails the test rather than returning an error, so its refusals
+# cannot be exercised the ordinary way — calling one from a test fails that
+# test. They are driven instead through a counterfeit testing.TB that records
+# the refusal and stops (internal/gittest/fatal_test.go). That is machinery, and
+# the argument for exempting the harness instead is that it is machinery built
+# to move a number. The argument against, which won: a harness nobody has ever
+# seen refuse is a harness whose refusals are a comment, and every fixture in
+# this project trusts them.
 #
 # Run from a module root. Overridable through the environment so that the
 # gate's own tests can point it at fixture modules:
 #
 #   COVERAGE_PROFILE       where to write the profile   (coverage.out)
-#   COVERAGE_MIN           the overall floor            (85)
+#   COVERAGE_MIN           the overall floor            (99)
 #   COVERAGE_FLOOR_PKG     the package with its own floor (internal/model)
 #   COVERAGE_FLOOR_PKG_MIN that package's floor          (100)
 set -eu
 
 PROFILE=${COVERAGE_PROFILE:-coverage.out}
-MIN_TOTAL=${COVERAGE_MIN:-85}
+MIN_TOTAL=${COVERAGE_MIN:-99}
 FLOOR_PKG=${COVERAGE_FLOOR_PKG:-internal/model}
 MIN_FLOOR_PKG=${COVERAGE_FLOOR_PKG_MIN:-100}
 
@@ -28,8 +38,8 @@ go test ./... -coverpkg=./... -covermode=count -coverprofile="$PROFILE"
 
 # Each test binary reports every instrumented block, so a block appears once
 # per binary that ran and the counts have to be folded before they are read.
-# Comparisons stay in integers — covered*100 >= floor*total — because 84.999%
-# rounds to 85.0% and a gate that rounds in the tree's favour is not a gate.
+# Comparisons stay in integers — covered*100 >= floor*total — because 98.999%
+# rounds to 99.0% and a gate that rounds in the tree's favour is not a gate.
 eval "$(awk -v pkg="/$FLOOR_PKG/" -v minTotal="$MIN_TOTAL" -v minPkg="$MIN_FLOOR_PKG" '
 	NR == 1 { next }   # the mode: line
 	{

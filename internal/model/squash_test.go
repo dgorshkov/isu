@@ -1,0 +1,391 @@
+package model_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/dgorshkov/isu/internal/gittest"
+	"github.com/dgorshkov/isu/internal/issue"
+	"github.com/dgorshkov/isu/internal/model"
+	"github.com/dgorshkov/isu/internal/repo"
+)
+
+// M3-S5. The whole lifecycle, with nothing but squash merges.
+//
+// Squash is what most teams have their forge set to, and it is the merge
+// strategy that breaks a design built on commit metadata: it collapses
+// authorship, rewrites dates, and leaves one commit where there were five. It
+// does not touch the file. Every derivation in this package reads blob content,
+// so the model should not be able to tell the difference — and this test exists
+// to find out, not to assume.
+func TestTheWholeLifecycleUnderSquashMerges(t *testing.T) {
+	const id = "ISU-7f3akq"
+
+	// Report. Somebody who is not on the team opens an issue on a branch.
+	r := gittest.New(t).
+		File("README.md", "# a project\n").Commit("the project").
+		Branch("report/"+id).Checkout("report/"+id).
+		As("sam").
+		Issue(id, gittest.Type("bug"), gittest.Field("repro", "log in twice")).
+		Commit("report " + id).
+		Checkout(gittest.DefaultBranch)
+
+	require.Equal(t, model.StatusAwaitingTriage, statusOf(t, derive(t, r), id))
+
+	// Triage. The report is squashed onto trunk and its branch is deleted.
+	r.SquashMerge("report/"+id, "triage "+id).DeleteBranch("report/" + id)
+
+	require.Equal(t, model.StatusOpen, statusOf(t, derive(t, r), id))
+
+	// Claim. The state is flipped on isu/<ID> before any work starts.
+	r.Branch("isu/"+id).Checkout("isu/"+id).
+		As("alice").Backdate(2).
+		Issue(id, gittest.Type("bug"), gittest.Field("repro", "log in twice"),
+			gittest.State("resolved")).
+		Commit("claim " + id)
+
+	flip := r.Head()
+
+	r.Backdate(0).Checkout(gittest.DefaultBranch)
+
+	claimed := item(t, model.Derive(load(t, r, time.Now())), id)
+	require.Equal(t, model.StatusInProgress, claimed.Status)
+	require.Equal(t, "alice", claimed.Claims[0].Claimant)
+	require.Equal(t, flip, claimed.Claims[0].Commit)
+
+	// Fix. Real work lands on the claiming branch, which moves its tip.
+	r.Checkout("isu/"+id).
+		File("login.go", "package login\n").Commit("retry the login three times").
+		Checkout(gittest.DefaultBranch)
+
+	working := item(t, model.Derive(load(t, r, time.Now())), id)
+	require.Equal(t, model.StatusInProgress, working.Status)
+	require.Equal(t, flip, working.Claims[0].Commit, "the claim did not move with the tip")
+	require.Equal(t, claimed.Claims[0].When, working.Claims[0].When)
+
+	// Merge. One squash commit, composed by the forge from the pull request's
+	// title — so the subject says nothing about the issue, and the trailer is
+	// the only thing that does. The branch goes with it.
+	r.SquashMergeWithBody("isu/"+id,
+		"Retry the login three times (#42)", model.ResolvesTrailer+": "+id).
+		DeleteBranch("isu/" + id)
+
+	board := model.Derive(load(t, r, time.Now()))
+	require.Equal(t, model.StatusDone, statusOf(t, board, id))
+	require.Empty(t, item(t, board, id).Claims,
+		"the claim was released by the work landing, and there is no sweep")
+	require.Empty(t, board.Names(), "not one branch is left in the repository")
+
+	// The trunk commit that set resolved names the issue it resolved. This is
+	// the one question file content cannot answer, which is why isu resolve
+	// writes a trailer.
+	resolving := resolvingCommit(t, r, id)
+	ids, tier := model.Resolves(gittest.DefaultPrefix,
+		r.Git("log", "-1", "--format=%s", resolving),
+		r.Git("log", "-1", "--format=%b", resolving))
+
+	require.Equal(t, []string{id}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+
+	// Revert. The fix did not hold.
+	r.Revert(resolving)
+
+	reverted := item(t, model.Derive(load(t, r, time.Now())), id)
+	require.Equal(t, model.StatusReopened, reverted.Status)
+	require.True(t, reverted.Reopened)
+}
+
+// A squash whose subject carries the id, and a squash whose subject is only a
+// pull request title. The second must come back with nothing rather than with a
+// guess: a wrong link is worse than a missing one, because nothing downstream
+// can tell it from a right one.
+func TestResolvesFallsBackToTheSubjectAndStopsThere(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		subject string
+		want    []string
+		tier    model.Tier
+	}{
+		{
+			name:    "the id opens the subject",
+			subject: "ISU-7f3akq: retry the login three times",
+			want:    []string{"ISU-7f3akq"},
+			tier:    model.TierSubject,
+		},
+		{
+			name:    "the id closes it, with a full stop",
+			subject: "Retry the login three times, fixing ISU-7f3akq.",
+			want:    []string{"ISU-7f3akq"},
+			tier:    model.TierSubject,
+		},
+		{
+			name:    "the id is in brackets",
+			subject: "Retry the login three times (ISU-7f3akq)",
+			want:    []string{"ISU-7f3akq"},
+			tier:    model.TierSubject,
+		},
+		{
+			name:    "two ids in one squash",
+			subject: "ISU-7f3akq, ISU-40b1cc: the login flow",
+			want:    []string{"ISU-7f3akq", "ISU-40b1cc"},
+			tier:    model.TierSubject,
+		},
+		{
+			name:    "the same id twice",
+			subject: "ISU-7f3akq: retry the login (ISU-7f3akq)",
+			want:    []string{"ISU-7f3akq"},
+			tier:    model.TierSubject,
+		},
+		{
+			name:    "only a pull request title",
+			subject: "Retry the login three times (#42)",
+			tier:    model.TierNone,
+		},
+		{
+			name:    "a key from somebody else's tracker",
+			subject: "PROJ-1234: retry the login three times",
+			tier:    model.TierNone,
+		},
+		{
+			name:    "the prefix with nothing after it",
+			subject: "ISU- is not an id",
+			tier:    model.TierNone,
+		},
+		{
+			name:    "a word that starts with the prefix",
+			subject: "ISUZU-1 is a different repository",
+			tier:    model.TierNone,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix, tc.subject, "")
+
+			require.Equal(t, tc.want, ids)
+			require.Equal(t, tc.tier, tier)
+		})
+	}
+}
+
+func TestResolvesReadsTheTrailerBeforeTheSubject(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix,
+		"ISU-40b1cc: something else entirely",
+		"Some explanation.\n\nIsu-Resolves: ISU-7f3akq\n")
+
+	require.Equal(t, []string{"ISU-7f3akq"}, ids)
+	require.Equal(t, model.TierTrailer, tier,
+		"the trailer is what isu wrote, and the subject is what a forge composed")
+}
+
+func TestResolvesReadsATrailerNamingSeveralIssues(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "a merge queue composed this",
+		"Isu-Resolves: ISU-7f3akq, ISU-40b1cc\n")
+
+	require.Equal(t, []string{"ISU-7f3akq", "ISU-40b1cc"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// Several issues on one line, separated however the person writing it separated
+// them. Git's trailer convention says nothing about what goes inside the value,
+// so a comma is isu's habit rather than a rule anybody agreed to, and spaces are
+// what a hand-typed list usually looks like.
+//
+// Reading only commas does not merely miss these — it is worse than that, which
+// is the case below.
+func TestResolvesReadsATrailerSeparatedByAnythingThatIsNotAnID(t *testing.T) {
+	for _, value := range []string{
+		"ISU-7f3akq ISU-40b1cc",
+		"ISU-7f3akq, ISU-40b1cc",
+		"ISU-7f3akq,ISU-40b1cc",
+		"ISU-7f3akq; ISU-40b1cc",
+		"ISU-7f3akq\tISU-40b1cc",
+	} {
+		t.Run(value, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix,
+				"a merge queue composed this", "Isu-Resolves: "+value+"\n")
+
+			require.Equal(t, []string{"ISU-7f3akq", "ISU-40b1cc"}, ids)
+			require.Equal(t, model.TierTrailer, tier)
+		})
+	}
+}
+
+// The reason the separator matters more than a missed link would.
+//
+// A trailer whose ids the reader cannot separate yields nothing, and yielding
+// nothing hands the question to the subject tier — which answers it with
+// whatever the forge happened to compose. So the commit that says it resolved
+// two issues resolves a third one instead, and nothing downstream can tell that
+// link from a right one. A tier isu wrote must never lose to a tier it guessed.
+func TestResolvesNeverLetsAnUnreadableTrailerFallThroughToTheSubject(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix,
+		"ISU-40b1cc: something else entirely",
+		"Isu-Resolves: ISU-7f3akq ISU-39ka2p\n")
+
+	require.Equal(t, []string{"ISU-7f3akq", "ISU-39ka2p"}, ids)
+	require.Equal(t, model.TierTrailer, tier,
+		"the subject named ISU-40b1cc, which the commit never claimed to resolve")
+}
+
+// Git matches a trailer's token without regard to case, and so does this: a
+// human typing the line by hand should not have to match isu's capitals.
+func TestResolvesMatchesTheTrailerTokenWithoutRegardToCase(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
+		"isu-resolves:   ISU-7f3akq  \n")
+
+	require.Equal(t, []string{"ISU-7f3akq"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// An imported issue keeps its source key verbatim, so a repository's own prefix
+// is the anchor for the subject tier and there is nothing to anchor on without
+// one. The trailer needs no anchor: it says what it is.
+func TestResolvesWithNoPrefixReadsOnlyTheTrailer(t *testing.T) {
+	ids, tier := model.Resolves("", "ISU-7f3akq: retry the login", "")
+	require.Empty(t, ids)
+	require.Equal(t, model.TierNone, tier)
+
+	ids, tier = model.Resolves("", "no id here", "Isu-Resolves: PROJ-1234\n")
+	require.Equal(t, []string{"PROJ-1234"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A trailer written in prose names nothing, and that is not as obvious as it
+// looks: ids are letters, digits, a hyphen, an underscore and a full stop,
+// because an imported issue keeps its source key verbatim — so `the`, `login`
+// and `one` are all legal ids, and a reader that split this on spaces and
+// trusted the pieces would report three.
+//
+// What tells prose from a list is that a key has an interior hyphen, which is
+// asked of a value holding several words and of nothing else.
+func TestResolvesRefusesATrailerThatDoesNotNameAnID(t *testing.T) {
+	for _, value := range []string{
+		"the login one",
+		"fixes the log-in flow",
+		"see the linked pull request",
+	} {
+		t.Run(value, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
+				"Isu-Resolves: "+value+"\n")
+
+			require.Empty(t, ids)
+			require.Equal(t, model.TierNone, tier)
+		})
+	}
+}
+
+// Git folds a trailer's value across lines when the later ones are indented,
+// and a list of several claims is exactly the value long enough for an editor
+// to wrap. Reading only the first line dropped every claim after it — at the
+// tier this package treats as authoritative and never re-checks.
+func TestResolvesReadsATrailerFoldedAcrossLines(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "Retry the login (#42)",
+		"Isu-Resolves: ISU-7f3akq,\n  ISU-40b1cc,\n\tISU-39ka2p\n")
+
+	require.Equal(t, []string{"ISU-7f3akq", "ISU-40b1cc", "ISU-39ka2p"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A line that is not indented ends the trailer, so an ordinary paragraph after
+// one does not get read as more of its value.
+func TestResolvesStopsFoldingAtAnUnindentedLine(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
+		"Isu-Resolves: ISU-7f3akq\nISU-40b1cc was not part of this\n")
+
+	require.Equal(t, []string{"ISU-7f3akq"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A revert quotes the subject it undid, verbatim, so the prefix anchor is
+// present and points the wrong way round. M7-S3 scans years of history for
+// these, and this package's own fixtures revert resolving commits — a commit
+// that un-resolved an issue must not be recorded as one that resolved it.
+func TestResolvesReadsNoSubjectOutOfARevert(t *testing.T) {
+	for _, subject := range []string{
+		`Revert "ISU-7f3akq: retry the login three times"`,
+		`Reapply "ISU-7f3akq: retry the login three times"`,
+	} {
+		t.Run(subject, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix, subject,
+				"This reverts commit 0123456789abcdef.\n")
+
+			require.Empty(t, ids)
+			require.Equal(t, model.TierNone, tier)
+		})
+	}
+}
+
+// The trailer needs no such guard, and must not have one: git writes the body
+// of a revert itself and does not carry the original trailers over, so an
+// Isu-Resolves on a revert was put there by somebody who meant it.
+func TestResolvesStillReadsATrailerOnARevert(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix,
+		`Revert "ISU-7f3akq: retry the login three times"`,
+		"This reverts commit 0123456789abcdef.\n\nIsu-Resolves: ISU-40b1cc\n")
+
+	require.Equal(t, []string{"ISU-40b1cc"}, ids)
+	require.Equal(t, model.TierTrailer, tier)
+}
+
+// A full stop is a legal id character, so an id followed straight by an
+// ellipsis used to swallow the words after it and return an id matching
+// nothing — losing the real link in the process.
+//
+// A run of two or more stops is punctuation whatever follows it. A single
+// interior one is left alone, because `ISU-1.2` is a key somebody could have
+// imported and truncating it would turn a right link into a wrong one.
+func TestResolvesEndsASubjectIDAtAnEllipsisAndNotAtASingleStop(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix, "Fix ISU-7f3akq...and more", "")
+	require.Equal(t, []string{"ISU-7f3akq"}, ids)
+	require.Equal(t, model.TierSubject, tier)
+
+	ids, _ = model.Resolves(gittest.DefaultPrefix, "Fix ISU-7f3akq. Thanks", "")
+	require.Equal(t, []string{"ISU-7f3akq"}, ids, "a stop at the end of a word still ends it")
+
+	ids, _ = model.Resolves(gittest.DefaultPrefix, "Fix ISU-1.2 today", "")
+	require.Equal(t, []string{"ISU-1.2"}, ids, "an interior stop may be part of an imported key")
+}
+
+// The other half of that rule, and the half the first attempt at it broke.
+//
+// ValidID is permissive on purpose — an imported issue keeps its source key
+// verbatim — so a repository that imported from a tracker keying on bare
+// numbers has folders like `4821`, and one keying on underscores has
+// `ISU_7f3akq`. Neither looks like a key, both are ids, and a trailer naming one
+// must be read rather than handed to the subject tier, which would answer with
+// whatever the forge put in the subject line.
+func TestResolvesReadsALoneIDThatDoesNotLookLikeAKey(t *testing.T) {
+	for _, id := range []string{"4821", "ISU_7f3akq", "a"} {
+		t.Run(id, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix,
+				"Retry the login (ISU-40b1cc)", "Isu-Resolves: "+id+"\n")
+
+			require.Equal(t, []string{id}, ids)
+			require.Equal(t, model.TierTrailer, tier,
+				"the subject names ISU-40b1cc, which this commit never claimed")
+		})
+	}
+}
+
+// resolvingCommit is the trunk commit at which the issue's file first said
+// resolved, out of the history index M2-S4 builds.
+func resolvingCommit(t *testing.T, r *gittest.Repo, id string) string {
+	t.Helper()
+
+	loader, err := repo.Open(r.Dir())
+	require.NoError(t, err)
+
+	history, err := loader.LoadHistory(t.Context(), gittest.DefaultBranch)
+	require.NoError(t, err)
+
+	for _, at := range history[id] {
+		if at.State == issue.StateResolved {
+			return at.Commit
+		}
+	}
+
+	t.Fatalf("%s was never resolved at trunk", id)
+
+	return ""
+}
