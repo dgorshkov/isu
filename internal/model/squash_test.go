@@ -251,12 +251,30 @@ func TestResolvesWithNoPrefixReadsOnlyTheTrailer(t *testing.T) {
 	require.Equal(t, model.TierTrailer, tier)
 }
 
+// A trailer written in prose names nothing, and that is not as obvious as it
+// looks: ids are letters, digits, a hyphen, an underscore and a full stop,
+// because an imported issue keeps its source key verbatim — so `the`, `login`
+// and `one` are all legal ids, and a reader that split this on spaces and
+// trusted the pieces would report three.
+//
+// What tells prose from a list is that a key has an interior hyphen. The bare
+// halves of one do not: a value is a list of ids or it is not a trailer isu can
+// read, and guessing is the thing this whole function exists to avoid.
 func TestResolvesRefusesATrailerThatDoesNotNameAnID(t *testing.T) {
-	ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
-		"Isu-Resolves: the login one\n")
+	for _, value := range []string{
+		"the login one",
+		"-7f3akq",
+		"ISU-",
+		"login",
+	} {
+		t.Run(value, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
+				"Isu-Resolves: "+value+"\n")
 
-	require.Empty(t, ids)
-	require.Equal(t, model.TierNone, tier)
+			require.Empty(t, ids)
+			require.Equal(t, model.TierNone, tier)
+		})
+	}
 }
 
 // resolvingCommit is the trunk commit at which the issue's file first said

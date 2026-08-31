@@ -73,6 +73,27 @@ func Resolves(prefix, subject, body string) ([]string, Tier) {
 // that a human typing the line by hand does not have to match isu's capitals.
 // One line may name several issues, because one squash commit may land several
 // claims.
+//
+// Those several are separated by anything that cannot be part of an id, which
+// is the same rule the subject tier reads by. Splitting on a comma alone was
+// isu's own habit mistaken for a convention: git says nothing about what goes
+// inside a trailer's value, and a list somebody typed is as likely to be
+// separated by spaces.
+//
+// The cost of reading that list wrong is not a missing link, which is what made
+// it worth fixing. An empty trailer tier falls through to the subject, and the
+// subject is whatever the forge composed — so a commit whose trailer named two
+// issues resolved a third one instead, and nothing downstream could tell that
+// link from a right one.
+//
+// Splitting on whitespace then needs the shape rule below, because ValidID is
+// permissive by design — an imported issue keeps its source key verbatim, so
+// every word of an English sentence passes it. Reading a comma-separated value
+// as one token was doing that filtering by accident: `the login one` is not an
+// id only because of the spaces in it. So a token is taken as an id here when
+// it carries an interior hyphen, which is what a key looks like in isu and in
+// every tracker one would be imported from — and is strictly weaker than the
+// subject tier's rule, which demands this repository's own prefix before it.
 func trailerIDs(body string) []string {
 	var ids []string
 
@@ -84,8 +105,8 @@ func trailerIDs(body string) []string {
 			continue
 		}
 
-		for _, name := range strings.Split(value, ",") {
-			if name = strings.TrimSpace(name); issue.ValidID(name) && !seen[name] {
+		for _, name := range strings.FieldsFunc(value, func(r rune) bool { return !idRune(r) }) {
+			if keyShaped(name) && issue.ValidID(name) && !seen[name] {
 				seen[name] = true
 				ids = append(ids, name)
 			}
@@ -93,6 +114,16 @@ func trailerIDs(body string) []string {
 	}
 
 	return ids
+}
+
+// keyShaped reports whether a word looks like an issue key rather than like a
+// word: something, a hyphen, something. It is what lets a trailer's value be a
+// list separated by spaces without every trailer written in prose naming three
+// issues.
+func keyShaped(s string) bool {
+	at := strings.Index(s, "-")
+
+	return at > 0 && at < len(s)-1
 }
 
 // subjectIDs reads the ids out of a commit subject, in the order they appear.
