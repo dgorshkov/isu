@@ -186,6 +186,48 @@ func TestResolvesReadsATrailerNamingSeveralIssues(t *testing.T) {
 	require.Equal(t, model.TierTrailer, tier)
 }
 
+// Several issues on one line, separated however the person writing it separated
+// them. Git's trailer convention says nothing about what goes inside the value,
+// so a comma is isu's habit rather than a rule anybody agreed to, and spaces are
+// what a hand-typed list usually looks like.
+//
+// Reading only commas does not merely miss these — it is worse than that, which
+// is the case below.
+func TestResolvesReadsATrailerSeparatedByAnythingThatIsNotAnID(t *testing.T) {
+	for _, value := range []string{
+		"ISU-7f3akq ISU-40b1cc",
+		"ISU-7f3akq, ISU-40b1cc",
+		"ISU-7f3akq,ISU-40b1cc",
+		"ISU-7f3akq; ISU-40b1cc",
+		"ISU-7f3akq\tISU-40b1cc",
+	} {
+		t.Run(value, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix,
+				"a merge queue composed this", "Isu-Resolves: "+value+"\n")
+
+			require.Equal(t, []string{"ISU-7f3akq", "ISU-40b1cc"}, ids)
+			require.Equal(t, model.TierTrailer, tier)
+		})
+	}
+}
+
+// The reason the separator matters more than a missed link would.
+//
+// A trailer whose ids the reader cannot separate yields nothing, and yielding
+// nothing hands the question to the subject tier — which answers it with
+// whatever the forge happened to compose. So the commit that says it resolved
+// two issues resolves a third one instead, and nothing downstream can tell that
+// link from a right one. A tier isu wrote must never lose to a tier it guessed.
+func TestResolvesNeverLetsAnUnreadableTrailerFallThroughToTheSubject(t *testing.T) {
+	ids, tier := model.Resolves(gittest.DefaultPrefix,
+		"ISU-40b1cc: something else entirely",
+		"Isu-Resolves: ISU-7f3akq ISU-39ka2p\n")
+
+	require.Equal(t, []string{"ISU-7f3akq", "ISU-39ka2p"}, ids)
+	require.Equal(t, model.TierTrailer, tier,
+		"the subject named ISU-40b1cc, which the commit never claimed to resolve")
+}
+
 // Git matches a trailer's token without regard to case, and so does this: a
 // human typing the line by hand should not have to match isu's capitals.
 func TestResolvesMatchesTheTrailerTokenWithoutRegardToCase(t *testing.T) {
