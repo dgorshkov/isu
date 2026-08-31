@@ -707,3 +707,26 @@ func TestWhereACommitStartsFrom(t *testing.T) {
 	require.Error(t, err)
 	require.NotErrorIs(t, err, gitx.ErrUnknownRevision)
 }
+
+func TestARefThatDoesNotResolveNamesTheRefAndNotThePlumbing(t *testing.T) {
+	t.Parallel()
+
+	// The one defect M4-S8 found in isu's own code. Against three real
+	// repositories, a mistyped --ref answered with
+	//
+	//	git ls-tree -r -z --full-tree refs/heads/nope -- issues: unknown revision
+	//
+	// which tells somebody who typed one flag about four they have never heard
+	// of. git's own sentence stays, because it is what a person debugging needs
+	// — but it is no longer the first thing they read.
+	r := board(t)
+
+	got := isu(t, r.Dir(), "--ref", "refs/heads/no-such-branch", "board")
+
+	require.Equal(t, 1, got.code)
+	require.Contains(t, got.stderr,
+		"cannot read refs/heads/no-such-branch as trunk")
+	require.True(t,
+		strings.Index(got.stderr, "no-such-branch") < strings.Index(got.stderr, "ls-tree"),
+		"the ref the user typed comes before the plumbing they did not")
+}

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -33,7 +34,12 @@ func (s *session) view(ctx context.Context) (*view, error) {
 
 	loaded, err := s.repo.LoadBoard(ctx, repo.BoardSpec{Trunk: s.trunk})
 	if err != nil {
-		return nil, err
+		// Naming the ref rather than passing git's sentence on. M4-S8 ran this
+		// against three real repositories and a mistyped --ref answered with
+		// `git ls-tree -r -z --full-tree refs/heads/nope -- issues: unknown
+		// revision`, which tells somebody who typed one flag about four they
+		// have never heard of.
+		return nil, fmt.Errorf("cannot read %s as trunk: %w", s.trunk, err)
 	}
 
 	history, err := s.repo.LoadHistory(ctx, s.trunk)
