@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -26,11 +27,23 @@ import (
 // clock, the environment and the streams are arguments; git and the repository
 // are the two things that stay real.
 
-// clock is the moment every test runs at. It is fixed so that a board naming
-// ages, a freshness line and an issue's created date are golden-testable — a
-// renderer whose output depends on when the suite ran is a renderer nobody can
-// write a golden file for.
-var clock = time.Date(2026, time.August, 31, 12, 0, 0, 0, time.UTC)
+// Commands in these tests run on the real clock, and that is not a shortcut.
+//
+// Everything a fixture dates — a claim aged past stale_days, a remote ref
+// fetched three days ago, an issue's created line — is dated by gittest
+// relative to the real clock, because git stamps a commit with a date and not
+// with an offset. A test clock pinned to a date in the calendar would put every
+// one of those ages a variable distance from the moment they are measured
+// against, and the distance would be however long ago this file was written:
+// a claim aged three days would read as three days old on the afternoon this
+// was written and as four hundred days old a year later.
+//
+// What that costs is golden files with a timestamp in them, so golden scrubs
+// the two things that cannot be stable: RFC 3339 moments and object ids.
+func now() time.Time { return time.Now() }
+
+// today is the date isu stamps on anything it creates during a test.
+func today() string { return now().UTC().Format(time.DateOnly) }
 
 // result is one invocation of isu.
 type result struct {
@@ -68,7 +81,7 @@ func isuIn(t *testing.T, dir string, env map[string]string, args ...string) resu
 		Stdout: &stdout,
 		Stderr: &stderr,
 		Dir:    dir,
-		Now:    func() time.Time { return clock },
+		Now:    now,
 		Getenv: func(name string) string { return env[name] },
 	})
 
@@ -144,8 +157,9 @@ func board(t *testing.T) *gittest.Repo {
 		Issue("ISU-epical", gittest.Type("epic"), gittest.Without("state"),
 			gittest.Title("Make login reliable"), gittest.Owner("dmitry")).
 		Issue("ISU-openly", gittest.Title("Login retries drop the second attempt"),
-			gittest.Owner("dmitry"), gittest.Priority("p1"), gittest.Parent("ISU-epical"),
-			gittest.Field("repro", "post twice"), gittest.Body("The second POST is dropped.\n")).
+			gittest.Type("bug"), gittest.Owner("dmitry"), gittest.Priority("p1"),
+			gittest.Parent("ISU-epical"), gittest.Field("repro", "post twice"),
+			gittest.Body("The second POST is dropped.\n")).
 		Issue("ISU-inprog", gittest.Title("Board renders epics"), gittest.Type("story"),
 			gittest.Owner("alice"), gittest.Field("acceptance", "the epic shows its children")).
 		Issue("ISU-reopen", gittest.Title("Upgrade the linter"), gittest.Type("chore"),
@@ -190,7 +204,7 @@ func board(t *testing.T) *gittest.Repo {
 	r.Backdate(1).
 		Branch("report/ISU-triage").Checkout("report/ISU-triage").
 		Issue("ISU-triage", gittest.Title("Sign-up page 500s on Firefox"),
-			gittest.Owner("support"), gittest.Priority("p0"),
+			gittest.Type("bug"), gittest.Owner("support"), gittest.Priority("p0"),
 			gittest.Field("repro", "sign up on Firefox")).
 		Commit("report ISU-triage").
 		Checkout(gittest.DefaultBranch).
@@ -207,6 +221,7 @@ func golden(t *testing.T, name, got string) {
 	t.Helper()
 
 	path := filepath.Join("testdata", name)
+	got = scrub(got)
 
 	if *update {
 		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
@@ -218,4 +233,28 @@ func golden(t *testing.T, name, got string) {
 	want, err := os.ReadFile(path)
 	require.NoErrorf(t, err, "no golden file: run `go test ./internal/cli -update`")
 	require.Equal(t, string(want), got)
+}
+
+// osOpenDevNull opens something that is a character device and is not a
+// terminal, which is as close as a test suite gets to one.
+func osOpenDevNull() (*os.File, error) {
+	return os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+}
+
+// The two things in isu's output that cannot be the same twice: a moment, and
+// an object id. Everything else in a golden file is the review.
+var (
+	moments = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})`)
+	oids    = regexp.MustCompile(`\b[0-9a-f]{8,40}\b`)
+)
+
+// scrub replaces what a golden file cannot pin down.
+//
+// It is deliberately narrow. A renderer's columns, its wording, its ordering
+// and the facts it chooses to print are all the review; the timestamp of a
+// commit written eight milliseconds ago is not.
+func scrub(s string) string {
+	s = moments.ReplaceAllString(s, "<when>")
+
+	return oids.ReplaceAllString(s, "<oid>")
 }

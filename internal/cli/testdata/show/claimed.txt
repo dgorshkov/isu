@@ -1,0 +1,15 @@
+ISU-inprog  Board renders epics
+
+  status      in progress
+  type        story
+  state       open
+  owner       alice
+  created     2026-08-01
+  priority    p2
+  acceptance  the epic shows its children
+  branches    refs/heads/isu/ISU-inprog
+  trunk       main
+
+  claimed by alice on refs/heads/isu/ISU-inprog, <when>
+
+no remote refs

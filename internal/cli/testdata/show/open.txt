@@ -1,0 +1,15 @@
+ISU-openly  Login retries drop the second attempt
+
+  status    open
+  type      bug
+  state     open
+  owner     dmitry
+  created   2026-08-01
+  priority  p1
+  repro     post twice
+  parent    ISU-epical  Make login reliable (open)
+  trunk     main
+
+The second POST is dropped.
+
+no remote refs

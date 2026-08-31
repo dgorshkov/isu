@@ -1,0 +1,20 @@
+main · 7 issues · no remote refs
+
+done (1)
+  ISU-donede  p2  spike  What does contention cost?  dmitry
+
+dropped (1)
+  ISU-dropit  p2  chore  Rewrite it in another language  dmitry
+
+awaiting triage (1)
+  ISU-triage  p0  bug  Sign-up page 500s on Firefox  support
+
+in progress (1)
+  ISU-inprog  p2  story  Board renders epics  alice · claimed by alice
+
+reopened (1)
+  ISU-reopen  p2  chore  Upgrade the linter  alice
+
+open (2)
+  ISU-openly  p1  bug   Login retries drop the second attempt  dmitry
+  ISU-epical  p2  epic  Make login reliable                    dmitry · 1 child
