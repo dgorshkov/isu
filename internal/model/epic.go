@@ -22,7 +22,12 @@ type Epic struct {
 // Empty reports whether the epic has no children. That is a check failure
 // rather than a status: an epic nobody has filled in is a mistake, and the
 // board still has to render it in the meantime.
-func (e *Epic) Empty() bool { return len(e.Children) == 0 }
+//
+// A nil epic is empty rather than a panic. Item.Epic is nil on every issue that
+// is not one, so a renderer walking the board and asking each item what its
+// children add up to is asking this of nil far more often than not — and the
+// obvious spelling of that walk should answer, not crash.
+func (e *Epic) Empty() bool { return e == nil || len(e.Children) == 0 }
 
 // index maps every issue to the parent it names, once.
 //

@@ -257,15 +257,13 @@ func TestResolvesWithNoPrefixReadsOnlyTheTrailer(t *testing.T) {
 // and `one` are all legal ids, and a reader that split this on spaces and
 // trusted the pieces would report three.
 //
-// What tells prose from a list is that a key has an interior hyphen. The bare
-// halves of one do not: a value is a list of ids or it is not a trailer isu can
-// read, and guessing is the thing this whole function exists to avoid.
+// What tells prose from a list is that a key has an interior hyphen, which is
+// asked of a value holding several words and of nothing else.
 func TestResolvesRefusesATrailerThatDoesNotNameAnID(t *testing.T) {
 	for _, value := range []string{
 		"the login one",
-		"-7f3akq",
-		"ISU-",
-		"login",
+		"fixes the log-in flow",
+		"see the linked pull request",
 	} {
 		t.Run(value, func(t *testing.T) {
 			ids, tier := model.Resolves(gittest.DefaultPrefix, "no id here",
@@ -273,6 +271,27 @@ func TestResolvesRefusesATrailerThatDoesNotNameAnID(t *testing.T) {
 
 			require.Empty(t, ids)
 			require.Equal(t, model.TierNone, tier)
+		})
+	}
+}
+
+// The other half of that rule, and the half the first attempt at it broke.
+//
+// ValidID is permissive on purpose — an imported issue keeps its source key
+// verbatim — so a repository that imported from a tracker keying on bare
+// numbers has folders like `4821`, and one keying on underscores has
+// `ISU_7f3akq`. Neither looks like a key, both are ids, and a trailer naming one
+// must be read rather than handed to the subject tier, which would answer with
+// whatever the forge put in the subject line.
+func TestResolvesReadsALoneIDThatDoesNotLookLikeAKey(t *testing.T) {
+	for _, id := range []string{"4821", "ISU_7f3akq", "a"} {
+		t.Run(id, func(t *testing.T) {
+			ids, tier := model.Resolves(gittest.DefaultPrefix,
+				"Retry the login (ISU-40b1cc)", "Isu-Resolves: "+id+"\n")
+
+			require.Equal(t, []string{id}, ids)
+			require.Equal(t, model.TierTrailer, tier,
+				"the subject names ISU-40b1cc, which this commit never claimed")
 		})
 	}
 }

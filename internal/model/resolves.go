@@ -74,30 +74,42 @@ func Resolves(prefix, subject, body string) ([]string, Tier) {
 // One line may name several issues, because one squash commit may land several
 // claims.
 //
-// Those several are separated by anything that cannot be part of an id, which
-// is the same rule the subject tier reads by. Splitting on a comma alone was
-// isu's own habit mistaken for a convention: git says nothing about what goes
-// inside a trailer's value, and a list somebody typed is as likely to be
-// separated by spaces.
+// A comma separates them, and so does whitespace, but the two are not read the
+// same way — because what a value is allowed to contain depends on how many
+// things are in it.
 //
-// The cost of reading that list wrong is not a missing link, which is what made
-// it worth fixing. An empty trailer tier falls through to the subject, and the
-// subject is whatever the forge composed — so a commit whose trailer named two
-// issues resolved a third one instead, and nothing downstream could tell that
-// link from a right one.
+// A comma-separated element is taken as written, and ValidID is the only rule
+// applied to it. That has to stay true: ValidID is permissive on purpose, since
+// an imported issue keeps its source key verbatim, so `4821` from a GitHub
+// import and `ISU_7f3akq` are both ids and neither looks like one. Demanding
+// they look like one is how the first attempt at this broke them, and breaking
+// them is not a missing link but a wrong one — see below.
 //
-// Splitting on whitespace then needs the shape rule below, because ValidID is
-// permissive by design — an imported issue keeps its source key verbatim, so
-// every word of an English sentence passes it. Reading a comma-separated value
-// as one token was doing that filtering by accident: `the login one` is not an
-// id only because of the spaces in it. So a token is taken as an id here when
-// it carries an interior hyphen, which is what a key looks like in isu and in
-// every tracker one would be imported from — and is strictly weaker than the
-// subject tier's rule, which demands this repository's own prefix before it.
+// An element holding several words is a list somebody separated by something
+// other than a comma, and there the words must each look like a key: something,
+// a hyphen, something. Prose is the reason. `the login one` is three perfectly
+// valid ids by ValidID's rule, and reading a comma-separated value as a single
+// token was the only thing filtering it out — accidentally, because of the
+// spaces. So a multi-word element is a list of keys or it is not read at all;
+// isu's own `isu resolve` writes commas, so this path is for what a human
+// typed, and a human typing a list types keys.
+//
+// The cost of reading a value wrong is what makes all of this worth a rule
+// rather than a guess: a trailer that yields nothing falls through to the
+// subject tier, and the subject is whatever the forge composed. So a commit
+// whose trailer named two issues would resolve a third one instead, and nothing
+// downstream could tell that link from a right one.
 func trailerIDs(body string) []string {
 	var ids []string
 
 	seen := map[string]bool{}
+
+	add := func(name string) {
+		if !seen[name] {
+			seen[name] = true
+			ids = append(ids, name)
+		}
+	}
 
 	for line := range strings.Lines(body) {
 		token, value, ok := strings.Cut(line, ":")
@@ -105,10 +117,18 @@ func trailerIDs(body string) []string {
 			continue
 		}
 
-		for _, name := range strings.FieldsFunc(value, func(r rune) bool { return !idRune(r) }) {
-			if keyShaped(name) && issue.ValidID(name) && !seen[name] {
-				seen[name] = true
-				ids = append(ids, name)
+		for _, element := range strings.Split(value, ",") {
+			words := strings.FieldsFunc(element, func(r rune) bool { return !idRune(r) })
+
+			switch {
+			case len(words) == 1 && issue.ValidID(words[0]):
+				add(words[0])
+			case len(words) > 1 && allKeyShaped(words):
+				for _, name := range words {
+					if issue.ValidID(name) {
+						add(name)
+					}
+				}
 			}
 		}
 	}
@@ -116,14 +136,20 @@ func trailerIDs(body string) []string {
 	return ids
 }
 
-// keyShaped reports whether a word looks like an issue key rather than like a
-// word: something, a hyphen, something. It is what lets a trailer's value be a
-// list separated by spaces without every trailer written in prose naming three
-// issues.
-func keyShaped(s string) bool {
-	at := strings.Index(s, "-")
+// allKeyShaped reports whether every word looks like an issue key rather than
+// like a word: something, a hyphen, something.
+//
+// It gates only the multi-word case, and deliberately: a lone word is whatever
+// the repository named its folder, and this rule would throw away the imported
+// keys that ValidID exists to admit.
+func allKeyShaped(words []string) bool {
+	for _, s := range words {
+		if at := strings.Index(s, "-"); at <= 0 || at >= len(s)-1 {
+			return false
+		}
+	}
 
-	return at > 0 && at < len(s)-1
+	return true
 }
 
 // subjectIDs reads the ids out of a commit subject, in the order they appear.

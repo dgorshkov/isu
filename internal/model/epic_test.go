@@ -143,6 +143,19 @@ func TestAnEpicWithNoChildrenIsOpenAndSaysItIsEmpty(t *testing.T) {
 	require.Empty(t, item(t, board, "ISU-40b1cc").Epic.Children)
 }
 
+// Item.Epic is nil on every issue that is not an epic, and a renderer walking
+// the board asks each item what its children add up to. The obvious spelling of
+// that walk should answer rather than crash on the first ordinary issue.
+func TestTheEpicOfAnIssueThatIsNotOneIsEmptyRatherThanAPanic(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq").Commit("an ordinary issue")
+
+	got := item(t, derive(t, r), "ISU-7f3akq")
+
+	require.Nil(t, got.Epic)
+	require.True(t, got.Epic.Empty())
+}
+
 // `parent:` must name an epic, and that is M5-S2's to report: it is a
 // repository-level rule, and this package is not where an issue is validated.
 // What matters here is that the index does not lose the fact.
