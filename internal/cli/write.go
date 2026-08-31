@@ -238,12 +238,27 @@ func (s *session) mustNotBeTrunk(ctx context.Context, cmd *cobra.Command) error 
 
 // trunkBranch is the branch name trunk resolves to, or empty when the ref this
 // invocation calls trunk is not a local branch at all.
+//
+// `--ref` takes any revision — a tag, a raw commit id, a remote-tracking ref —
+// and none of those is somewhere a commit can be written. Answering with the
+// string it was given would have `isu triage --push` create a branch named
+// after a sha, which is a branch nobody asked for and nothing reads.
 func (s *session) trunkBranch(ctx context.Context) (string, error) {
 	if s.trunk == "HEAD" {
 		return s.git.CurrentBranch(ctx)
 	}
 
-	return strings.TrimPrefix(s.trunk, "refs/heads/"), nil
+	name := strings.TrimPrefix(s.trunk, "refs/heads/")
+
+	if _, err := s.git.RevParse(ctx, "refs/heads/"+name); err != nil {
+		if errors.Is(err, gitx.ErrUnknownRevision) {
+			return "", nil
+		}
+
+		return "", err
+	}
+
+	return name, nil
 }
 
 // requireID is the argument validator every command that names an issue uses.
