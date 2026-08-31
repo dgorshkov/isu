@@ -398,7 +398,7 @@ func TestPushReportsAnUnreachableRemote(t *testing.T) {
 // A ref line git could not have written is refused rather than parsed into
 // something plausible.
 //
-// The parser splits each line into four NUL-separated fields, and a line with
+// The parser splits each line into five NUL-separated fields, and a line with
 // any other shape means git's output is not what this build expects — a future
 // format, or a binary that is not git. Guessing at it would put a ref name of
 // the wrong half of a line into a board.

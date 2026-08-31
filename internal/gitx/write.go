@@ -146,12 +146,48 @@ func (g *Git) Add(ctx context.Context, paths ...string) error {
 // to change a file and did not is a bug, and an empty commit hides it behind a
 // success somebody has to explain later.
 func (g *Git) Commit(ctx context.Context, message string) (string, error) {
-	_, err := g.Feed(ctx, strings.NewReader(message), "commit", "--quiet", "-F", "-")
-	if err != nil {
+	return g.commit(ctx, message)
+}
+
+// CommitAllowingEmpty is Commit for the one caller whose commit is allowed to
+// change no file: `isu resolve` on an issue a claim already flipped to
+// resolved. What that commit carries is the Isu-Resolves trailer, which is the
+// only thing that links a squashed trunk commit back to the issue it finished
+// — and a branch that resolves an issue and changes nothing else is M5-S3's to
+// reject, not this command's.
+func (g *Git) CommitAllowingEmpty(ctx context.Context, message string) (string, error) {
+	return g.commit(ctx, message, "--allow-empty")
+}
+
+func (g *Git) commit(ctx context.Context, message string, extra ...string) (string, error) {
+	args := append([]string{"commit", "--quiet"}, extra...)
+
+	if _, err := g.Feed(ctx, strings.NewReader(message), append(args, "-F", "-")...); err != nil {
 		return "", err
 	}
 
 	return g.RevParse(ctx, "HEAD")
+}
+
+// Config reads one configuration value.
+//
+// A key that is not set is the empty string rather than a failure: `isu new`
+// asks git who the user is, and a repository where nobody has said is a
+// repository where isu asks for --owner rather than one where it crashes.
+func (g *Git) Config(ctx context.Context, key string) (string, error) {
+	out, err := g.output(ctx, "config", "--get", key)
+	if err == nil {
+		return out, nil
+	}
+
+	// `git config --get` exits 1 and says nothing when the key is unset, which
+	// is an answer rather than a problem.
+	var gitErr *Error
+	if errors.As(err, &gitErr) && gitErr.ExitCode == 1 && gitErr.Stderr == "" {
+		return "", nil
+	}
+
+	return "", err
 }
 
 // CurrentBranch is the branch HEAD points at, or the empty string on a detached

@@ -9,6 +9,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // TreeEntry is one row of `git ls-tree -r`: what an object is, and where it
@@ -202,6 +203,16 @@ type Ref struct {
 	Type string
 	// Target is what an annotated tag dereferences to, and empty otherwise.
 	Target string
+	// Created is the date of what the ref points at: a commit's committer date,
+	// an annotated tag's tagger date. It is `creatordate` rather than
+	// `committerdate` because the second is empty on a tag, and a freshness
+	// line that silently reads zero for half a repository's refs is worse than
+	// no freshness line.
+	//
+	// M4-S2 is the caller: `isu board` says how old the newest remote ref is,
+	// because every derived status in this product is a statement about refs
+	// and two engineers with different fetch ages see different contention.
+	Created time.Time
 }
 
 // ForEachRef lists the refs matching the given patterns.
@@ -210,7 +221,8 @@ type Ref struct {
 // refs/claims/. One process lists them all, which is what keeps M2-S5's process
 // count linear in refs rather than quadratic.
 func (g *Git) ForEachRef(ctx context.Context, patterns ...string) ([]Ref, error) {
-	const format = "--format=%(refname)%00%(objectname)%00%(objecttype)%00%(*objectname)"
+	const format = "--format=%(refname)%00%(objectname)%00%(objecttype)%00" +
+		"%(*objectname)%00%(creatordate:unix)"
 
 	out, err := g.output(ctx, append([]string{"for-each-ref", format}, patterns...)...)
 	if err != nil {
@@ -226,16 +238,34 @@ func (g *Git) ForEachRef(ctx context.Context, patterns ...string) ([]Ref, error)
 	// the fields inside one need a separator git will not produce itself.
 	for _, line := range strings.Split(out, "\n") {
 		fields := strings.Split(line, "\x00")
-		if len(fields) != 4 {
+		if len(fields) != 5 {
 			return nil, fmt.Errorf("git for-each-ref: %q is not a ref", line)
 		}
 
-		refs = append(refs, Ref{
+		ref := Ref{
 			Name: fields[0], OID: fields[1], Type: fields[2], Target: fields[3],
-		})
+		}
+
+		// A ref pointing at something with no date of its own leaves the field
+		// empty. That is a ref with no age rather than a ref from 1970, so it
+		// stays the zero time and the caller decides what to say about it.
+		if seconds, err := strconv.ParseInt(fields[4], 10, 64); err == nil {
+			ref.Created = time.Unix(seconds, 0).UTC()
+		}
+
+		refs = append(refs, ref)
 	}
 
 	return refs, nil
+}
+
+// Toplevel is the root of the working tree the bound directory sits inside.
+//
+// Every command takes a path or the working directory and has to turn it into
+// the repository root, because `issues/` is anchored there and not wherever the
+// user happened to be standing.
+func (g *Git) Toplevel(ctx context.Context) (string, error) {
+	return g.output(ctx, "rev-parse", "--show-toplevel")
 }
 
 // DiffNameOnly lists the paths that differ between two revisions.
