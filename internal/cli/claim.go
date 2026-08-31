@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 
@@ -11,6 +12,29 @@ import (
 	"github.com/dgorshkov/isu/internal/issue"
 	"github.com/dgorshkov/isu/internal/model"
 )
+
+// claimTrailer carries the one thing that makes a claim commit unique.
+//
+// **PLAN.md's claim design has a hole, and the stress test in this milestone
+// found it.** §1 argues that the push is the compare-and-swap because "two
+// claimants produce two different commits — different author, different
+// timestamp, therefore different object ids". Two claimants under one identity,
+// in the same second, produce the *same* commit: same tree, same parent, same
+// author, same second, same message. Git then answers the second push
+// `Everything up-to-date`, exit 0, and both of them believe they won.
+//
+// Measured, with a hundred clones racing for one issue: **thirty winners.**
+// Two agents sharing a bot identity is not an exotic case for a tracker built
+// for agents, and neither is one person in two clones.
+//
+// `--force-with-lease=refs/heads/isu/<ID>:` — PLAN.md's own third mechanism —
+// does not close it, because git short-circuits on "up to date" before the
+// lease is ever evaluated; that was measured too. What does close it is making
+// the sentence §1 already relies on true: atomicity comes from committing
+// something nobody else can have committed, so the claim commits something
+// nobody else can have. With the nonce, the second push is rejected as a
+// non-fast-forward, which is exactly the mechanism the section describes.
+const claimTrailer = "Isu-Claim"
 
 func (a *app) claimCmd() *cobra.Command {
 	return &cobra.Command{
@@ -80,7 +104,7 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 	commit, err := s.commitOn(ctx, commitSpec{
 		branch:  branch,
 		base:    s.trunk,
-		message: "claim " + id + "\n",
+		message: "claim " + id + "\n\n" + claimTrailer + ": " + rand.Text() + "\n",
 		changes: []change{{path: readmePath(id), blob: flipped.Encode()}},
 	})
 	if err != nil {

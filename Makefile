@@ -14,7 +14,7 @@ GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || echo $(GOBIN)/g
 BINARY ?= isu
 COVERAGE_PROFILE ?= coverage.out
 
-.PHONY: all help build vet lint fmt test cover tools clean
+.PHONY: all help build vet lint fmt test stress cover tools clean
 
 all: build vet lint test cover
 
@@ -24,6 +24,7 @@ help:
 	@echo 'lint    golangci-lint, including the formatters'
 	@echo 'fmt     rewrite files to satisfy the formatters'
 	@echo 'test    go test ./...'
+	@echo 'stress  the build-tagged races, which are out of the default suite'
 	@echo 'cover   run the tests and enforce both coverage floors'
 	@echo 'tools   install the pinned golangci-lint'
 	@echo 'clean   remove build and coverage output'
@@ -43,6 +44,13 @@ fmt:
 
 test:
 	$(GO) test ./...
+
+# The races M4-S4 keeps out of the default suite. Repeating a network operation
+# a hundred times per CI run buys confidence in the network and not in the code,
+# so the deterministic test is the gate and this is what you run when you do not
+# believe it.
+stress:
+	$(GO) test -tags stress -run 'Stress|Claimants' -count 1 ./...
 
 cover:
 	COVERAGE_PROFILE=$(COVERAGE_PROFILE) sh scripts/coverage.sh
