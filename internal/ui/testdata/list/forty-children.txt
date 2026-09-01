@@ -10,15 +10,15 @@ open (41)                                     │ ISU-epical
     ISU-c00004  p2  Import batch 5            │ owner     dmitry
     ISU-c00005  p2  Import batch 6            │ created   <date>
     ISU-c00006  p2  Import batch 7            │
-    ISU-c00007  p2  Import batch 8            │
-    ISU-c00008  p2  Import batch 9            │
-    ISU-c00009  p2  Import batch 10           │
-    ISU-c00010  p2  Import batch 11           │
-    ISU-c00011  p2  Import batch 12           │
-    ISU-c00012  p2  Import batch 13           │
-    ISU-c00013  p2  Import batch 14           │
-    ISU-c00014  p2  Import batch 15           │
-    ISU-c00015  p2  Import batch 16           │
+    ISU-c00007  p2  Import batch 8            │ children
+    ISU-c00008  p2  Import batch 9            │   ISU-c00000  open  Import batch 1
+    ISU-c00009  p2  Import batch 10           │   ISU-c00001  open  Import batch 2
+    ISU-c00010  p2  Import batch 11           │   ISU-c00002  open  Import batch 3
+    ISU-c00011  p2  Import batch 12           │   ISU-c00003  open  Import batch 4
+    ISU-c00012  p2  Import batch 13           │   ISU-c00004  open  Import batch 5
+    ISU-c00013  p2  Import batch 14           │   ISU-c00005  open  Import batch 6
+    ISU-c00014  p2  Import batch 15           │   ISU-c00006  open  Import batch 7
+    ISU-c00015  p2  Import batch 16           │   ISU-c00007  open  Import batch 8
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 enter open · c claim · n new · r ready · g branch · / filter · h fold · q quit

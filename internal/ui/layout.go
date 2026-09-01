@@ -116,8 +116,11 @@ func (m Model) hints() string {
 		"g branch", "/ filter", "h fold", "q quit",
 	}
 
-	if m.filtering {
+	switch {
+	case m.filtering:
 		keys = []string{"type to narrow", "↑↓ move", "enter accepts", "esc clears"}
+	case m.focus == onDetail:
+		keys = []string{"↑↓ scroll", "esc back to the list", "q quit"}
 	}
 
 	return m.styles.dim.Render(strings.Join(keys, " · "))

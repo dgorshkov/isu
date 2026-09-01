@@ -159,8 +159,39 @@ func (m Model) unfold() Model {
 }
 
 // move steps the cursor over the rows it may land on, which is every issue and
-// no heading.
+// no heading. A step that runs off either end stops at the last row it could
+// have landed on.
 func (m Model) move(delta int) Model {
+	if delta == 0 {
+		return m
+	}
+
+	step := 1
+	if delta < 0 {
+		step = -1
+	}
+
+	for range abs(delta) {
+		m = m.step(step)
+	}
+
+	m.sticky = m.selectedID()
+	m.detailTop = 0
+	m.scroll()
+
+	return m
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+
+	return n
+}
+
+// step moves the cursor by one selectable row in one direction.
+func (m Model) step(delta int) Model {
 	for i := m.cursor + delta; i >= 0 && i < len(m.rows); i += delta {
 		if m.rows[i].selectable() {
 			m.cursor = i
@@ -169,21 +200,5 @@ func (m Model) move(delta int) Model {
 		}
 	}
 
-	m.sticky = m.selectedID()
-	m.scroll()
-
 	return m
-}
-
-// jump puts the cursor at one end of the list.
-func (m Model) jump(toEnd bool) Model {
-	if toEnd {
-		m.cursor = len(m.rows)
-
-		return m.move(-1)
-	}
-
-	m.cursor = -1
-
-	return m.move(1)
 }

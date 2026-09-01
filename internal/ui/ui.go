@@ -22,6 +22,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/dgorshkov/isu/internal/model"
@@ -51,6 +52,10 @@ type Input struct {
 	// Renderer decides whether this screen may use colour. Nil means it may
 	// not, which is what a test wants and what a pipe deserves.
 	Renderer *lipgloss.Renderer
+	// Actions are the things the interface cannot do itself. A nil Actions is a
+	// read-only interface: everything derived is still on the screen, and what
+	// has to be loaded or written is not.
+	Actions Actions
 }
 
 // Group is one status's issues, in the order `isu board` renders them.
@@ -96,6 +101,36 @@ type Model struct {
 	// to when the filter that hid it goes, and it is only ever set by a
 	// deliberate move.
 	sticky string
+
+	// focus says which pane has the keys. `enter` gives them to the detail so
+	// that it can be scrolled; `esc` gives them back.
+	focus focus
+	// detailTop is the first line of the detail pane that is drawn.
+	detailTop int
+	// folders holds what has arrived from Actions.Folder, and asked holds what
+	// has been sent for — one is not the other, because a request that failed
+	// must not be sent again on every frame that follows it.
+	folders map[string]held
+	asked   map[string]bool
+	// md renders the body. It is rebuilt on a resize, because the wrap width is
+	// the pane's, and it is nil on a pane too narrow to wrap into.
+	md *glamour.TermRenderer
+}
+
+// focus is which pane the keys go to.
+type focus uint8
+
+const (
+	onList focus = iota
+	onDetail
+)
+
+// held is one answer from Actions.Folder, including the answer that it could
+// not be read — never failing silently means keeping the failure, not dropping
+// it.
+type held struct {
+	folder Folder
+	err    error
 }
 
 // The size a terminal is assumed to be until it says otherwise. PLAN.md asks
@@ -115,23 +150,31 @@ func New(in Input) Model {
 		height:    defaultHeight,
 		collapsed: map[string]bool{},
 		search:    index(in.Groups, in.Ready),
+		folders:   map[string]held{},
+		asked:     map[string]bool{},
 	}
 
+	m.md = newMarkdown(m.detailWidth(), in.Renderer != nil)
 	m.rebuild()
 
 	return m
 }
 
-// Init is what bubbletea runs first. There is nothing to start: everything this
-// screen draws was handed to it.
-func (m Model) Init() tea.Cmd { return nil }
+// Init asks for what lives beside the issue the cursor opens on. Everything
+// else this screen draws was handed to it.
+func (m Model) Init() tea.Cmd { return m.fetch(m.selectedID()) }
 
 // Update is the whole key map and the resize.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.md = newMarkdown(m.detailWidth(), m.in.Renderer != nil)
 		m.scroll()
+
+		return m, nil
+	case folderMsg:
+		m.folders[msg.id] = held{folder: msg.folder, err: msg.err}
 
 		return m, nil
 	case tea.KeyMsg:
@@ -155,9 +198,23 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	switch name {
-	case "q", "ctrl+c":
+	// `q` leaves, from wherever it is pressed and whatever has the keys. A key
+	// that quits from one pane and does something else from another is the one
+	// thing a person has to keep in their head, and this map is meant to be
+	// forgettable.
+	if name == "q" || name == "ctrl+c" {
 		return m, tea.Quit
+	}
+
+	if m.focus == onDetail {
+		return m.scrollDetail(name)
+	}
+
+	switch name {
+	case "enter":
+		m.focus = onDetail
+
+		return m, nil
 	case "/":
 		m.filtering = true
 
@@ -173,17 +230,17 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 	case "up", "k":
-		return m.move(-1), nil
+		return m.moved(-1)
 	case "down", "j":
-		return m.move(1), nil
+		return m.moved(1)
 	case "pgup":
-		return m.move(-m.bodyHeight()), nil
+		return m.moved(-m.bodyHeight())
 	case "pgdown":
-		return m.move(m.bodyHeight()), nil
+		return m.moved(m.bodyHeight())
 	case "home":
-		return m.jump(false), nil
+		return m.moved(-len(m.rows))
 	case "end":
-		return m.jump(true), nil
+		return m.moved(len(m.rows))
 	case "left", "h":
 		return m.fold(), nil
 	case "right", "l":
@@ -191,6 +248,47 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// moved steps the cursor and asks for whatever now sits beside it.
+func (m Model) moved(delta int) (tea.Model, tea.Cmd) {
+	next := m.move(delta)
+
+	return next, next.fetch(next.selectedID())
+}
+
+// scrollDetail is the key map while the detail pane has the keys.
+//
+// It is a short map on purpose: what somebody wants from a pane they have just
+// opened is to move up and down it and then to get out, and every key that is
+// not one of those three is better spent on the list.
+func (m Model) scrollDetail(name string) (tea.Model, tea.Cmd) {
+	switch name {
+	case "esc", "enter":
+		m.focus = onList
+		m.detailTop = 0
+	case "up", "k":
+		m.detailTop = max(m.detailTop-1, 0)
+	case "down", "j":
+		m.detailTop = min(m.detailTop+1, m.detailFloor())
+	case "pgup":
+		m.detailTop = max(m.detailTop-m.bodyHeight(), 0)
+	case "pgdown":
+		m.detailTop = min(m.detailTop+m.bodyHeight(), m.detailFloor())
+	case "home":
+		m.detailTop = 0
+	case "end":
+		m.detailTop = m.detailFloor()
+	}
+
+	return m, nil
+}
+
+// detailFloor is as far as the pane can be scrolled: the point where its last
+// line is on the last row. Scrolling past the end of a document is how a reader
+// loses the document.
+func (m Model) detailFloor() int {
+	return max(len(m.pane(m.detailWidth()))-m.bodyHeight(), 0)
 }
 
 // View is one frame, exactly as tall as the terminal and never wider.
@@ -201,15 +299,15 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	frame := make([]string, 0, m.height)
 	frame = append(frame, m.header()...)
-	frame = append(frame, m.body()...)
+	frame = append(frame, m.panes()...)
 	frame = append(frame, m.footer()...)
 
 	return strings.Join(fit(frame, m.width, m.height), "\n")
 }
 
-// body is the two panes side by side: the list on the left, and everything
+// panes is the two of them side by side: the list on the left, and everything
 // about what the cursor is on down the right.
-func (m Model) body() []string {
+func (m Model) panes() []string {
 	height := m.bodyHeight()
 	left := m.list(m.listWidth(), height)
 	right := m.detail(m.detailWidth(), height)

@@ -145,7 +145,7 @@ func TestABlockerIsShownWithItsOwnStatus(t *testing.T) {
 	blocked := item("ISU-blocked", "The thing on top",
 		field(func(i *issue.Issue) { i.BlockedBy = []string{"ISU-blocker", "ISU-nobody"} }))
 
-	pane := detailPane(keys(t, sized(t, input(blocker, blocked), 110, 30), "j").View())
+	pane := detailPane(keys(t, sized(t, input(blocker, blocked), 140, 30), "j").View())
 
 	require.Contains(t, pane, "ISU-blocked", "the fixture selected the wrong issue")
 	require.Contains(t, pane, "ISU-blocker")
@@ -243,11 +243,23 @@ func TestAnIssueWithTwentyAttachmentsScrolls(t *testing.T) {
 	require.Contains(t, before, names[0])
 	require.NotContains(t, before, names[19], "the pane is not tall enough for all twenty")
 
-	scrolled := detailPane(drive(t, in, 100, 24, names[0],
-		"enter", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j"))
+	scrolled := detailPane(drive(t, in, 100, 24, names[0], "enter", "end"))
 
 	require.Contains(t, scrolled, names[19], "the pane scrolled to the end of them")
 	require.NotContains(t, scrolled, names[0], "and away from the start")
+
+	// And one line at a time gets there too, which is what `j` is for.
+	stepped := detailPane(drive(t, in, 100, 24, names[0], "enter",
+		"j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j"))
+	require.Contains(t, stepped, names[19])
+
+	// Scrolling back is scrolling back, and stops at the top.
+	require.Contains(t, detailPane(drive(t, in, 100, 24, names[0],
+		"enter", "end", "home")), names[0])
+	require.Contains(t, detailPane(drive(t, in, 100, 24, names[0],
+		"enter", "end", "pgup", "pgup", "pgup")), names[0])
+	require.Contains(t, detailPane(drive(t, in, 100, 24, names[0],
+		"enter", "pgdown", "k", "k")), names[10])
 }
 
 // `enter` moves the keys to the pane and `esc` gives them back, which is the

@@ -1,10 +1,69 @@
 package ui
 
 import (
+	"strconv"
 	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 
 	"github.com/dgorshkov/isu/internal/model"
 )
+
+// Actions are the things the interface cannot do itself.
+//
+// Everything on this interface is implemented by internal/cli with the code its
+// commands run, which is PLAN.md M6-S5's whole requirement: the interface
+// shares command implementations with the CLI rather than reimplementing them,
+// and it is a package that cannot load anything, so it could not reimplement
+// them if it wanted to.
+type Actions interface {
+	// Folder is what lives beside an issue: the attachments, and the comments.
+	// It is `isu show`'s own loader.
+	Folder(id string) (Folder, error)
+}
+
+// Folder is what lives beside an issue's README.
+type Folder struct {
+	// Attachments are the files beside it, by name. Their contents are
+	// arbitrary bytes and are not read.
+	Attachments []string
+	Comments    []Comment
+}
+
+// Comment is one comment file: what it is called, and what it says.
+type Comment struct {
+	Name string
+	Body string
+}
+
+// folderMsg is a folder arriving, which happens after the frame that asked for
+// it. The id comes back with it because the cursor may have moved on.
+type folderMsg struct {
+	id     string
+	folder Folder
+	err    error
+}
+
+// fetch asks for what lives beside an issue, once.
+//
+// Once, because the answer costs a git process and the cursor walks over the
+// same issue every time somebody scrolls past it. An interface with no actions
+// wired to it asks for nothing and draws the rest.
+func (m *Model) fetch(id string) tea.Cmd {
+	if m.in.Actions == nil || id == "" || m.asked[id] {
+		return nil
+	}
+
+	m.asked[id] = true
+	actions := m.in.Actions
+
+	return func() tea.Msg {
+		held, err := actions.Folder(id)
+
+		return folderMsg{id: id, folder: held, err: err}
+	}
+}
 
 // The detail pane answers "can I start this?" without leaving the interface,
 // which is PLAN.md M6-S4's whole sentence for it. Everything it needs about
@@ -13,6 +72,15 @@ import (
 // the caller derived, because a pane that resolved ids itself would be a pane
 // that loaded a repository.
 func (m Model) detail(width, height int) []string {
+	pane := m.pane(width)
+
+	top := min(m.detailTop, max(len(pane)-height, 0))
+
+	return pane[top:min(top+height, len(pane))]
+}
+
+// pane is the whole of the detail, before it is cut to what fits.
+func (m Model) pane(width int) []string {
 	item := m.selected()
 	if item == nil {
 		return []string{m.styles.dim.Render("nothing selected")}
@@ -26,8 +94,142 @@ func (m Model) detail(width, height int) []string {
 		out = append(out, "", m.styles.dim.Render(claimLine(claim)))
 	}
 
-	return wrapAll(out, width, height)
+	out = append(out, m.children(item, width)...)
+	out = append(out, m.body(item, width)...)
+	out = append(out, m.beside(item, width)...)
+
+	return wrapAll(out, width)
 }
+
+// children is an epic's own fold, listed. An epic is the one issue whose answer
+// to "can I start this?" is entirely about other issues.
+func (m Model) children(item *model.Item, width int) []string {
+	if item.Epic == nil {
+		return nil
+	}
+
+	out := []string{"", m.styles.title.Render("children")}
+
+	rows := make([][2]string, 0, len(item.Epic.Children))
+
+	for _, id := range item.Epic.Children {
+		child, ok := m.lookup(id)
+		if !ok {
+			rows = append(rows, [2]string{id, "(no issue with this id)"})
+
+			continue
+		}
+
+		rows = append(rows, [2]string{id, string(child.Status) + "  " + titleOf(child)})
+	}
+
+	if len(rows) == 0 {
+		return append(out, "  "+m.styles.dim.Render("none: this epic folds over nothing"))
+	}
+
+	for _, line := range fields(rows, atLeast(width-2, 1)) {
+		out = append(out, "  "+line)
+	}
+
+	return out
+}
+
+// body is the markdown below the frontmatter, rendered for a terminal.
+//
+// `isu show` prints it verbatim and says so; this is the pane that does not
+// have to, and glamour is in PLAN.md's allowlist for exactly this.
+func (m Model) body(item *model.Item, width int) []string {
+	if item.Issue == nil || strings.TrimSpace(item.Issue.Body) == "" {
+		return nil
+	}
+
+	return append([]string{""}, m.markdown(item.Issue.Body, width)...)
+}
+
+// beside is what lives in the issue's folder, once it has arrived.
+func (m Model) beside(item *model.Item, width int) []string {
+	held, arrived := m.folders[item.ID]
+	if !arrived {
+		return nil
+	}
+
+	var out []string
+
+	if held.err != nil {
+		return []string{"", m.styles.title.Render("beside it"),
+			"could not be read: " + held.err.Error()}
+	}
+
+	if len(held.folder.Attachments) > 0 {
+		out = append(out, "", m.styles.title.Render("attachments"))
+		for _, name := range held.folder.Attachments {
+			out = append(out, "  "+name)
+		}
+	}
+
+	for _, comment := range held.folder.Comments {
+		out = append(out, "", m.styles.title.Render("comment "+comment.Name))
+		out = append(out, wrapAll(lines(strings.TrimRight(comment.Body, "\n")), width)...)
+	}
+
+	return out
+}
+
+// markdown renders a body, and prints it as it was written when it cannot.
+//
+// A terminal too narrow to wrap into is the reachable half of that: glamour
+// wraps to a width, and below markdownFloor the width is not one anything can
+// be wrapped to. The other half is a renderer that will not build or will not
+// render, which is a style name this package chose and a width it computed —
+// so it cannot fail on anything a user did, and the body is printed rather than
+// lost, which is what `isu show` does anyway.
+func (m Model) markdown(text string, width int) []string {
+	if m.md == nil {
+		return lines(strings.TrimRight(text, "\n"))
+	}
+
+	out, err := m.md.Render(text)
+	if err != nil {
+		return lines(strings.TrimRight(text, "\n"))
+	}
+
+	trimmed := make([]string, 0, 8)
+	for _, line := range lines(strings.Trim(out, "\n")) {
+		trimmed = append(trimmed, strings.TrimRight(line, " "))
+	}
+
+	return trimmed
+}
+
+// markdownFloor is the narrowest pane glamour is asked to wrap into.
+const markdownFloor = 40
+
+// newMarkdown builds the renderer for a pane of a given width.
+//
+// The style is the plain one unless the screen has colour in it, for the same
+// reason every other style here is: what this is written to decides, and a
+// frame written into a pipe has no colour in it.
+func newMarkdown(width int, color bool) *glamour.TermRenderer {
+	if width < markdownFloor {
+		return nil
+	}
+
+	style := "ascii"
+	if color {
+		style = "auto"
+	}
+
+	r, err := glamour.NewTermRenderer(
+		glamour.WithStandardStyle(style), glamour.WithWordWrap(width))
+	if err != nil {
+		return nil
+	}
+
+	return r
+}
+
+// lines splits rendered markdown the way a pane reads it.
+func lines(s string) []string { return strings.Split(s, "\n") }
 
 // fieldRows is the block of key/value lines under the title. A field the file
 // does not carry is not printed: an issue is not a form, and an empty row for
@@ -59,6 +261,10 @@ func (m Model) fieldRows(item *model.Item) [][2]string {
 		}
 	}
 
+	if position := m.position(item); position != "" {
+		rows = append(rows, [2]string{"position", position})
+	}
+
 	for n, ref := range item.Elsewhere {
 		rows = append(rows, [2]string{key("branches", n), ref})
 	}
@@ -68,6 +274,24 @@ func (m Model) fieldRows(item *model.Item) [][2]string {
 	}
 
 	return rows
+}
+
+// position is where an issue sits among its epic's children, which is the
+// second half of "which epic is this in" — an issue that is one of forty is a
+// different proposition from one that is the last of three.
+func (m Model) position(item *model.Item) string {
+	epic, ok := m.lookup(parentOf(item))
+	if !ok || epic.Epic == nil {
+		return ""
+	}
+
+	for i, id := range epic.Epic.Children {
+		if id == item.ID {
+			return strconv.Itoa(i+1) + " of " + strconv.Itoa(len(epic.Epic.Children))
+		}
+	}
+
+	return ""
 }
 
 // key names a repeated field once. A column of `blocked_by` down the side of a
@@ -160,20 +384,14 @@ func claimLine(claim model.Claim) string {
 	return line
 }
 
-// wrapAll folds every line to the pane's width and cuts the result to its
-// height. Wrapping rather than truncating, because the fields in this pane are
-// sentences — an acceptance criterion with its second half cut off is worse
-// than no acceptance criterion.
-func wrapAll(in []string, width, height int) []string {
-	out := make([]string, 0, height)
+// wrapAll folds every line to the pane's width. Wrapping rather than
+// truncating, because the fields in this pane are sentences — an acceptance
+// criterion with its second half cut off is worse than no acceptance criterion.
+func wrapAll(in []string, width int) []string {
+	out := make([]string, 0, len(in))
 
 	for _, line := range in {
-		for _, folded := range wrap(line, width) {
-			out = append(out, folded)
-			if len(out) == height {
-				return out
-			}
-		}
+		out = append(out, wrap(line, width)...)
 	}
 
 	return out

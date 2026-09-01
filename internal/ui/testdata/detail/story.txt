@@ -1,18 +1,18 @@
-isu  main  5 issues                                                               remote refs 2h ago
-open 5
+isu  main  1 issue                                                                remote refs 2h ago
+open 1
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-open (5)                                      │ ISU-epictop
-▸ ISU-epictop      p2  Ship the tracker       │ Ship the tracker
-    ISU-epicmid    p2  Make login reliable    │
-      ISU-deepone  p1  Retries drop the seco… │ status    open
-    ISU-loosely    p2  Rotate the signing key │ type      epic
-  ISU-orphans      p2  Nobody's child         │ priority  p2
-                                              │ owner     dmitry
-                                              │ created   <date>
+open (1)                                      │ ISU-astory
+▸ ISU-astory  p2  The board renders epics     │ The board renders epics
                                               │
-                                              │ children
-                                              │   ISU-epicmid  open  Make login reliable
-                                              │   ISU-loosely  open  Rotate the signing key
+                                              │ status      open
+                                              │ type        story
+                                              │ priority    p2
+                                              │ state       open
+                                              │ owner       dmitry
+                                              │ created     <date>
+                                              │ acceptance  an epic shows its children indented
+                                              │             beneath it
+                                              │
                                               │
                                               │
                                               │
