@@ -461,7 +461,7 @@ Ten milestones. Stop for review at the end of each.
 | M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | done |
 | M3 | Derivation | statuses, epics, claims, contention | done |
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | done |
-| M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | not started |
+| M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | done |
 | M6 | TUI | `isu ui` | not started |
 | M7 | Importers | safe writes, Jira | not started |
 | M8 | Public website | content, landing page, docs, deploy | not started |
@@ -1300,9 +1300,66 @@ limitation.
 
 ---
 
-# M5 · Checks
+# M5 · Checks ✅
 
-### M5-S1 · The check engine
+**Status** done — all seven stories landed in one pull request rather than the two or three
+this document recommended at the head of M4. That was asked for explicitly, and §0 allows it;
+it is worth recording that the recommendation was right about the shape and wrong about the
+seam. The seven checks really are independent, but they are all one Input away from each
+other, and the two loaders that build that Input — what a branch proposes over trunk, and what
+lives beside each issue — are M5-S1's whether they are used by one check or by four.
+
+**The command this milestone needed did not exist yet.** `isu check` is not in M4's list of
+eight, because until there was a check engine there was nothing for it to run; it arrives here,
+with a row in the JSON contract, a golden help file that lists the rules themselves, and the
+same `--json` obligation as everything else.
+
+**Two flags are decisions this document did not make, and both are the pre-commit hook's
+fault.** `--scope tree|branch|all` exists because the hook cannot ask the branch questions: at
+pre-commit time the change being committed is not a commit yet, so those rules would be
+answered from the commits already on the branch — and on a claiming branch that answer is "you
+resolved an issue and wrote no code", which would block the very commit that writes the code.
+`--worktree` exists because the tree questions have the same problem in a worse form, and
+M5-S6 records what testing it found: a hook reading refs refuses the commit that fixes what it
+is complaining about, which is a deadlock and not a gate.
+
+**One defect and one carve-out came out of the rules themselves.** The duplicate-id check
+reported one issue claimed on two branches as two issues wearing one id, found by M5-S5's first
+two-branch fixture; and the evidence check does not demand code from an issue a branch
+*created* in a terminal state, because that is what an import is and M7 would be
+unimplementable otherwise. Both are recorded at the story that owns them.
+
+**M4-S8's limitation is now load-bearing and still open.** The board reads `refs/heads/`, so a
+claim that reached this clone as `refs/remotes/origin/isu/<ID>` is invisible — and M4-S8 asked
+for a story of its own "before M5-S5 reports contention to anybody". That story has not been
+written and this milestone did not invent it: instead every contention and staleness warning
+says which refs it read, so a local run that disagrees with CI is self-explaining rather than
+confidently wrong. **The story is still wanted, and the proposal is in the pull request.**
+
+**The branch is not the one §0 names.** A branch carrying several stories is named for the
+range and its subject — `isu/M5-S1-S7-checks` — and this work was done on
+`claude/next-milestone-7r5wtq`, which the session that produced it was told to use. The story
+ids are in every commit subject, where the rest of §0 puts them.
+
+**One thing this milestone did not do to its own history.** The `--worktree` correction was
+committed together with M5-S7's conversion rather than in its own pair of commits; the split
+could not be made after the fact in the environment the work ran in. The code and its tests are
+in that commit, and this line is here so a reviewer looking for them knows where they went.
+
+### M5-S1 · The check engine ✅
+**Done** #11, 2026-09-01. The engine is a registry, an order and a summary. Findings are
+stamped with the name of the check that produced them by the registry rather than by each
+check, so a check cannot disagree with the name it was registered under; checks run in name
+order so that where a registry line sits in a file cannot change a pipeline's output; and the
+report sorts failures first and then by check, issue, path and message, because a pipeline's
+output is diffed by whoever is working out what their commit changed. **Two loaders arrive with
+it**, because "checks receive loaded refs and the diff against trunk" is this story's own
+sentence: `repo.LoadBranch` reads what a ref proposes over trunk — measured from the merge base,
+so a trunk that has moved on does not read as the branch reverting work it never touched — and
+`repo.LoadFiles` reads what lives beside each issue's README with its size, which is the only
+source the attachment cap has. `repo.BoardSpec` also grew `Refs`, for the one case the patterns
+cannot reach: a pipeline checks out a merge commit and no branch, and a check suite that could
+not see the issues the pull request adds would pass every pull request that added a broken one.
 **Branch** `isu/M5-S1-check-engine`
 **Build** `internal/check`: a `Check` interface, a registry, severity levels (`fail`, `warn`),
 and a reporter with human and JSON output. Checks receive loaded refs and the diff against
@@ -1311,7 +1368,21 @@ trunk — never raw git.
 `--json` output validates.
 **Done when** adding a check is one file and one registry line.
 
-### M5-S2 · Structural checks
+### M5-S2 · Structural checks ✅
+**Done** #11, 2026-09-01. Six rules, and half of them are the other half of a sentence M1-S2
+could only start: `Validate` takes one issue and nothing else, so `parent:` is checked for shape
+there and for what it names here. **Every copy is checked and not only the one derivation
+renders** — an issue that is fine at trunk and broken on the branch proposing it is a broken
+issue, and the finding names the branch so nobody goes looking at trunk for it. **The
+duplicate-id rule is about ids trunk has never seen**, and has to be: an id on trunk and on a
+branch is one issue somebody edited, which is the model working. Two branches carrying an id
+trunk has never seen, with different titles or creation dates, are two issues wearing one id.
+Its first version got that wrong in a way only a two-branch fixture found, and M5-S5's
+contention fixture is what found it: it meant to skip the ids trunk already carries and instead
+appended the branch copies to the empty entry it had just made for them, so one issue claimed
+on two branches read as a corruption. The rule now has two fixtures asserting it does *not*
+fire — one issue edited on two branches, and a report triaged on a second branch — because a
+rule that fires on the ordinary case is worse than no rule at all.
 **Branch** `isu/M5-S2-structural-checks`
 **Build** schema validity, id matches folder, duplicate ids, `parent` and `blocked_by` exist,
 **`parent` names an issue of `type: epic`**, parent cycles, self-parent, dependency cycles,
@@ -1322,7 +1393,17 @@ The duplicate-id fixture matters more than it used to: it is now the only thing 
 between two clones that generated the same token at the same moment and a corrupt tree.
 **Done when** every rule in section 1 that can be checked without a diff is checked.
 
-### M5-S3 · Evidence checks
+### M5-S3 · Evidence checks ✅
+**Done** #11, 2026-09-01. **One carve-out, and it is a decision this document did not make.**
+Resolving means the branch found the issue open here and left it terminal. An issue the branch
+*created* in a terminal state is not a resolution: it was never open in this repository, which
+is exactly what an import is — M7-S2 writes thousands of issues Jira closed years ago, on a
+branch that changes nothing outside `issues/` because there is nothing else to change. A rule
+that demanded code for those would catch nobody and would make the importer unimplementable.
+The `reason` and `resolution` a drop requires stay the schema's to report: `state: dropped`
+without them does not satisfy `Validate`, and two rules reporting one line would give a reader
+two things to fix that are one thing. A drop that also changes code warns and exits 0, as
+specified.
 **Branch** `isu/M5-S3-evidence-checks`
 **Build** the type table's resolution rules: resolving requires a change outside `issues/`;
 a spike requires an artifact in its own folder; a drop requires `reason` and `resolution`.
@@ -1338,7 +1419,13 @@ spike with `decision.md` passes; drop without `resolution` fails; drop with code
 and exits 0.
 **Done when** an agent cannot mark work done without doing it.
 
-### M5-S4 · Owner immutability
+### M5-S4 · Owner immutability ✅
+**Done** #11, 2026-09-01. It reads the commit author rather than the diff, because the
+asymmetry is the whole rule: the same one-line change is fine from a person and is not fine from
+the thing they are supervising. An author is matched against `agents:` by name as written and by
+address without regard to case — two display names are two decisions somebody made, where two
+spellings of an address are one mailbox. A branch is not one author, so the finding lands on the
+commit that did it and a person's commits beside it neither excuse it nor are blamed for it.
 **Branch** `isu/M5-S4-owner-immutability`
 **Build** if the commits on this branch change `owner:` and their author is in the configured
 `agents:` list in `.isu.yml`, that is a `fail`. Humans may change it freely.
@@ -1346,7 +1433,14 @@ and exits 0.
 `state` but not `owner` passes; a mixed-authorship branch fails on the agent's commit.
 **Done when** accountability cannot be reassigned by anything that isn't a person.
 
-### M5-S5 · Contention and staleness reporting
+### M5-S5 · Contention and staleness reporting ✅
+**Done** #11, 2026-09-01. Both are warnings and neither fails a pull request: one refused for
+contention is one refused for somebody else's branch. **Every finding carries a clause naming
+what it was read from**, which is this story's own requirement and also the honest answer to
+M4-S8's open limitation — a repository with no remote is told these are local branches only, a
+stale ref set is told how old it is and to run `--fetch`, and a repository with a remote is told
+that a claim somebody else pushed and never merged is not in the answer at all. That last clause
+is a stopgap for the story M4-S8 asked for and is not a substitute for it.
 **Branch** `isu/M5-S5-contention`
 **Build** warn when another branch claims the same issue, naming the branch and holder; warn on
 claims older than `stale_days`. Both warnings are statements about refs, so both are
@@ -1357,7 +1451,29 @@ branch; stale claim produces a warning with the age in days; a stale local ref s
 warning that says so rather than reporting confident nonsense.
 **Done when** both surface at pull-request time rather than at merge.
 
-### M5-S6 · Hooks and CI templates
+### M5-S6 · Hooks and CI templates ✅
+**Done** #11, 2026-09-01. **The hook this story specifies cannot be written as specified, and
+the correction is `isu check --worktree`.** Checks read refs, by M5-S1's rule; a pre-commit hook
+that reads refs is answering about the commit *before* the one being made. That is not a slower
+answer, it is a deadlock: commit a broken issue file — the hook sees the previous commit and
+allows it — then try to commit the fix, and the hook sees the broken file that is no longer
+there and refuses. So `isu check` grew `--worktree`, which reads the issues on disk through
+M2-S3's loader and a new `repo.LoadWorktreeFiles` beside it, and the hook runs that. It implies
+`--scope tree`, because the working tree is not a set of commits and there is nothing there for
+the branch rules to be about.
+
+Beside that: the hook goes wherever git looks for hooks rather than into `.git/hooks`, since
+`.git` is a directory in a clone, a file in a submodule and a file in a linked worktree, and
+`core.hooksPath` moves the lot — a hook in the wrong one of those is a hook that silently never
+runs. It exits 0 with a word on stderr when isu is not on `PATH`, because a hook that stands
+between somebody and their commit for that is a hook the whole team deletes on its first day.
+Idempotence is three rules over every file: write what is missing, leave what is already right,
+refuse to overwrite what is neither without `--force` — which is also why `--prefix` is now
+optional in a repository that already has a configuration, so that adopting isu after you
+already have a pipeline adds the parts you are missing and keeps the parts you have. The
+generated workflow fetches the base branch by name and passes it as `--ref`, because a pull
+request build checks out a merge commit and no branch; without that isu compares the repository
+against itself and every branch rule passes silently.
 **Branch** `isu/M5-S6-init`
 **Build** `isu init` writing a pre-commit hook and `.github/workflows/isu.yml`. Flags
 `--hooks`, `--actions`. Idempotent: running twice changes nothing. Never overwrites an existing
@@ -1366,7 +1482,27 @@ file without `--force`.
 zero-length diff; init over an existing workflow without `--force` refuses.
 **Done when** the generated pipeline runs `isu check` and fails the build correctly.
 
-### M5-S7 · Dogfooding switch
+### M5-S7 · Dogfooding switch ✅
+**Done** #11, 2026-09-01. Twenty-nine issues: five epics, one per remaining milestone, and
+twenty-four stories, one per remaining story heading — all through `isu new --no-branch`, with
+`--parent` naming the milestone and `--blocked-by` naming the story before it, so that the first
+story of a milestone waits on the milestone before it and an epic blocker is terminal when its
+rollup is. Each story's `acceptance` is its own **Done when** sentence, which is what that line
+has always been. **This pull request's own seven stories are flipped to `resolved` by `isu
+resolve`**, one commit and one `Isu-Resolves:` trailer each, which is the mechanism this story
+turns on for everything after it.
+
+**The test reads the working tree where this document says trunk, deliberately.** An assertion
+about trunk is one that cannot fail on the pull request that breaks it — trunk has not merged it
+yet — so it would be green for the whole of the review and red immediately afterwards, which is
+the one moment nobody is looking. Beside the four assertions this story asks for, it holds
+PLAN.md and `issues/` to each other in both directions: every story heading from M5 on has an
+issue with that title, and every issue is one of those headings. Two documents saying the same
+thing drift the moment nobody is checking.
+
+`make dogfood` is the gate, and CI runs it against the base branch it fetches by name. The
+binary is the one just built rather than a release: a pipeline that checked this repository with
+last month's isu would pass the pull request that broke the checks.
 **Branch** `isu/M5-S7-dogfood`
 **Why** Last in this milestone on purpose. It needs `isu new` from M4-S3 to create the issues
 and the whole check suite to keep them honest; converting any earlier means hand-maintaining
@@ -1664,9 +1800,9 @@ for each of them separately.
    ever seen refuse is a harness whose refusals are a comment, and every fixture in this
    project trusts them.
 
-   **The headroom is three statements**, so this floor will be the thing that fails a story
-   sooner or later, and that is the point of it. Eleven statements remain uncovered, and each
-   one needs the filesystem to fail underneath it: `main` calling `os.Exit`; the loader's
+   **The headroom was three statements when this was written**, so this floor will be the thing
+   that fails a story sooner or later, and that is the point of it. Eleven statements remained
+   uncovered, and each one needs the filesystem to fail underneath it: `main` calling `os.Exit`; the loader's
    `os.Stat` and `os.ReadFile` on a path it has just walked to (four); the harness failing to
    open, write or close the `.git/config` it has just initialised (four); the harness's
    `gitx.New` on a fresh `TempDir`; and `os.Rename` moving a remote aside. A story that adds an
@@ -1690,12 +1826,21 @@ for each of them separately.
    it is how "what does isu say when git will not answer" became a thing this project asserts
    rather than hopes.
 
-   Eighteen statements stay uncovered and are argued for: the eleven above, plus `repo.Open` on
-   a directory `rev-parse --show-toplevel` has just named, `os.WriteFile` on two paths their
+   Eighteen statements stayed uncovered and were argued for: the eleven above, plus `repo.Open`
+   on a directory `rev-parse --show-toplevel` has just named, `os.WriteFile` on two paths their
    functions have just made, `cat-file --batch` failing after the `ls-tree` that named its
    objects did not, a base git resolves for the load and refuses two processes later, and
    `config.NewID` failing — which it cannot, since the generator reads no file and takes no
    lock, but its signature says it might.
+
+   **M5 took the module to 3,304 statements and left twenty-five uncovered, which is 99.2% and
+   eight statements of headroom.** Five of those are this milestone's and each is argued for
+   the same way: `isu init` failing to make a directory or to change the mode of a file it has
+   just written; the two git answers that name a repository's hooks directory, and the relative
+   name of one that `core.hooksPath` put outside the working tree; and `os.DirEntry.Info` on a
+   file the walk beside it has just listed. Everything else the milestone added is reached,
+   most of it through the git shim above — including, now, the loader that reads what a branch
+   proposes, whose three processes are refused one at a time by counting.
 4. The story's own issue file is flipped to `resolved` in the same pull request (from M5-S7,
    which is where issue files start existing).
 5. The pull request describes what changed, what was decided, and anything that needs a call.
