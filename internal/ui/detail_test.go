@@ -24,32 +24,50 @@ import (
 // what is it waiting on, and what does done look like. Every assertion below is
 // one of those four.
 
-// folder is a fake Actions holding one issue's attachments and comments. It is
-// injected rather than loaded, because loading is the CLI's half of this and
-// this package is not allowed to do it.
-type folder struct {
-	held ui.Folder
-	err  error
-}
-
-func (f folder) Folder(string) (ui.Folder, error) { return f.held, f.err }
+// What lives beside an issue is injected rather than loaded, because loading is
+// the CLI's half of this and this package is not allowed to do it. The fake is
+// `wired`, in actions_test.go, which stands in for internal/cli as a whole.
 
 // drive runs the interface through the real event loop, which is the only way
 // a command it returns actually runs — the folder is fetched by one.
+//
+// It waits for something on the screen before it types, because scrolling a
+// pane that has not been filled yet scrolls nothing.
 func drive(t *testing.T, in ui.Input, width, height int, until string, then ...string) string {
 	t.Helper()
 
-	tm := teatest.NewTestModel(t, ui.New(in), teatest.WithInitialTermSize(width, height))
+	return script{width: width, height: height, before: until, keys: then}.run(t, in)
+}
 
-	if until != "" {
-		teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-			return bytes.Contains(out, []byte(until))
-		}, teatest.WithDuration(5*time.Second))
-	}
+// press is the other order: type first, and wait for what the typing produced.
+// An action reports after it has run, so there is nothing to wait for until the
+// key that starts it has been sent.
+func press(t *testing.T, in ui.Input, width, height int, keys []string, until string) string {
+	t.Helper()
 
-	for _, name := range then {
+	return script{width: width, height: height, keys: keys, after: until}.run(t, in)
+}
+
+// script is one run of the interface: wait, type, wait, quit.
+type script struct {
+	width, height int
+	before        string
+	keys          []string
+	after         string
+}
+
+func (s script) run(t *testing.T, in ui.Input) string {
+	t.Helper()
+
+	tm := teatest.NewTestModel(t, ui.New(in), teatest.WithInitialTermSize(s.width, s.height))
+
+	waitFor(t, tm, s.before)
+
+	for _, name := range s.keys {
 		tm.Send(key(name))
 	}
+
+	waitFor(t, tm, s.after)
 
 	tm.Send(key("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(5*time.Second))
@@ -58,6 +76,20 @@ func drive(t *testing.T, in ui.Input, width, height int, until string, then ...s
 	require.True(t, ok)
 
 	return final.View()
+}
+
+// waitFor holds until the screen says something, and returns at once when there
+// is nothing to wait for.
+func waitFor(t *testing.T, tm *teatest.TestModel, until string) {
+	t.Helper()
+
+	if until == "" {
+		return
+	}
+
+	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
+		return bytes.Contains(out, []byte(until))
+	}, teatest.WithDuration(5*time.Second))
 }
 
 // detailPane is the right-hand half of a frame.
@@ -198,7 +230,7 @@ func TestAttachmentsAndCommentsAreShownWhenTheyArrive(t *testing.T) {
 	t.Parallel()
 
 	in := oneIssue(item("ISU-hasbits", "An issue with things beside it"))
-	in.Actions = folder{held: ui.Folder{
+	in.Actions = &wired{held: ui.Folder{
 		Attachments: []string{"repro.har", "screenshot.png"},
 		Comments: []ui.Comment{
 			{Name: "2026-08-24-support-01.md", Body: "It happens on Firefox too.\n"},
@@ -221,7 +253,7 @@ func TestAFolderThatCannotBeReadSaysSo(t *testing.T) {
 	t.Parallel()
 
 	in := oneIssue(item("ISU-unreadb", "Something beside it will not open"))
-	in.Actions = folder{err: errors.New("permission denied")}
+	in.Actions = &wired{folderErr: errors.New("permission denied")}
 
 	require.Contains(t, detailPane(drive(t, in, 110, 30, "permission denied")),
 		"permission denied")
@@ -237,7 +269,7 @@ func TestAnIssueWithTwentyAttachmentsScrolls(t *testing.T) {
 	}
 
 	in := oneIssue(item("ISU-manybit", "Twenty things beside it"))
-	in.Actions = folder{held: ui.Folder{Attachments: names}}
+	in.Actions = &wired{held: ui.Folder{Attachments: names}}
 
 	before := detailPane(drive(t, in, 100, 24, names[0]))
 	require.Contains(t, before, names[0])

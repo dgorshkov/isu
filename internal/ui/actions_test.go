@@ -29,6 +29,9 @@ import (
 type wired struct {
 	mu sync.Mutex
 
+	held      ui.Folder
+	folderErr error
+
 	claimed  []string
 	wentTo   []string
 	filed    int
@@ -46,7 +49,7 @@ type wired struct {
 	onNew func(ui.Streams)
 }
 
-func (w *wired) Folder(string) (ui.Folder, error) { return ui.Folder{}, nil }
+func (w *wired) Folder(string) (ui.Folder, error) { return w.held, w.folderErr }
 
 func (w *wired) Claim(id string) (string, error) {
 	w.mu.Lock()
@@ -112,7 +115,7 @@ func TestClaimingSaysWhatHappenedAndReReadsTheBoard(t *testing.T) {
 
 	w := &wired{claimSaid: "ISU-donede claimed on isu/ISU-donede, pushed"}
 
-	frame := drive(t, acting(w), 110, 24, "pushed", "c")
+	frame := press(t, acting(w), 110, 24, []string{"c"}, "pushed")
 
 	require.Contains(t, frame, "ISU-donede claimed on isu/ISU-donede, pushed")
 
@@ -131,7 +134,7 @@ func TestClaimingSomethingSomebodyElseHasShowsWhoHasIt(t *testing.T) {
 		"ISU-donede is already claimed: alice pushed isu/ISU-donede first, " +
 			"so the work is theirs")}
 
-	require.Contains(t, drive(t, acting(w), 140, 24, "alice", "c"), "alice")
+	require.Contains(t, press(t, acting(w), 140, 24, []string{"c"}, "alice"), "alice")
 }
 
 // PLAN.md M6-S5: "`g` on an unclaimed issue is a no-op with a message".
@@ -142,7 +145,7 @@ func TestGoingToTheBranchOfAnUnclaimedIssueSaysSo(t *testing.T) {
 		"there is no isu/ISU-donede here: nobody has claimed ISU-donede from this clone")}
 
 	before := sized(t, acting(w), 140, 24)
-	after := drive(t, acting(w), 140, 24, "nobody has claimed", "g")
+	after := press(t, acting(w), 140, 24, []string{"g"}, "nobody has claimed")
 
 	require.Contains(t, after, "nobody has claimed ISU-donede from this clone")
 	require.Equal(t, drawnIDs(before.View()), drawnIDs(after), "and the list did not move")
@@ -153,7 +156,7 @@ func TestGoingToTheBranchOfAClaimedIssueChecksItOut(t *testing.T) {
 
 	w := &wired{gotoSaid: "on isu/ISU-inprog"}
 
-	require.Contains(t, drive(t, acting(w), 110, 24, "on isu/ISU-inprog", "g"),
+	require.Contains(t, press(t, acting(w), 110, 24, []string{"g"}, "on isu/ISU-inprog"),
 		"on isu/ISU-inprog")
 	require.Equal(t, []string{"ISU-donede"}, w.wentTo)
 }
@@ -171,7 +174,7 @@ func TestFilingAnIssueHandsTheEditorTheTerminal(t *testing.T) {
 		onNew:   func(s ui.Streams) { got = s },
 	}
 
-	require.Contains(t, drive(t, acting(w), 110, 24, "ISU-newone1", "n"),
+	require.Contains(t, press(t, acting(w), 110, 24, []string{"n"}, "ISU-newone1"),
 		"ISU-newone1 on report/ISU-newone1")
 
 	_, _, filed, reloads := w.count()
@@ -207,7 +210,7 @@ func TestNoActionFailsSilently(t *testing.T) {
 			t.Parallel()
 
 			require.Contains(t,
-				drive(t, acting(tt.wired), 140, 24, tt.want, tt.key), tt.want)
+				press(t, acting(tt.wired), 140, 24, []string{tt.key}, tt.want), tt.want)
 		})
 	}
 }
@@ -249,7 +252,7 @@ func TestAReloadKeepsWhereSomebodyWas(t *testing.T) {
 	w := &wired{claimSaid: "claimed"}
 	in := acting(w)
 
-	frame := drive(t, in, 110, 24, "claimed", "j", "j", "c")
+	frame := press(t, in, 110, 24, []string{"j", "j", "c"}, "claimed")
 
 	require.Equal(t, "ISU-triage", selectedIn(frame),
 		"the cursor is where it was, on the board that was read again")
