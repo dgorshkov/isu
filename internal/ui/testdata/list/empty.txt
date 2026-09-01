@@ -1,0 +1,24 @@
+isu  main  0 issues                                           remote refs 2h ago
+nothing on any ref isu can see
+────────────────────────────────────────────────────────────────────────────────
+no issues on any ref isu can see     │ nothing selected
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+                                     │
+────────────────────────────────────────────────────────────────────────────────
+
+enter open · c claim · n new · r ready · g branch · / filter · q quit

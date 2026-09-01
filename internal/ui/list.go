@@ -41,15 +41,80 @@ func (m *Model) rebuild() {
 	} else {
 		for _, group := range m.in.Groups {
 			m.rows = append(m.rows, row{heading: string(group.Status), count: len(group.Items)})
-
-			for _, item := range group.Items {
-				m.rows = append(m.rows, row{item: item})
-			}
+			m.rows = arrange(m.rows, group.Items)
 		}
 	}
 
 	m.restore(was)
 	m.scroll()
+}
+
+// arrange draws an epic's children under it.
+//
+// The order inside a group is the board's, with one thing done to it: a child
+// whose epic is in the same group is drawn immediately after that epic, one
+// level in. Which group an issue is in is not touched — that is the board's
+// answer and PLAN.md M6-S2 asks that the two agree exactly — so a child whose
+// epic has finished stands at the top of its own group rather than being drawn
+// under an epic three groups away.
+//
+// Every issue is emitted exactly once. A parent cycle is two epics that are
+// each other's ancestors, which is `isu check`'s to report and this function's
+// to survive: the sweep at the end draws whatever the walk could not reach,
+// rather than following the chain until the stack runs out.
+func arrange(rows []row, items []*model.Item) []row {
+	children := map[string][]*model.Item{}
+	here := make(map[string]bool, len(items))
+
+	for _, item := range items {
+		here[item.ID] = true
+	}
+
+	for _, item := range items {
+		if parent := parentOf(item); parent != "" && here[parent] {
+			children[parent] = append(children[parent], item)
+		}
+	}
+
+	drawn := make(map[string]bool, len(items))
+
+	var emit func(*model.Item, int)
+
+	emit = func(item *model.Item, depth int) {
+		if drawn[item.ID] {
+			return
+		}
+
+		drawn[item.ID] = true
+		rows = append(rows, row{item: item, depth: depth})
+
+		for _, child := range children[item.ID] {
+			emit(child, depth+1)
+		}
+	}
+
+	for _, item := range items {
+		if parent := parentOf(item); parent == "" || !here[parent] {
+			emit(item, 0)
+		}
+	}
+
+	// Whatever the walk could not reach from a root, which is every issue in a
+	// parent cycle. They are drawn at the top level, in the board's order.
+	for _, item := range items {
+		emit(item, 0)
+	}
+
+	return rows
+}
+
+// parentOf is the epic an issue names, or nothing.
+func parentOf(item *model.Item) string {
+	if item.Issue == nil {
+		return ""
+	}
+
+	return item.Issue.Parent
 }
 
 // restore puts the cursor back on an issue, or on the first one there is.

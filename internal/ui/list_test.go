@@ -179,6 +179,17 @@ func drawnIDs(frame string) []string {
 	return out
 }
 
+// selectedIn is the id the cursor is on, read off a frame.
+func selectedIn(frame string) string {
+	for _, line := range listPane(frame) {
+		if rest, found := strings.CutPrefix(line, "▸ "); found {
+			return strings.Fields(rest)[0]
+		}
+	}
+
+	return ""
+}
+
 // indents is how far each id is drawn from the left, past the cursor marker —
 // which is measured in characters, because the marker is not an ASCII one.
 func indents(frame string, ids ...string) []int {

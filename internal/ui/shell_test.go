@@ -137,7 +137,7 @@ func TestTheReadyQueueIsAKeyAway(t *testing.T) {
 	back := keys(t, m, "r", "r").View()
 	require.Contains(t, back, "ISU-donede", "`r` is a toggle: the board comes back")
 	require.NotContains(t, back, "ready (1)")
-	require.Contains(t, back, "▸ ISU-openly",
+	require.Equal(t, "ISU-openly", selectedIn(back),
 		"the cursor followed the issue the queue was showing, which is what makes "+
 			"`r` a way to find something rather than a way to lose your place")
 }
