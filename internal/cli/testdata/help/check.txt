@@ -12,6 +12,7 @@ answering from the commits already there.
 
 The checks:
   attachments  tree    no attachment is bigger than attachment_max_bytes
+  claims       tree    nobody is working on the same issue twice, and no claim has gone quiet
   cycles       tree    no epic is its own ancestor, and nothing waits on itself in a ring
   duplicates   tree    no two branches report different issues under one id
   epics        tree    every epic has at least one child

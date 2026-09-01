@@ -1,0 +1,3 @@
+main · 9 checks · 1 warning · no remote refs
+
+warn  claims  ISU-7f3akq  claimed 30 days ago on isu/ISU-7f3akq by alice and it is still open: stale_days is 7; these are local branches only, so nobody else's work is in this answer

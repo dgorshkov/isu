@@ -91,23 +91,24 @@ func (duplicateCheck) Run(in Input) []Finding {
 	}
 
 	byID := map[string][]Copy{}
+	onTrunk := map[string]bool{}
 
 	for _, copied := range in.Copies() {
-		if copied.OnTrunk {
-			// Trunk has it, so every branch carrying it is editing it.
-			byID[copied.ID] = nil
-
-			continue
-		}
-
-		if copied.Issue != nil {
+		switch {
+		case copied.OnTrunk:
+			// Trunk has it, so every branch carrying it is editing it — which
+			// is the model working rather than two issues wearing one id.
+			onTrunk[copied.ID] = true
+		case copied.Issue != nil:
 			byID[copied.ID] = append(byID[copied.ID], copied)
 		}
 	}
 
 	ids := make([]string, 0, len(byID))
 	for id := range byID {
-		ids = append(ids, id)
+		if !onTrunk[id] {
+			ids = append(ids, id)
+		}
 	}
 
 	sort.Strings(ids)
