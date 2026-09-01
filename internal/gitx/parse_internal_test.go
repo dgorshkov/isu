@@ -149,6 +149,20 @@ func TestLsTreeRefusesMalformedEntries(t *testing.T) {
 	}
 }
 
+// `ls-tree -l` reports no size for an object that has none — a tree, or a
+// submodule's gitlink — and writes a dash where the number would be. It is a
+// row to keep rather than a row to fail on: the caller is asking about
+// attachments, and a submodule is not one.
+func TestLsTreeLongReadsADashAsNoSize(t *testing.T) {
+	entries, err := parseTree(
+		"160000 commit deadbeef       -\tissues/AR-7f3akq/vendor\x00")
+	require.NoError(t, err)
+
+	require.Len(t, entries, 1)
+	require.EqualValues(t, -1, entries[0].Size)
+	require.Equal(t, "commit", entries[0].Type)
+}
+
 func TestSplitNUL(t *testing.T) {
 	require.Nil(t, splitNUL(""))
 	require.Nil(t, splitNUL("\x00"))

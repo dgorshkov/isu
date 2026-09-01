@@ -38,6 +38,53 @@ func TestLsTreeReturnsObjectIdsAndPaths(t *testing.T) {
 	require.Contains(t, byPath, "README.md")
 }
 
+func TestLsTreeLongCarriesTheSizeOfEveryBlob(t *testing.T) {
+	r := gittest.New(t).
+		Issue("AR-7f3akq", gittest.Attachment("repro.har", "0123456789")).
+		Commit("an issue with something beside it")
+
+	entries, err := open(t, r).LsTreeLong(t.Context(), "HEAD", "issues")
+	require.NoError(t, err)
+
+	sizes := map[string]int64{}
+	for _, e := range entries {
+		sizes[e.Path] = e.Size
+	}
+
+	require.EqualValues(t, 10, sizes["issues/AR-7f3akq/repro.har"],
+		"the attachment cap in M5-S2 has no other source, and reading every "+
+			"attachment to measure it would be the slow read path over the "+
+			"largest files in the repository")
+	require.Positive(t, sizes["issues/AR-7f3akq/README.md"])
+
+	plain, err := open(t, r).LsTree(t.Context(), "HEAD", "issues")
+	require.NoError(t, err)
+	require.Zero(t, plain[0].Size, "the read path does not ask git for sizes")
+}
+
+func TestMergeBaseIsWhereTwoRevisionsDiverged(t *testing.T) {
+	r := gittest.New(t).
+		File("README.md", "a repository\n").Commit("first")
+
+	base := r.Head()
+
+	r.Branch("topic").Checkout("topic").
+		File("login.go", "package login\n").Commit("on the branch").
+		Checkout(gittest.DefaultBranch).
+		File("other.go", "package other\n").Commit("on trunk")
+
+	got, err := open(t, r).MergeBase(t.Context(), gittest.DefaultBranch, "topic")
+	require.NoError(t, err)
+	require.Equal(t, base, got)
+}
+
+func TestMergeBaseReportsRevisionsThatShareNothing(t *testing.T) {
+	r := gittest.New(t).File("README.md", "a repository\n").Commit("first")
+
+	_, err := open(t, r).MergeBase(t.Context(), gittest.DefaultBranch, "refs/heads/nope")
+	require.Error(t, err)
+}
+
 func TestLsTreeLimitsItselfToThePathsItIsGiven(t *testing.T) {
 	r := gittest.New(t).
 		Issue("AR-7f3akq").

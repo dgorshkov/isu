@@ -10,6 +10,52 @@ import (
 	"github.com/dgorshkov/isu/internal/repo"
 )
 
+// A pipeline checks out a merge commit and no branch, so the ref under review
+// is HEAD and refs/heads/* is empty. A board that could not be told to read one
+// more ref would have nothing to say about the pull request it was run for.
+func TestLoadBoardReadsRefsThePatternsDoNotName(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
+		Branch("topic").Checkout("topic").
+		Issue("ISU-40b1cc").Commit("report ISU-40b1cc")
+
+	at := r.Head()
+	r.Checkout(gittest.DefaultBranch).DeleteBranch("topic")
+	r.Git("checkout", "--quiet", "--detach", at)
+
+	loader := open(t, r)
+
+	without, err := loader.LoadBoard(t.Context(), repo.BoardSpec{Trunk: gittest.DefaultBranch})
+	require.NoError(t, err)
+	require.Empty(t, without.Names())
+
+	with, err := loader.LoadBoard(t.Context(), repo.BoardSpec{
+		Trunk: gittest.DefaultBranch, Refs: []string{"HEAD", ""},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"HEAD"}, with.Names(), "an empty name is ignored")
+	require.Equal(t, []string{"ISU-40b1cc"}, with.Changed["HEAD"])
+}
+
+// A ref the patterns already matched is not loaded twice. Loading it twice
+// would put a claimant's own branch on the board as two branches, which reads
+// as somebody contending with themselves.
+func TestLoadBoardDoesNotLoadANamedRefTwice(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
+		Branch("topic").Checkout("topic").
+		Issue("ISU-7f3akq", gittest.State("resolved")).Commit("claim ISU-7f3akq").
+		Checkout(gittest.DefaultBranch)
+
+	board, err := open(t, r).LoadBoard(t.Context(), repo.BoardSpec{
+		Trunk: gittest.DefaultBranch, Refs: []string{"refs/heads/topic"},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"refs/heads/topic"}, board.Names())
+}
+
 func TestLoadBoardReadsTrunkAndEveryBranch(t *testing.T) {
 	r := gittest.New(t).
 		Issue("AR-7f3akq").Issue("AR-40b1cc").Commit("two issues").

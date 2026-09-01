@@ -49,6 +49,13 @@ var jsonCases = map[string]jsonCase{
 	},
 	"comment": {args: []string{"comment", "ISU-openly", "-m", "a comment"}},
 	"triage":  {args: []string{"triage", "ISU-openly", "--owner", "alice"}},
+	"check": {
+		args: []string{"check"},
+		// The fixture board has an epic with a child and nothing wrong with it,
+		// so this run finds nothing and exits 0 — which is what `ok` needs of
+		// every row in this table.
+		setup: onABranch,
+	},
 	"init": {
 		args: []string{"init", "--prefix", "NEW"},
 		setup: func(r *gittest.Repo) {
@@ -145,6 +152,8 @@ var documented = []any{
 	Text{},
 	Link{},
 	Write{},
+	CheckPayload{},
+	Finding{},
 }
 
 func TestJSONDocumentsEveryField(t *testing.T) {
