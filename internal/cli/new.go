@@ -290,6 +290,14 @@ func (a *app) reportWrite(w Write) error {
 		head = strings.Join(w.Paths, ", ")
 	}
 
+	if head == "" {
+		// `isu init` in a repository that already has everything it writes.
+		// Doing nothing is the answer, and a blank line is not a way to say it.
+		_, _ = fmt.Fprintln(out, "nothing to do")
+
+		return nil
+	}
+
 	line := t.bold(head)
 	if len(parts) > 0 {
 		line += " · " + strings.Join(parts, " · ")

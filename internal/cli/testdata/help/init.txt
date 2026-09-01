@@ -1,18 +1,24 @@
-init writes .isu.yml at the top of the repository.
+init writes .isu.yml at the top of the repository, and with --hooks or
+--actions the two files that make isu check run without anybody remembering to.
 
 The prefix is the first half of every issue id — ISU-7f3akq — and it is part of
 every issue's folder name, so it has to be a legal one. There is no default: the
-half of an id that says which project this is has no sensible guess.
+half of an id that says which project this is has no sensible guess. Nothing
+else in .isu.yml is written, because a configuration file full of the defaults
+is a file nobody can tell they have changed.
 
-Nothing else in .isu.yml is written. Every other key has a default, and a
-configuration file full of the defaults is a file nobody can tell they have
-changed.
+Running init twice changes nothing. A file that is already what isu would write
+is left alone, and a file that is something else is refused rather than
+overwritten — pass --force when replacing it is what you meant.
 
 Usage:
   isu init [flags]
 
 Flags:
+      --actions         write .github/workflows/isu.yml, so the rules run on every pull request
+      --force           overwrite a file that is not what isu writes
   -h, --help            help for init
+      --hooks           write a pre-commit hook that runs isu check
       --prefix string   the issue id prefix, such as ISU (required)
 
 Global Flags:
