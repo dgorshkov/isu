@@ -3,7 +3,7 @@ schema: 1
 id: ISU-t5tjsg
 title: M5-S4 · Owner immutability
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
