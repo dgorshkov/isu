@@ -124,7 +124,9 @@ week — and two engineers with different fetch ages see different contention.
 
 ## BoardPayload
 
-`isu board`, one object.
+`isu board`, one object. `isu ui --json` prints the same object: an interface is
+not a thing an agent can read, so what it answers with is the board it would
+have opened on.
 
 | field | type | meaning |
 |---|---|---|

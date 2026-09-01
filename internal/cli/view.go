@@ -112,9 +112,20 @@ func (s *session) trunkName(ctx context.Context) (string, error) {
 	return branch, nil
 }
 
-// groups buckets every issue by its derived status, in the precedence order of
-// PLAN.md's table, and drops the statuses nothing matched.
-func (v *view) groups() []Group {
+// itemGroup is one status's issues before anything renders them.
+type itemGroup struct {
+	status model.Status
+	items  []*model.Item
+}
+
+// itemGroups buckets every issue by its derived status, in the precedence order
+// of PLAN.md's table, and drops the statuses nothing matched.
+//
+// It is one function rather than one per renderer on purpose. `isu board` and
+// `isu ui` show the same repository, and PLAN.md M6-S2 asks that their grouping
+// match exactly — which is a promise two orderings that happen to agree cannot
+// keep, and one ordering used twice cannot break.
+func (v *view) itemGroups() []itemGroup {
 	byStatus := map[model.Status][]*model.Item{}
 
 	for _, id := range v.board.IDs() {
@@ -122,7 +133,7 @@ func (v *view) groups() []Group {
 		byStatus[item.Status] = append(byStatus[item.Status], item)
 	}
 
-	groups := make([]Group, 0, len(model.Statuses))
+	groups := make([]itemGroup, 0, len(model.Statuses))
 
 	for _, status := range model.Statuses {
 		items := byStatus[status]
@@ -132,12 +143,23 @@ func (v *view) groups() []Group {
 
 		sortItems(items)
 
-		issues := make([]Issue, 0, len(items))
-		for _, item := range items {
+		groups = append(groups, itemGroup{status: status, items: items})
+	}
+
+	return groups
+}
+
+// groups is itemGroups as --json renders it.
+func (v *view) groups() []Group {
+	groups := make([]Group, 0, len(model.Statuses))
+
+	for _, group := range v.itemGroups() {
+		issues := make([]Issue, 0, len(group.items))
+		for _, item := range group.items {
 			issues = append(issues, asIssue(item, v.now))
 		}
 
-		groups = append(groups, Group{Status: string(status), Issues: issues})
+		groups = append(groups, Group{Status: string(group.status), Issues: issues})
 	}
 
 	return groups
