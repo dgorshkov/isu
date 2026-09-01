@@ -30,6 +30,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # isu check measures a branch from where it left trunk, and a shallow
+          # clone has no merge base to measure from.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -45,6 +49,22 @@ jobs:
       - run: make lint
       - run: make test
       - run: make cover
+
+      # M5-S7: the rules this project builds, run over the project that builds
+      # them. On a pull request the base branch is fetched by name and named as
+      # trunk — the checkout is a merge commit and no branch, so without it isu
+      # would compare the repository against itself and every rule about the
+      # branch would pass silently.
+      - name: dogfood
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE" ]; then
+            git fetch --quiet origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+            make dogfood ISU_CHECK_ARGS="--ref origin/$BASE"
+          else
+            make dogfood
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()

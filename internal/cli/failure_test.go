@@ -616,6 +616,26 @@ func TestReadyOnAStreamThatWillNotTakeIt(t *testing.T) {
 	require.Contains(t, stderr.String(), "no room")
 }
 
+func TestCheckOnAStreamThatWillNotTakeIt(t *testing.T) {
+	t.Parallel()
+
+	r := board(t)
+
+	var stderr strings.Builder
+
+	code := Run(Env{
+		Args:   []string{"--repo", r.Dir(), "--json", "check"},
+		Stdout: refusingWriter{},
+		Stderr: &stderr,
+		Dir:    r.Dir(),
+		Now:    now,
+		Getenv: func(string) string { return "" },
+	})
+
+	require.Equal(t, 1, code, "a stream that will not take the answer is a failure")
+	require.Contains(t, stderr.String(), "no room")
+}
+
 func TestATrunkIsuCannotNameIsAskedForRatherThanGuessed(t *testing.T) {
 	t.Parallel()
 

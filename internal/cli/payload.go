@@ -159,6 +159,37 @@ type Link struct {
 	Known bool `json:"known"`
 }
 
+// CheckPayload is `isu check`: what ran, and what it found.
+type CheckPayload struct {
+	Trunk string `json:"trunk"`
+	// Head is the ref under review, or empty when there is none — a run on
+	// trunk, or a repository with no commits.
+	Head string `json:"head"`
+	// Checks are the names of the checks that ran, in name order.
+	Checks   []string  `json:"checks"`
+	Findings []Finding `json:"findings"`
+	Failures int       `json:"failures"`
+	Warnings int       `json:"warnings"`
+	// OK says nothing failed. Warnings do not clear it and do not set it: a
+	// pull request with something worth saying about it still merges.
+	OK bool `json:"ok"`
+	// Worktree says the rules read the issues on disk rather than at a ref,
+	// which is what the pre-commit hook asks for.
+	Worktree  bool      `json:"worktree"`
+	Freshness Freshness `json:"freshness"`
+}
+
+// Finding is one thing a check found.
+type Finding struct {
+	Check    string `json:"check"`
+	Severity string `json:"severity"`
+	// ID is the issue it is about, or empty when it is about the repository.
+	ID string `json:"id"`
+	// Path is the file it is about, relative to the repository root, or empty.
+	Path    string `json:"path"`
+	Message string `json:"message"`
+}
+
 // Write is what every command that changes the repository reports.
 //
 // One shape rather than eight: a caller that has run `isu claim` and `isu
@@ -284,26 +315,33 @@ func asLink(board *model.Board, id string) Link {
 // it found. A repository with no remote refs has nothing to be behind on and
 // says so rather than reporting an age of fifty-six years.
 func (s *session) freshness(refs []gitx.Ref, now time.Time) Freshness {
-	var newest time.Time
-
-	for _, ref := range refs {
-		if ref.Created.After(newest) {
-			newest = ref.Created
-		}
-	}
-
-	if newest.IsZero() {
+	at := newest(refs)
+	if at.IsZero() {
 		return Freshness{}
 	}
 
-	age := now.Sub(newest)
+	age := now.Sub(at)
 
 	return Freshness{
 		Remote:     true,
-		Newest:     newest.UTC().Format(time.RFC3339),
+		Newest:     at.UTC().Format(time.RFC3339),
 		AgeSeconds: int64(age.Seconds()),
 		Warn:       age > s.cfg.FetchWarnAfter(),
 	}
+}
+
+// newest is the date of the newest of a set of refs, and the zero time when
+// there are none.
+func newest(refs []gitx.Ref) time.Time {
+	var at time.Time
+
+	for _, ref := range refs {
+		if ref.Created.After(at) {
+			at = ref.Created
+		}
+	}
+
+	return at
 }
 
 // remoteRefs lists the remote-tracking refs, which is what freshness reads.

@@ -1,0 +1,43 @@
+check runs isu's rules and reports what they found. A failure exits 1 and a
+warning does not: two people about to do the same work is worth saying and is
+not a reason to refuse a pull request.
+
+There are two kinds of rule. A tree rule is about the repository as it stands —
+a parent that names nothing, an epic with no children — and needs no branch. A
+branch rule is about what this branch proposes: a resolution with no code beside
+it, an owner an agent reassigned. --scope picks one kind, and the pre-commit
+hook isu init writes runs the tree rules only, because at pre-commit time the
+change being committed is not a commit yet and the branch rules would be
+answering from the commits already there.
+
+--worktree reads the issues on disk instead of at a ref, which is what that hook
+needs: a check that read a ref before a commit would be answering about the
+commit before the one being made, and would refuse the commit that fixed what it
+was complaining about. It implies --scope tree, because the working tree is not
+a set of commits and there is nothing there to ask the branch rules about.
+
+The checks:
+  attachments  tree    no attachment is bigger than attachment_max_bytes
+  claims       tree    nobody is working on the same issue twice, and no claim has gone quiet
+  cycles       tree    no epic is its own ancestor, and nothing waits on itself in a ring
+  duplicates   tree    no two branches report different issues under one id
+  epics        tree    every epic has at least one child
+  evidence     branch  resolving something takes work beside it, and a drop takes a reason
+  links        tree    parent and blocked_by name issues that exist, and a parent is an epic
+  owner        branch  no commit by a configured agent reassigns an issue's owner
+  schema       tree    every issue file parses, satisfies the schema, and sits in a folder named after its id
+
+Usage:
+  isu check [flags]
+
+Flags:
+  -h, --help           help for check
+      --scope string   which checks to run: tree, branch or all (default "all")
+      --worktree       read the issues on disk rather than at a ref, uncommitted edits included
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

@@ -208,3 +208,38 @@ Which commands fill which:
 | `triage` | `triage/<id>` | yes | no |
 | `triage --push` | trunk | yes | when there is a remote |
 | `init` | — | — | no |
+
+## CheckPayload
+
+`isu check`: which rules ran, and what they found.
+
+| field | type | meaning |
+|---|---|---|
+| `trunk` | string | the ref the run treated as trunk |
+| `head` | string | the ref under review, or empty when there is none — a run on trunk, or a repository with no commits |
+| `checks` | array of string | the names of the checks that ran, in name order |
+| `findings` | array of `Finding` | what they found, failures first |
+| `failures` | number | how many findings are failures |
+| `warnings` | number | how many are warnings |
+| `ok` | bool | nothing failed |
+| `worktree` | bool | the rules read the issues on disk rather than at a ref |
+| `freshness` | `Freshness` | how old the refs it read are |
+
+Exit status is `1` when `ok` is false and `0` when it is true. **A warning does
+not fail a run**: two people about to do the same work is worth saying and is
+not a reason to refuse a pull request.
+
+## Finding
+
+One thing a check found.
+
+| field | type | meaning |
+|---|---|---|
+| `check` | string | which rule found it |
+| `severity` | string | `fail` or `warn` |
+| `id` | string | the issue it is about, or empty when it is about the repository |
+| `path` | string | the file it is about, relative to the repository root, or empty |
+| `message` | string | what is wrong, in one sentence |
+
+`check` is a stable name. A pipeline that greps for one is reading a contract,
+so a rule is renamed the way a JSON field is: it is not.

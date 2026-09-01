@@ -14,11 +14,12 @@ Usage:
 
 Available Commands:
   board       every issue, grouped by derived status
+  check       run the rules over this repository and this branch
   claim       say you are working on an issue, before you start
   comment     add a comment to an issue
   drop        say an issue will not be fixed, and why
   help        Help about any command
-  init        write .isu.yml, so that everything else works
+  init        write .isu.yml, and the hook and pipeline that enforce it
   new         file a new issue
   ready       the issues nothing is blocking, most urgent first
   resolve     say this branch fixes an issue

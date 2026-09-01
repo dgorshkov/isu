@@ -88,6 +88,10 @@ func TestWhatEachCommandSaysWhenGitRefusesOneThing(t *testing.T) {
 		refuse  string
 		fixture func(*testing.T) *gittest.Repo
 		args    []string
+		// skip lets the first invocations through, for a command that asks git
+		// the same question twice and whose second answer is the one under
+		// test.
+		skip int
 	}{
 		{
 			name: "the trunk history walk", refuse: "--first-parent",
@@ -174,6 +178,66 @@ func TestWhatEachCommandSaysWhenGitRefusesOneThing(t *testing.T) {
 			name: "listing an issue's folder", refuse: "issues/ISU-onbrch/",
 			fixture: onABranchOnly, args: []string{"show", "ISU-onbrch"},
 		},
+		{
+			name: "listing trunk for the checks", refuse: "ls-tree",
+			fixture: board, args: []string{"check"},
+		},
+		{
+			// The ref under review is resolved before anything is loaded, so
+			// refusing its name reaches that lookup and not the board's.
+			name: "resolving the ref under review", refuse: "refs/heads/isu/ISU-openly",
+			fixture: onABranchWithAnIssue, args: []string{"check"},
+		},
+		{
+			// The trunk name is worked out before anything is loaded, and it
+			// asks git what origin calls its default branch; the ref under
+			// review is the next thing to ask.
+			name: "asking which branch the checks are about", refuse: "symbolic-ref",
+			fixture: board, args: []string{"check"}, skip: 1,
+		},
+		{
+			// Three walks name --no-renames in a run over this fixture: the
+			// board's diff of its one other branch, the trunk history, and the
+			// branch's own commits. The third is this one.
+			name: "walking the branch's own commits", refuse: "--no-renames",
+			fixture: aheadOfTrunkAlone, args: []string{"check"}, skip: 2,
+		},
+		{
+			// And two batches precede the branch's: the board's, and the one
+			// the trunk history feeds with the blobs it named.
+			name: "reading the blobs the branch's commits name", refuse: "cat-file",
+			fixture: aheadOfTrunkAlone, args: []string{"check"}, skip: 2,
+		},
+		{
+			name: "weighing what lives beside every issue", refuse: "-l",
+			fixture: board, args: []string{"check"},
+		},
+		{
+			name: "finding where the branch left trunk", refuse: "merge-base",
+			fixture: aheadOfTrunk, args: []string{"check"},
+		},
+		{
+			name: "diffing the branch against trunk", refuse: "--name-only",
+			fixture: aheadOfTrunk, args: []string{"check"},
+		},
+		{
+			name: "asking what git would not track", refuse: "ls-files",
+			fixture: board, args: []string{"check", "--worktree"},
+		},
+		{
+			// The working-tree run asks git twice what it would not track:
+			// once for the issues and once for the files beside them.
+			name: "asking it again for the files beside them", refuse: "ls-files",
+			fixture: board, args: []string{"check", "--worktree"}, skip: 1,
+		},
+		{
+			name: "asking who owns this repository's hooks", refuse: "core.hooksPath",
+			fixture: configured, args: []string{"init", "--hooks"},
+		},
+		{
+			name: "finding the directory the hooks live in", refuse: "--absolute-git-dir",
+			fixture: configured, args: []string{"init", "--hooks"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -181,7 +245,7 @@ func TestWhatEachCommandSaysWhenGitRefusesOneThing(t *testing.T) {
 			// The fixture is built with the real git, and only then is the
 			// shim put in front of it.
 			r := tt.fixture(t)
-			refuseGit(t, tt.refuse)
+			refuseGitAfter(t, tt.refuse, tt.skip)
 
 			got := isu(t, r.Dir(), tt.args...)
 
@@ -212,6 +276,32 @@ func onABranchWithAnIssue(t *testing.T) *gittest.Repo {
 	t.Helper()
 
 	return onBranch(t)
+}
+
+// aheadOfTrunk is a repository checked out on a branch that has a commit trunk
+// does not, which is the only shape the branch rules have anything to load for.
+func aheadOfTrunk(t *testing.T) *gittest.Repo {
+	t.Helper()
+
+	return board(t).
+		Branch("isu/ISU-openly").Checkout("isu/ISU-openly").
+		File("login.go", "package login\n").Commit("fix the retry")
+}
+
+// aheadOfTrunkAlone is aheadOfTrunk with exactly one branch beside trunk and
+// exactly one issue, so that the git processes a run spends can be counted.
+func aheadOfTrunkAlone(t *testing.T) *gittest.Repo {
+	t.Helper()
+
+	return configured(t).
+		Issue("ISU-openly", gittest.Owner("dmitry"), gittest.Type("chore"),
+			gittest.Title("Something to resolve")).
+		Commit("report ISU-openly").
+		Branch("isu/ISU-openly").Checkout("isu/ISU-openly").
+		Issue("ISU-openly", gittest.Owner("dmitry"), gittest.Type("chore"),
+			gittest.Title("Something to resolve"), gittest.State("resolved")).
+		File("login.go", "package login\n").
+		Commit("claim and fix ISU-openly")
 }
 
 // onABranchOnly is a repository whose only issue is a report on a branch, so

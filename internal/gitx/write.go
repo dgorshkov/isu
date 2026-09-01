@@ -190,6 +190,16 @@ func (g *Git) Config(ctx context.Context, key string) (string, error) {
 	return "", err
 }
 
+// GitDir is the repository's own directory, absolute.
+//
+// It is where the hooks live, and it is asked for rather than assumed because
+// `.git` is a directory in a clone, a file in a submodule and a file in a
+// linked worktree — and a hook written into the wrong one of those is a hook
+// that silently never runs.
+func (g *Git) GitDir(ctx context.Context) (string, error) {
+	return g.output(ctx, "rev-parse", "--absolute-git-dir")
+}
+
 // CurrentBranch is the branch HEAD points at, or the empty string on a detached
 // HEAD.
 //

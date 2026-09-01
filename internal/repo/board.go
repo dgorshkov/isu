@@ -22,6 +22,12 @@ type BoardSpec struct {
 	// Patterns are the ref patterns to load beside it. Empty means every local
 	// branch.
 	Patterns []string
+	// Refs names individual refs to load as well, for a caller that knows about
+	// one the patterns do not reach: a pipeline checks out a merge commit and
+	// no branch, so the thing under review is HEAD and refs/heads/* is empty.
+	// A name the patterns already matched is not loaded twice, and an empty
+	// name is ignored.
+	Refs []string
 }
 
 // Board is every ref isu reads, loaded together.
@@ -105,6 +111,8 @@ func (r *Repo) LoadBoard(ctx context.Context, spec BoardSpec) (*Board, error) {
 		return nil, err
 	}
 
+	refs = append(refs, named(refs, spec.Refs)...)
+
 	cache := newBlobCache()
 
 	trunkIndex, err := r.indexTrunk(ctx, trunk, cache)
@@ -133,6 +141,34 @@ func (r *Repo) LoadBoard(ctx context.Context, spec BoardSpec) (*Board, error) {
 	}
 
 	return board, nil
+}
+
+// named is the explicitly requested refs that the patterns did not already
+// match.
+func named(matched []gitx.Ref, wanted []string) []gitx.Ref {
+	var extra []gitx.Ref
+
+	for _, name := range wanted {
+		if name == "" {
+			continue
+		}
+
+		known := false
+
+		for _, ref := range matched {
+			if ref.Name == name {
+				known = true
+
+				break
+			}
+		}
+
+		if !known {
+			extra = append(extra, gitx.Ref{Name: name})
+		}
+	}
+
+	return extra
 }
 
 // changedIDs names the issues a ref's difference from trunk is about.

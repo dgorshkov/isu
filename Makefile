@@ -14,9 +14,9 @@ GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || echo $(GOBIN)/g
 BINARY ?= isu
 COVERAGE_PROFILE ?= coverage.out
 
-.PHONY: all help build vet lint fmt test stress cover tools clean
+.PHONY: all help build vet lint fmt test stress cover dogfood tools clean
 
-all: build vet lint test cover
+all: build vet lint test cover dogfood
 
 help:
 	@echo 'build   compile every package'
@@ -26,6 +26,7 @@ help:
 	@echo 'test    go test ./...'
 	@echo 'stress  the build-tagged races, which are out of the default suite'
 	@echo 'cover   run the tests and enforce both coverage floors'
+	@echo 'dogfood run isu check over this repository, with the isu just built'
 	@echo 'tools   install the pinned golangci-lint'
 	@echo 'clean   remove build and coverage output'
 
@@ -54,6 +55,19 @@ stress:
 
 cover:
 	COVERAGE_PROFILE=$(COVERAGE_PROFILE) sh scripts/coverage.sh
+
+# M5-S7: isu tracks its own construction, and this is where its own pipeline
+# enforces that. The binary is the one just built rather than a release: a gate
+# that checked this repository with last month's isu would pass the pull request
+# that broke the checks.
+#
+# ISU_CHECK_ARGS is how CI names the base branch. A pull request build checks
+# out a merge commit and no branch, so without --ref isu compares the repository
+# against itself and every rule about the branch passes silently.
+ISU_CHECK_ARGS ?=
+
+dogfood: build
+	./$(BINARY) check $(ISU_CHECK_ARGS)
 
 # golangci-lint v2.5.0 needs go >= 1.24.0. The go directive in go.mod is 1.24.0
 # for exactly this reason, so `go install` builds it with the toolchain already
