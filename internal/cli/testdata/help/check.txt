@@ -17,6 +17,7 @@ The checks:
   epics        tree    every epic has at least one child
   evidence     branch  resolving something takes work beside it, and a drop takes a reason
   links        tree    parent and blocked_by name issues that exist, and a parent is an epic
+  owner        branch  no commit by a configured agent reassigns an issue's owner
   schema       tree    every issue file parses, satisfies the schema, and sits in a folder named after its id
 
 Usage:
