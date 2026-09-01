@@ -1,0 +1,229 @@
+package ui
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/dgorshkov/isu/internal/model"
+)
+
+// row is one drawn line of the list: a status heading, or an issue under it.
+type row struct {
+	// heading is the status this row introduces, and is empty on an issue row.
+	heading string
+	count   int
+	item    *model.Item
+	// depth is how far the row is indented, which is how an epic's children are
+	// shown to belong to it.
+	depth int
+}
+
+// selectable reports whether the cursor may land here. It may not land on a
+// heading: a heading is not a thing anybody can claim.
+func (r row) selectable() bool { return r.item != nil }
+
+// rebuild builds the list from what the interface was handed.
+//
+// It keeps the cursor on the issue it was on where that issue is still in the
+// list, which is what makes `r`, a filter and an action all leave somebody
+// where they were rather than at the top.
+func (m *Model) rebuild() {
+	was := m.selectedID()
+
+	m.rows = m.rows[:0]
+
+	if m.ready {
+		m.rows = append(m.rows, row{heading: "ready", count: len(m.in.Ready)})
+
+		for _, item := range m.in.Ready {
+			m.rows = append(m.rows, row{item: item})
+		}
+	} else {
+		for _, group := range m.in.Groups {
+			m.rows = append(m.rows, row{heading: string(group.Status), count: len(group.Items)})
+
+			for _, item := range group.Items {
+				m.rows = append(m.rows, row{item: item})
+			}
+		}
+	}
+
+	m.restore(was)
+	m.scroll()
+}
+
+// restore puts the cursor back on an issue, or on the first one there is.
+func (m *Model) restore(id string) {
+	for i, r := range m.rows {
+		if r.selectable() && r.item.ID == id {
+			m.cursor = i
+
+			return
+		}
+	}
+
+	m.cursor = m.firstSelectable()
+}
+
+// firstSelectable is the first row the cursor may sit on, and the length of the
+// list when there is none — an empty list has a cursor that is nowhere, and
+// nowhere has to be somewhere.
+func (m Model) firstSelectable() int {
+	for i, r := range m.rows {
+		if r.selectable() {
+			return i
+		}
+	}
+
+	return len(m.rows)
+}
+
+// selected is the issue the cursor is on, or nil.
+func (m Model) selected() *model.Item {
+	if m.cursor < 0 || m.cursor >= len(m.rows) {
+		return nil
+	}
+
+	return m.rows[m.cursor].item
+}
+
+// selectedID is the id of the issue the cursor is on, or empty.
+func (m Model) selectedID() string {
+	if item := m.selected(); item != nil {
+		return item.ID
+	}
+
+	return ""
+}
+
+// scroll keeps the cursor on screen, and keeps the list from scrolling past its
+// own end.
+func (m *Model) scroll() {
+	height := m.bodyHeight()
+
+	if m.cursor < m.top {
+		m.top = m.cursor
+	}
+
+	if m.cursor >= m.top+height {
+		m.top = m.cursor - height + 1
+	}
+
+	if ceiling := len(m.rows) - height; m.top > ceiling {
+		m.top = ceiling
+	}
+
+	if m.top < 0 {
+		m.top = 0
+	}
+}
+
+// list draws the issues.
+func (m Model) list(width, height int) []string {
+	if len(m.rows) == 0 {
+		return []string{m.styles.dim.Render(m.emptyLine())}
+	}
+
+	ids := m.idWidth()
+
+	out := make([]string, 0, height)
+
+	for i := m.top; i < len(m.rows) && len(out) < height; i++ {
+		out = append(out, m.line(i, ids, width))
+	}
+
+	return out
+}
+
+// emptyLine is what an empty list says. A blank pane is a bug report waiting to
+// be filed; a sentence is an answer.
+func (m Model) emptyLine() string {
+	if m.ready {
+		return "nothing is ready: everything open is blocked, claimed or untriaged"
+	}
+
+	return "no issues on any ref isu can see"
+}
+
+// idWidth is how wide the id column has to be. Ids are permanent and imported
+// ones can be any length, so the column is measured rather than assumed.
+func (m Model) idWidth() int {
+	width := 0
+
+	for _, r := range m.rows {
+		if r.selectable() {
+			if n := len([]rune(r.item.ID)) + r.depth*indent; n > width {
+				width = n
+			}
+		}
+	}
+
+	return width
+}
+
+// indent is how far one level of nesting moves a row.
+const indent = 2
+
+// line draws one row of the list.
+func (m Model) line(i, ids, width int) string {
+	r := m.rows[i]
+
+	if !r.selectable() {
+		return m.styles.heading.Render(
+			m.styles.forStatus(model.Status(r.heading)).Render(r.heading) +
+				" (" + strconv.Itoa(r.count) + ")")
+	}
+
+	id := strings.Repeat(" ", r.depth*indent) + r.item.ID
+	body := column(id, ids) + "  " + priorityOf(r.item) + "  " + titleOf(r.item)
+
+	marker := "  "
+	if i == m.cursor {
+		marker = "▸ "
+	}
+
+	body = truncate(body, atLeast(width-len([]rune(marker)), 1))
+
+	if i == m.cursor {
+		return marker + m.styles.selected.Render(body)
+	}
+
+	return marker + m.styles.forStatus(r.item.Status).Render(body)
+}
+
+// column pads a cell to a width, in characters rather than bytes.
+func column(s string, width int) string {
+	if n := len([]rune(s)); n < width {
+		return s + strings.Repeat(" ", width-n)
+	}
+
+	return s
+}
+
+// titleOf is what to call an issue on screen. An issue whose file will not
+// decode still has a row, and the row still has to say something.
+func titleOf(item *model.Item) string {
+	if item.Issue == nil || item.Issue.Title == "" {
+		return "(no title)"
+	}
+
+	return item.Issue.Title
+}
+
+// priorityOf is the priority column, defaulted the way the schema defaults it.
+func priorityOf(item *model.Item) string {
+	if item.Issue == nil {
+		return "--"
+	}
+
+	return string(item.Issue.EffectivePriority())
+}
+
+// typeOf is what kind of issue this is, for a pane with room to say.
+func typeOf(item *model.Item) string {
+	if item.Issue == nil {
+		return ""
+	}
+
+	return string(item.Issue.Type)
+}

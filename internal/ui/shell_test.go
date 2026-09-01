@@ -131,10 +131,15 @@ func TestTheReadyQueueIsAKeyAway(t *testing.T) {
 	m := sized(t, in, 80, 24)
 
 	ready := keys(t, m, "r").View()
-	require.Contains(t, ready, "ready")
+	require.Contains(t, ready, "ready (1)")
 	require.NotContains(t, ready, "ISU-donede", "a finished issue is not ready")
 
-	require.Equal(t, m.View(), keys(t, m, "r", "r").View(), "`r` is a toggle")
+	back := keys(t, m, "r", "r").View()
+	require.Contains(t, back, "ISU-donede", "`r` is a toggle: the board comes back")
+	require.NotContains(t, back, "ready (1)")
+	require.Contains(t, back, "▸ ISU-openly",
+		"the cursor followed the issue the queue was showing, which is what makes "+
+			"`r` a way to find something rather than a way to lose your place")
 }
 
 // PLAN.md: "q quits cleanly and restores the terminal". Quitting cleanly is

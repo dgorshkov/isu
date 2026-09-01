@@ -172,8 +172,14 @@ func input(items ...*model.Item) ui.Input {
 		}
 	}
 
+	board := &model.Board{Items: map[string]*model.Item{}}
+	for _, it := range items {
+		board.Items[it.ID] = it
+	}
+
 	return ui.Input{
 		Trunk:     "main",
+		Board:     board,
 		Groups:    groups,
 		Freshness: "remote refs 2h ago",
 		Now:       now(),
@@ -189,7 +195,7 @@ func golden(t *testing.T, name, got string) {
 	path := filepath.Join("testdata", name)
 	got = scrub(got)
 
-	if *update {
+	if updating() {
 		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 		require.NoError(t, os.WriteFile(path, []byte(got), 0o644))
 
@@ -268,4 +274,14 @@ var keyTypes = map[string]tea.KeyType{
 // lines splits a frame the way a terminal reads it.
 func lines(f string) []string { return strings.Split(f, "\n") }
 
-var update = flag.Bool("update", false, "rewrite the golden frames")
+// updating reports whether -update was passed.
+//
+// The flag itself is registered by the golden-file helper that arrives with
+// teatest, so this package reads it rather than declaring a second flag of the
+// same name — which is a panic at init and not a warning. A build where nothing
+// registers it rejects -update on the command line, which is loud enough.
+func updating() bool {
+	found := flag.Lookup("update")
+
+	return found != nil && found.Value.String() == "true"
+}
