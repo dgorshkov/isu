@@ -49,6 +49,9 @@ var jsonCases = map[string]jsonCase{
 	},
 	"comment": {args: []string{"comment", "ISU-openly", "-m", "a comment"}},
 	"triage":  {args: []string{"triage", "ISU-openly", "--owner", "alice"}},
+	// `isu ui` opens a terminal interface, and --json is what it says to
+	// somebody who has not got one: the board it would open on.
+	"ui": {args: []string{"ui"}},
 	"check": {
 		args: []string{"check"},
 		// The fixture board has an epic with a child and nothing wrong with it,
