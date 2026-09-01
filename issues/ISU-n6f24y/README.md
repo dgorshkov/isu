@@ -3,7 +3,7 @@ schema: 1
 id: ISU-n6f24y
 title: M5-S7 · Dogfooding switch
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
