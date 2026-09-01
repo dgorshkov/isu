@@ -3,7 +3,7 @@ schema: 1
 id: ISU-1ntxd5
 title: M5-S1 · The check engine
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
