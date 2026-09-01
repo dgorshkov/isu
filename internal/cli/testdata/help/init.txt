@@ -1,0 +1,23 @@
+init writes .isu.yml at the top of the repository.
+
+The prefix is the first half of every issue id — ISU-7f3akq — and it is part of
+every issue's folder name, so it has to be a legal one. There is no default: the
+half of an id that says which project this is has no sensible guess.
+
+Nothing else in .isu.yml is written. Every other key has a default, and a
+configuration file full of the defaults is a file nobody can tell they have
+changed.
+
+Usage:
+  isu init [flags]
+
+Flags:
+  -h, --help            help for init
+      --prefix string   the issue id prefix, such as ISU (required)
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

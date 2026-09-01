@@ -1,0 +1,13 @@
+ISU-epical  Make login reliable
+
+  status    open
+  type      epic
+  owner     dmitry
+  created   <date>
+  priority  p2
+  trunk     main
+
+children
+  ISU-openly  open  Login retries drop the second attempt
+
+no remote refs

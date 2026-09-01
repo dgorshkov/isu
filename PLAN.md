@@ -299,14 +299,17 @@ keys, and an unknown key is a validation error rather than a silent no-op.
 Every one of these is read by a story below, so the file's schema is validated in M1-S4 rather
 than discovered a milestone at a time.
 
-**Open question, raised by M1-S4 and not decided there.** Every story in this document *reads*
-`.isu.yml`; no story *writes* one. There is no `isu init`, so a person adopting isu in an
-existing repository has to hand-write the file before any command works, and `prefix` is
-required, so an absent file is a hard failure rather than a degraded mode. That may be the
-right answer — one required line is not much of a wizard — but it is currently an accident
-rather than a decision, and it needs to be one of: a small `isu init` story in M4, a documented
-copy-and-paste block in M8's docs, or an explicit entry in the out-of-scope list. **Answer this
-before M4-S1**, which is where the command surface stops being cheap to change.
+**This question was open until M4-S1 and is now answered: `isu init` writes the file.** Every
+story in this document *reads* `.isu.yml` and no story wrote one, so a person adopting isu in an
+existing repository had to hand-write it before any command worked, and `prefix` is required, so
+an absent file is a hard failure rather than a degraded mode. Of the three answers offered — a
+small `isu init` story in M4, a copy-and-paste block in M8's docs, an entry on the out-of-scope
+list — the first is the only one that makes the first thing somebody types after installing isu
+do something. M4-S8 confirmed it was worth making: every command against all three real
+repositories failed on the missing file before anything else could be measured.
+
+`isu init` writes `prefix` and nothing else. Every other key has a default, and a configuration
+file full of the defaults is a file nobody can tell they have changed.
 
 ### Claims
 
@@ -322,10 +325,27 @@ paragraphs below say why each of the old version's supporting arguments does not
    `claim AR-7f3akq`;
 3. `git push origin isu/AR-7f3akq`. **Do this before any work**, so the loser wastes nothing.
 
-**The push is the compare-and-swap, and the state flip is what makes it one.** Two claimants
-produce two different commits — different author, different timestamp, therefore different
-object ids — so the second push is not a fast-forward and git rejects it. Measured on two
-clones of the same remote:
+**The push is the compare-and-swap, and the state flip is not enough to make it one — the claim
+commit carries a nonce as well. Corrected in M4-S4, which measured the hole.** The paragraph
+below argued that two claimants produce two different commits because their author and timestamp
+differ. Two claimants under one identity, in the same second, produce the *same* commit: same
+tree, same parent, same author, same second, same message. Git answers the second push
+`Everything up-to-date`, exit 0, and both of them believe they won. A hundred clones racing for
+one issue produced **thirty winners**. Two agents sharing a bot identity is not an exotic case
+for a tracker built for agents, and neither is one person in two clones.
+
+`--force-with-lease=refs/heads/isu/<ID>:` — the third mechanism named at the end of this section
+— does not close it either: git short-circuits on "up to date" before the lease is evaluated.
+Measured, both of them.
+
+What closes it is making this section's own sentence true. Atomicity comes from committing
+something nobody else can have committed, so `isu claim` writes an **`Isu-Claim:` trailer holding
+a fresh random value** on the claim commit. The second push is then rejected as a
+non-fast-forward, which is exactly the mechanism described below; it needed the premise to hold.
+With the nonce, a hundred racing clones produce one winner.
+
+The measurement below stands, and is what the design looks like when the two claimants happen to
+differ — which is most of the time, and was never the problem:
 
 ```
 alice's claim commit: 677b54d  (author: alice)
@@ -428,7 +448,7 @@ Ten milestones. Stop for review at the end of each.
 | M1 | Issue files | parse, serialise, validate, version | done |
 | M2 | Git layer | fast load from any ref, from the working tree, and from trunk history | done |
 | M3 | Derivation | statuses, epics, claims, contention | done |
-| M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | not started |
+| M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | done |
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | not started |
 | M6 | TUI | `isu ui` | not started |
 | M7 | Importers | safe writes, Jira | not started |
@@ -673,6 +693,16 @@ rather than arguments, and `DiffTree`, which M2-S5 turned out to need — plus `
 was already named. A "clean environment" means the repository-selecting `GIT_*` variables
 never reach git, and everything else does: the user's config, credential helpers and hooks
 are the whole reason §0 shells out.
+
+**M4-S6 amended the grep, narrowly, and it is worth reading as a lesson about proxies.** The
+rule is that this package is the only place that may build a *git* command; the grep is that
+nothing outside it names `exec.Command`. The two were the same thing until `isu comment` had to
+open `$EDITOR`, which is not a git command and cannot be made into one. So the test names one
+file — `internal/cli/editor.go`, named rather than matched by a pattern, so that a second
+process-starting file is a deliberate edit to the test — skips it, and asserts of it the thing
+the rule is actually about: that it does not run git. Everything else in `internal/` is still
+held to the grep. The alternative was dropping `$EDITOR`, and a tracker whose comments can only
+be written with `-m` is a tracker people stop commenting on.
 **Branch** `isu/M2-S1-gitx`
 **Build** the only place that executes `git`. Typed wrappers for `ls-tree`, `cat-file --batch`,
 `log`, `rev-parse`, `for-each-ref`, `diff --name-only`, `push`, `show`. Context-aware, with
@@ -1028,9 +1058,40 @@ title.
 
 ---
 
-# M4 · CLI
+# M4 · CLI ✅
 
-### M4-S1 · Command scaffold and output contract
+**Status** done — all eight stories landed in one pull request rather than eight. That was asked
+for explicitly, as it was for M1, M2 and M3. §0 says otherwise, and four milestones running is
+still not precedent: the next session should assume one story per pull request unless it is told
+otherwise in the same words. The milestone boundary rule applies as ever — M5 does not start
+without explicit approval.
+
+**One correction, two defects and three limitations came out of this milestone**, and each is
+recorded where the decision lives rather than only here: the claim design's compare-and-swap does
+not hold between two claimants who share an identity, and section 1 above is corrected; `isu
+triage` read the issue at trunk and so failed on precisely the reports it exists for; a
+repository whose trunk is called neither main nor master could not resolve anything; and M4-S8's
+notes record what the board cannot see across a team, what `fetch_warn_hours` actually measures,
+and what the trunk history walk costs per commit.
+
+**M2-S1's grep is amended, narrowly.** Its rule is that internal/gitx is the only place that may
+build a *git* command; its proxy was that nothing outside it names `exec.Command`. `isu comment`
+opens `$EDITOR`, which is not a git command and cannot be made into one, so one file —
+`internal/cli/editor.go`, named rather than matched by a pattern — is exempt from the grep and
+asserted directly not to run git.
+
+### M4-S1 · Command scaffold and output contract ✅
+**Done** #9, 2026-08-31. The two decisions this story had to make are recorded above: `isu init`
+answers section 1's open question, and `--ref` no longer defaults to HEAD — it defaults to what
+origin/HEAD says, then main, then master, then HEAD. Half of what this product says is how a
+branch differs from trunk, so a trunk that follows you onto your feature branch answers every one
+of those questions with "it does not", and leaves `isu resolve` unable to tell that it is about
+to write straight onto trunk. **Output is newline-delimited JSON**, one complete value per line,
+which is what makes M4-S3's `isu ready --json | head -1` the top of the queue rather than an
+opening brace. The gate the story asks for is a table every registered command needs a row in;
+beside it, a second test reflects over the payload structs and fails when a field exists in the
+code and not in `docs/json.md`, so the contract and its document cannot drift by more than one
+commit nobody ran the tests on.
 **Branch** `isu/M4-S1-cli-scaffold`
 **Build** cobra root, `--repo`, `--ref`, `--json`, `--no-color`, `--fetch`. **Every command
 supports `--json`**, because half the users are agents. JSON shape is a stable contract:
@@ -1052,7 +1113,15 @@ story's test is written against. A milestone that builds eight commands and writ
 end-to-end test at M4-S8 has seven commands nobody ever ran.
 **Done when** adding a command without `--json` fails the test suite.
 
-### M4-S2 · `isu board` and `isu show`
+### M4-S2 · `isu board` and `isu show` ✅
+**Done** #9, 2026-08-31. Both print the freshness line and warn past `fetch_warn_hours`. **The
+`Issue` payload grew the five fields a type requires** — `repro`, `acceptance`, `question`,
+`reason`, `resolution` — on every issue rather than only on `isu show`, because M4-S3 wants
+`isu ready --json | head -1` to be the whole briefing and what somebody picking work up reads
+first is the acceptance criteria or the repro. The body stays one `isu show` away. **The body is
+printed verbatim rather than rendered**: glamour is in §0's allowlist for the TUI, where a
+renderer earns its place, and it is not needed to print a paragraph. `isu board` renders this
+repository, which is the story's own done-when, and a test runs it against this working copy.
 **Branch** `isu/M4-S2-board-show`
 **Build** the derived board grouped by status, and single-issue detail including attachments,
 comments, claim and epic position. Both print a **freshness line** — how old the newest remote
@@ -1064,7 +1133,16 @@ them argue about it.
 freshly fetched one does not.
 **Done when** `isu board` on the isu repo itself renders this plan's milestones.
 
-### M4-S3 · `isu new` and `isu ready`
+### M4-S3 · `isu new` and `isu ready` ✅
+**Done** #9, 2026-08-31. Three decisions, all forced by "new produces a valid issue" meeting the
+schema in section 1. **`new` requires the field its type requires**: a bug with no `repro` is not
+a valid issue, so refusing it is the schema surfaced at the command rather than at `isu check`,
+and the alternative was writing a placeholder into a required field, which is inventing content
+nobody wrote. **`--owner` defaults to git's `user.name`** and asks when git has none, because
+`owner` is required and there is exactly one honest guess about who is filing. **`ready` excludes
+epics**: an epic has no state of its own and is finished when its children are, so it is never a
+thing to pick up — an agent handed one would have nothing to do and no way to say it was done. It
+excludes an unreadable issue for the same shape of reason.
 **Branch** `isu/M4-S3-new-ready`
 **Build** `new` scaffolds a folder, generates an id per M1-S4 and **regenerates it if the token
 collides with any id it can see** (trunk plus local refs — this is the story that has the loader
@@ -1086,7 +1164,16 @@ issue blocked by a fully-resolved epic as ready and one blocked by a half-done e
 `ready` puts a `p0` ahead of an older `p2`.
 **Done when** `isu ready --json | head -1` gives an agent everything it needs to start.
 
-### M4-S4 · `isu claim` and `isu unclaim`
+### M4-S4 · `isu claim` and `isu unclaim` ✅
+**Done** #9, 2026-08-31. **This story found the hole in the claim design, and section 1 is corrected
+above**: the stress run put a hundred clones on one issue and thirty of them won, because two
+claimants under one identity in the same second write the same commit. The claim commit now
+carries an `Isu-Claim:` nonce, the race has one winner, and a deterministic regression test claims
+the same issue twice under one identity and asserts the commits differ. Everything else is as
+specified: three steps in order, **no checkout at any point** — the commit is built through a
+temporary index, so claiming works mid-edit and a lost race leaves nothing behind — the branch
+deleted when the push loses, and `unclaim` flipping the state back without deleting anything. The
+hundred-run variant lives behind `//go:build stress` and `make stress`, out of the default suite.
 **Branch** `isu/M4-S4-claim`
 **Build** the three-step claim from section 1, in that order — branch, the state flip committed
 with subject `claim <ID>`, push. Claim failure must be fast, quiet and exit non-zero, naming
@@ -1106,7 +1193,15 @@ and any work on it in place, and leaves the file byte-identical to what trunk sa
 with the remote detached fails without leaving a local branch behind**.
 **Done when** the deterministic rejection test passes and `make stress` exists for the rest.
 
-### M4-S5 · `isu resolve` and `isu drop`
+### M4-S5 · `isu resolve` and `isu drop` ✅
+**Done** #9, 2026-08-31. **`resolve` allows a commit that changes no file**, which needed a second
+gitx spelling: this story asks for exactly that case — resolve on a freshly claimed issue — and
+the trailer is that commit's whole payload. `Commit` still refuses an empty index everywhere
+else, because a command that meant to change a file and did not is a bug an empty commit would
+hide. **`drop` writes the `Isu-Resolves:` trailer too**, which this story names only for
+`resolve`: a dropped issue reaches a terminal state at trunk exactly as a resolved one does, and
+the trailer is the only tier that survives every squash setting, so leaving it off would make
+M7-S3's recovery silently partial for half the terminal commits in a repository.
 **Branch** `isu/M4-S5-resolve-drop`
 **Build** flip state on the current branch. `resolve` writes `state: resolved` and an
 `Isu-Resolves: <ID>` trailer on its commit. `drop` requires `--reason` and `--resolution`.
@@ -1119,7 +1214,13 @@ file byte-identical and writes only the trailer** — the claim already wrote `r
 nothing at all outside `issues/` is M5-S3's to reject.
 **Done when** the only way to reach `done` is a merged pull request.
 
-### M4-S6 · `isu comment`
+### M4-S6 · `isu comment` ✅
+**Done** #9, 2026-08-31. **This is the story that amended M2-S1's grep**, as recorded at the head of
+this milestone. Beside that, one thing changed a layer up: `isu show` now lists an issue's folder
+by walking it rather than through `issue.Load`, which decodes the README on the way past. What is
+beside an issue is not a fact about the issue, and a half-written README must not take its
+attachments and its comments off the screen — the same choice §2 made in the loader, arriving in
+the renderer.
 **Branch** `isu/M4-S6-comment`
 **Why** `comments/` has been in the data model since section 1 and is rendered by the TUI, but
 nothing in the plan ever wrote one. A tracker whose only write path is hand-authoring a file is
@@ -1132,7 +1233,14 @@ corrupt anything downstream; a comment on a nonexistent issue is refused; the is
 `README.md` is untouched, asserted with `git diff --exit-code`.
 **Done when** commenting is one command and the result renders in `isu show`.
 
-### M4-S7 · `isu triage`
+### M4-S7 · `isu triage` ✅
+**Done** #9, 2026-08-31. **The first version read the issue at trunk, and so failed on precisely the
+issues triage exists for** — `awaiting triage` is *defined* as a folder trunk has never seen. It
+now reads the issue from wherever it is and writes it where it is going, which also makes
+`--push` accept a report onto trunk in one commit. The branch it writes is `triage/<ID>`, chosen
+here rather than in this document: it is deliberately outside the `isu/` namespace, because a
+triage edit does not flip the state and so is not a claim, and the board says nothing about it
+until it merges.
 **Branch** `isu/M4-S7-triage`
 **Why** Everything the plan can express about an issue other than its state — who owns it, what
 blocks it, which epic it belongs to, how urgent it is — had no command. Six reports filed on a
@@ -1148,7 +1256,19 @@ body and unknown keys survive byte-for-byte.
 **Done when** a report can be triaged without opening a pull request, if and only if the
 repository has said that is allowed.
 
-### M4-S8 · First contact with a real repository
+### M4-S8 · First contact with a real repository ✅
+**Done** #9, 2026-08-31. Three full clones — openssl/openssl for its 11 submodules and 26 years,
+facebook/react for its 967 remote branches and its squash-merge habit, golang/go for the biggest
+tree. All three load; `docs/field-notes.md` has the timings and the ref counts. One defect found
+and fixed with a regression test, and three limitations written down, of which one is serious
+enough to belong here: **the board reads `refs/heads/` and so cannot see anybody else's claims.**
+A claim reaches other people as `refs/remotes/origin/isu/<ID>`, which the board does not read, so
+contention across a team — the thing claiming exists to prevent — is invisible. The freshness
+line is the evidence that this is not what was intended, since fetch age cannot affect contention
+unless remote refs feed it. Reading `refs/remotes/` costs 3.5 ms a ref, measured. It is not fixed
+here because the ref pattern is M2's and the self-contention it would cause — a claimant's own
+board reading their local branch and its remote-tracking twin as two claims — is M3's. **It wants
+a story of its own, and it should get one before M5-S5 reports contention to anybody.**
 **Branch** `isu/M4-S8-field-notes`
 **Why** Everything so far has run against fixtures written by the same person who wrote the
 assumptions. This is the first story where the world gets a vote, and it is deliberately
@@ -1532,6 +1652,31 @@ already written in this file's history.
    open, write or close the `.git/config` it has just initialised (four); the harness's
    `gitx.New` on a fresh `TempDir`; and `os.Rename` moving a remote aside. A story that adds an
    error path it cannot reach should expect to argue for it.
+
+   **M4 is what "sooner or later" looked like.** The milestone took the module from 1,375
+   statements to 2,619 and arrived at 94%, which is 158 uncovered against a budget of 26.
+   Closing it to **99.2%** took a fourth of this milestone's effort and was worth every hour of
+   it: two of the things it made somebody look at were defects rather than missing tests — `isu
+   triage` reading the issue at trunk, and a repository whose trunk is called neither main nor
+   master being unable to resolve anything — and two dead functions were deleted rather than
+   tested, because a function nobody calls is not coverage owed.
+
+   Three levers reach the error returns, and none of them depends on the suite running
+   unprivileged, which matters because it runs as root often enough that a `chmod` proves
+   nothing: a directory that is not a repository; a path something else is already sitting on (a
+   file where a folder belongs, a directory where a file belongs); and **a git on PATH that
+   forwards to the real one and refuses exactly one invocation**, counted, so that
+   `git log --first-parent` can fail without the `git log --reverse` beside it. That last is the
+   shim M2-S1's own tests already use, pointed at the whole product rather than one wrapper, and
+   it is how "what does isu say when git will not answer" became a thing this project asserts
+   rather than hopes.
+
+   Eighteen statements stay uncovered and are argued for: the eleven above, plus `repo.Open` on
+   a directory `rev-parse --show-toplevel` has just named, `os.WriteFile` on two paths their
+   functions have just made, `cat-file --batch` failing after the `ls-tree` that named its
+   objects did not, a base git resolves for the load and refuses two processes later, and
+   `config.NewID` failing — which it cannot, since the generator reads no file and takes no
+   lock, but its signature says it might.
 4. The story's own issue file is flipped to `resolved` in the same pull request (from M5-S7,
    which is where issue files start existing).
 5. The pull request describes what changed, what was decided, and anything that needs a call.

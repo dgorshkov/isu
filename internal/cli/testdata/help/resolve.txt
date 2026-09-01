@@ -1,0 +1,28 @@
+resolve writes state: resolved into the issue on the branch you are on, and
+an Isu-Resolves trailer on the commit.
+
+It merges nothing. Trunk is where state is true, and the only way to reach done
+is a merged pull request — which is the whole point of a tracker whose issues
+are files.
+
+The trailer is the first of the three tiers that link a trunk commit back to the
+issue it resolved. It is the one thing file content cannot answer: a squash
+merge collapses authorship, but it does not touch the file.
+
+Resolving an issue a claim already flipped writes no change to the file at all,
+and that is correct: what this adds is the link, and the code beside it. A
+branch that resolves an issue and changes nothing outside issues/ is what the
+evidence check in M5-S3 exists to reject.
+
+Usage:
+  isu resolve <id> [flags]
+
+Flags:
+  -h, --help   help for resolve
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

@@ -1,0 +1,30 @@
+claim creates isu/<id> from trunk, writes state: resolved into the issue and
+pushes — in that order, and before any work, so that whoever loses the race
+wastes nothing.
+
+The push is the compare-and-swap and the state flip is what makes it one. Two
+claimants write two different commits, so the second push is not a fast-forward
+and git rejects it. Pushing a bare branch at the trunk tip would tell both of
+them they had won.
+
+The state says resolved before the work is done on purpose. A branch is a
+proposal, not a fact: it says this branch intends to resolve this issue, and it
+becomes true about the repository when it merges. It does not get you past the
+evidence check — a branch that claimed and did nothing changed one line of one
+README, which is exactly what M5-S3 rejects.
+
+Nothing is checked out. The commit is built with plumbing, so claiming works
+mid-edit and a claim that loses its race leaves nothing behind.
+
+Usage:
+  isu claim <id> [flags]
+
+Flags:
+  -h, --help   help for claim
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

@@ -1,0 +1,34 @@
+new writes an issue folder, generates an id nothing else in the repository
+is using, and puts it on a report/<id> branch for a pull request.
+
+The id is a hash of the issue's own fields and eight bytes of randomness, so
+allocating one needs no counter, no lock and nobody's agreement — which is the
+only thing that works when half the issues in flight are on branches nobody has
+pushed yet. It is regenerated if it collides with any id isu can see.
+
+--no-branch writes into the working tree and commits nothing, which is what a
+bulk conversion needs.
+
+Usage:
+  isu new [flags]
+
+Flags:
+      --acceptance string    what done looks like (required on a story)
+      --blocked-by strings   issues this one waits on
+      --body string          the markdown below the frontmatter
+  -h, --help                 help for new
+      --no-branch            write into the working tree instead of onto a report branch
+      --owner string         the human answerable for it (default: git's user.name)
+      --parent string        the epic this belongs to
+      --priority string      p0, p1, p2 or p3 (default "p2")
+      --question string      what is being answered (required on a spike)
+      --repro string         how to reproduce it (required on a bug)
+      --title string         one line saying what this is (required)
+      --type string          bug, story, chore, spike or epic (default "bug")
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

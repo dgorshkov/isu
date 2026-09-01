@@ -1,0 +1,19 @@
+show prints one issue: its fields, its derived status, the branches that
+differ from trunk on it, who has claimed it, where it sits in its epic, and the
+attachments and comments that live in its folder.
+
+The body is printed verbatim. v1.0.0 does not render markdown — glamour arrives
+with the TUI.
+
+Usage:
+  isu show <id> [flags]
+
+Flags:
+  -h, --help   help for show
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

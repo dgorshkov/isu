@@ -198,6 +198,10 @@ type invocation struct {
 	// may, because a human whose credential helper has expired should be asked
 	// rather than told the push failed.
 	interactive bool
+	// index points git at an index file other than the repository's own. It is
+	// how BuildTree writes a commit without touching the user's working tree,
+	// and it is the one deliberate exception to the scrub below — see environ.
+	index string
 }
 
 // output runs git and returns its standard output with trailing newlines
@@ -258,7 +262,7 @@ func (g *Git) run(ctx context.Context, in invocation) error {
 	}, in.args...)
 
 	cmd := exec.CommandContext(ctx, g.binary, args...) //nolint:gosec // the point of this package
-	cmd.Env = g.environ(in.interactive)
+	cmd.Env = g.environ(in.interactive, in.index)
 	cmd.Stdin = in.stdin
 	cmd.Stdout = in.stdout
 
@@ -334,10 +338,16 @@ func isUnknownRevision(stderr string) bool {
 // environ is the environment git runs under: the caller's, minus the variables
 // that would redirect git at another repository, plus the handful that keep its
 // output parseable.
-func (g *Git) environ(interactive bool) []string {
+//
+// An index named by the caller is put back after the scrub. What the scrub
+// prevents is isu inheriting a pointer at somebody else's index from whatever
+// ran it; a path this package made itself, for one invocation, is the opposite
+// of that — and it is what lets BuildTree write a commit without going anywhere
+// near the index the user is working in.
+func (g *Git) environ(interactive bool, index string) []string {
 	ambient := os.Environ()
 
-	env := make([]string, 0, len(ambient)+len(environmentVars)+1)
+	env := make([]string, 0, len(ambient)+len(environmentVars)+2)
 	for _, entry := range ambient {
 		name, _, _ := strings.Cut(entry, "=")
 		if contains(repositoryVars, name) {
@@ -350,6 +360,10 @@ func (g *Git) environ(interactive bool) []string {
 	env = append(env, environmentVars...)
 	if !interactive {
 		env = append(env, "GIT_TERMINAL_PROMPT=0")
+	}
+
+	if index != "" {
+		env = append(env, "GIT_INDEX_FILE="+index)
 	}
 
 	if g.env != nil {

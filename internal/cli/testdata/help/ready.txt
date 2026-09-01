@@ -1,0 +1,22 @@
+ready lists the open issues whose blockers are all finished, ordered by
+priority and then by age.
+
+An epic blocker counts as finished when its rollup does, since an epic has no
+state of its own. Anything somebody has claimed is not ready: the board is not
+going to hand two people the same work.
+
+It prints JSON unless told otherwise, because the caller is usually an agent.
+Pass --json=false for the list a person reads.
+
+Usage:
+  isu ready [flags]
+
+Flags:
+  -h, --help   help for ready
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

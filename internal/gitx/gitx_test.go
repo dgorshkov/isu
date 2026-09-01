@@ -181,6 +181,21 @@ func TestProcessesCountsEveryInvocation(t *testing.T) {
 
 // PLAN.md M2-S1: "Done when `grep -r \"exec.Command\" internal/ | grep -v gitx`
 // returns nothing. Add that grep as a test."
+// editorFile is the one file outside this package that may start a process, and
+// the process it starts is the user's editor.
+//
+// **The grep below was a faithful proxy for M2-S1's rule right up until M4-S6.**
+// The rule is that internal/gitx is the only place that may build a *git*
+// command; the proxy is that nothing outside it names exec.Command at all.
+// `isu comment` opens $EDITOR when there is no -m, which is not a git command
+// and cannot be made into one, so the proxy had to be told the difference.
+//
+// It is named here rather than exempted by a pattern, so that adding a second
+// process-starting file is a deliberate edit to this test and not something a
+// directory name can do quietly. What the rule is actually about is asserted of
+// it directly: it does not run git.
+const editorFile = "cli/editor.go"
+
 func TestNothingOutsideGitxExecutesGit(t *testing.T) {
 	// Split so that this file is not its own counterexample.
 	needle := "exec." + "Command"
@@ -204,6 +219,10 @@ func TestNothingOutsideGitxExecutesGit(t *testing.T) {
 			return nil
 		}
 
+		if filepath.ToSlash(path) == filepath.ToSlash(filepath.Join(root, editorFile)) {
+			return nil
+		}
+
 		if strings.Contains(readFile(t, path), needle) {
 			offenders = append(offenders, path)
 		}
@@ -215,6 +234,18 @@ func TestNothingOutsideGitxExecutesGit(t *testing.T) {
 		"internal/gitx is the only place that may build a git command: "+
 			"the user's config, hooks and credential helpers apply because every "+
 			"invocation goes through one door")
+}
+
+func TestTheOneFileThatStartsAProcessDoesNotStartGit(t *testing.T) {
+	// The exemption above is for the editor and nothing else, so this is what
+	// the rule actually says, asserted of the file the rule now excuses.
+	body := readFile(t, filepath.Join("..", editorFile))
+
+	for _, forbidden := range []string{`"git"`, "gitx.Binary", "gitx.New("} {
+		require.NotContainsf(t, body, forbidden,
+			"%s may start the user's editor and nothing else: git goes through gitx",
+			editorFile)
+	}
 }
 
 func readFile(t *testing.T, path string) string {

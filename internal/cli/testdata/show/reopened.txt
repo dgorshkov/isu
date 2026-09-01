@@ -1,0 +1,11 @@
+ISU-reopen  Upgrade the linter
+
+  status    reopened
+  type      chore
+  state     open
+  owner     alice
+  created   <date>
+  priority  p2
+  trunk     main
+
+no remote refs
