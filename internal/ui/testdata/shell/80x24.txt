@@ -1,16 +1,16 @@
 isu  main  7 issues                                           remote refs 2h ago
 done 1 · dropped 1 · awaiting triage 1 · in progress 1 · reopened 1 · open 2
 ────────────────────────────────────────────────────────────────────────────────
-done (1)                             │ ISU-donede  What does contention cost?
-▸ ISU-donede  p2  What does content… │
-dropped (1)                          │ status    done
-  ISU-dropit  p2  Rewrite it in ano… │ type      spike
-awaiting triage (1)                  │ priority  p2
-  ISU-triage  p0  Sign-up page 500s… │ state     resolved
-in progress (1)                      │ owner     dmitry
-  ISU-inprog  p2  Board renders epi… │ created   <date>
-reopened (1)                         │ question  how much?
-  ISU-reopen  p2  Upgrade the linter │
+done (1)                             │ ISU-donede
+▸ ISU-donede  p2  What does content… │ What does contention cost?
+dropped (1)                          │
+  ISU-dropit  p2  Rewrite it in ano… │ status    done
+awaiting triage (1)                  │ type      spike
+  ISU-triage  p0  Sign-up page 500s… │ priority  p2
+in progress (1)                      │ state     resolved
+  ISU-inprog  p2  Board renders epi… │ owner     dmitry
+reopened (1)                         │ created   <date>
+  ISU-reopen  p2  Upgrade the linter │ question  how much?
 open (2)                             │
   ISU-epical  p2  Make login reliab… │
   ISU-openly  p1  Login retries dro… │

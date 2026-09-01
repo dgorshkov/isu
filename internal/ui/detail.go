@@ -18,12 +18,9 @@ func (m Model) detail(width, height int) []string {
 		return []string{m.styles.dim.Render("nothing selected")}
 	}
 
-	out := []string{
-		m.styles.title.Render(item.ID) + "  " + titleOf(item),
-		"",
-	}
+	out := []string{m.styles.title.Render(item.ID), titleOf(item), ""}
 
-	out = append(out, fields(m.fieldRows(item))...)
+	out = append(out, fields(m.fieldRows(item), width)...)
 
 	for _, claim := range item.Claims {
 		out = append(out, "", m.styles.dim.Render(claimLine(claim)))
@@ -114,19 +111,33 @@ func (m Model) lookup(id string) (*model.Item, bool) {
 	return m.in.Board.Get(id)
 }
 
-// fields lays the key/value block out so the values line up.
-func fields(rows [][2]string) []string {
-	width := 0
+// fields lays the key/value block out so the values line up, and keeps them
+// lined up when one of them folds.
+//
+// A value long enough to wrap is the ordinary case in this pane — an acceptance
+// criterion is a sentence — and folding it back to the left margin puts its
+// second half where a key belongs. It goes under the value instead, which is
+// what a hanging indent is for.
+func fields(rows [][2]string, width int) []string {
+	keys := 0
 
 	for _, r := range rows {
-		if n := len([]rune(r[0])); n > width {
-			width = n
+		if n := len([]rune(r[0])); n > keys {
+			keys = n
 		}
 	}
 
+	hang := keys + 2
 	out := make([]string, 0, len(rows))
+
 	for _, r := range rows {
-		out = append(out, strings.TrimRight(column(r[0], width)+"  "+r[1], " "))
+		folded := wrap(r[1], atLeast(width-hang, 1))
+
+		out = append(out, strings.TrimRight(column(r[0], keys)+"  "+folded[0], " "))
+
+		for _, more := range folded[1:] {
+			out = append(out, strings.Repeat(" ", hang)+more)
+		}
 	}
 
 	return out
@@ -170,28 +181,44 @@ func wrapAll(in []string, width, height int) []string {
 
 // wrap folds one line at the last space that fits, and mid-word when no space
 // does.
+//
+// It cuts the line rather than rebuilding it out of its words, because the
+// spacing inside a line is doing work: rebuilding collapses the two spaces that
+// hold a key away from its value into one, so the first fold of a pane quietly
+// unaligns every column in it.
 func wrap(line string, width int) []string {
-	if visible(line) <= width || width < 1 {
-		return []string{line}
-	}
-
 	var out []string
 
-	for _, word := range strings.Fields(line) {
-		switch {
-		case len(out) == 0:
-			out = append(out, word)
-		case visible(out[len(out)-1])+1+visible(word) <= width:
-			out[len(out)-1] += " " + word
-		default:
-			out = append(out, word)
+	for width >= 1 && visible(line) > width {
+		cut := breakAt(line, width)
+
+		out = append(out, strings.TrimRight(line[:cut], " "))
+		line = strings.TrimLeft(line[cut:], " ")
+	}
+
+	return append(out, line)
+}
+
+// breakAt is where to fold a line: the last space that leaves something on both
+// sides of it, and the width itself when there is none.
+func breakAt(line string, width int) int {
+	last, seen := 0, 0
+
+	for i, r := range line {
+		if seen == width {
+			if last > 0 {
+				return last
+			}
+
+			return i
 		}
+
+		if r == ' ' && seen > 0 {
+			last = i
+		}
+
+		seen++
 	}
 
-	folded := make([]string, 0, len(out))
-	for _, l := range out {
-		folded = append(folded, truncate(l, width))
-	}
-
-	return folded
+	return len(line)
 }
