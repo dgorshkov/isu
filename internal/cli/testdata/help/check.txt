@@ -11,12 +11,13 @@ change being committed is not a commit yet and the branch rules would be
 answering from the commits already there.
 
 The checks:
-  attachments  tree  no attachment is bigger than attachment_max_bytes
-  cycles       tree  no epic is its own ancestor, and nothing waits on itself in a ring
-  duplicates   tree  no two branches report different issues under one id
-  epics        tree  every epic has at least one child
-  links        tree  parent and blocked_by name issues that exist, and a parent is an epic
-  schema       tree  every issue file parses, satisfies the schema, and sits in a folder named after its id
+  attachments  tree    no attachment is bigger than attachment_max_bytes
+  cycles       tree    no epic is its own ancestor, and nothing waits on itself in a ring
+  duplicates   tree    no two branches report different issues under one id
+  epics        tree    every epic has at least one child
+  evidence     branch  resolving something takes work beside it, and a drop takes a reason
+  links        tree    parent and blocked_by name issues that exist, and a parent is an epic
+  schema       tree    every issue file parses, satisfies the schema, and sits in a folder named after its id
 
 Usage:
   isu check [flags]
