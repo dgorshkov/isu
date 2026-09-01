@@ -3,7 +3,7 @@ schema: 1
 id: ISU-9m7jw9
 title: M5-S5 · Contention and staleness reporting
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
