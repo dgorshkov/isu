@@ -80,7 +80,25 @@ func TestTheInterfaceInJSONIsTheBoardItWouldOpenOn(t *testing.T) {
 	fromUI := decode[BoardPayload](t, isu(t, r.Dir(), "ui", "--json").ok(t))
 	fromBoard := decode[BoardPayload](t, isu(t, r.Dir(), "board", "--json").ok(t))
 
-	require.Equal(t, fromBoard, fromUI)
+	require.Equal(t, timeless(fromBoard), timeless(fromUI))
+}
+
+// timeless drops the two things two invocations a moment apart are allowed to
+// disagree about. An age is the distance from a fixed moment to the clock, and
+// the clock moves between two commands: asserting on it would be asserting that
+// the test ran fast enough.
+func timeless(payload BoardPayload) BoardPayload {
+	payload.Freshness.AgeSeconds = 0
+
+	for g, group := range payload.Groups {
+		for i, item := range group.Issues {
+			for c := range item.Claims {
+				payload.Groups[g].Issues[i].Claims[c].AgeSeconds = 0
+			}
+		}
+	}
+
+	return payload
 }
 
 // PLAN.md M6-S2: the grouping matches `isu board` exactly. It is one function
