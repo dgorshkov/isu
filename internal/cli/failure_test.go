@@ -196,6 +196,22 @@ func TestCommandsSurviveARepositoryWithNoIdentity(t *testing.T) {
 	r.Git("config", "--unset", "user.email")
 	r.Git("config", "--unset", "user.name")
 
+	// Unsetting the identity does not stop git inventing one, and what decides
+	// whether it does is the name of the machine.
+	//
+	// With no configured email git makes up `user@host` and refuses only if it
+	// had to guess the domain: `add_domainname` takes the hostname as-is when it
+	// already contains a dot, and `copy_email` returns early and happily when
+	// /etc/mailname exists. So a macOS runner (`Mac-1234.local`) and a Debian box
+	// both get an address git considers real, and the commit it should have
+	// refused succeeds. That is why this passed on every machine it was written
+	// on and failed only on CI's macos job.
+	//
+	// useConfigOnly is git's own switch for "never guess who I am", and it is
+	// checked before the address is built rather than after, so the refusal this
+	// test is about stops depending on what the host is called.
+	r.Git("config", "user.useConfigOnly", "true")
+
 	// git will not write a commit for somebody it cannot name.
 	for _, args := range [][]string{
 		{"resolve", "ISU-openly"},
