@@ -95,6 +95,16 @@ func (w *wired) Reload() (ui.Data, error) {
 	return board().Data, nil
 }
 
+// did is the condition a script waits on when the screen is not something to
+// synchronise on: the fake has been asked to do this much.
+func (w *wired) did(actions, reloads int) func() bool {
+	return func() bool {
+		claims, gotos, files, reloaded := w.count()
+
+		return claims+gotos+files >= actions && reloaded >= reloads
+	}
+}
+
 func (w *wired) count() (claims, gotos, files, reloads int) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -165,7 +175,6 @@ func TestGoingToTheBranchOfAClaimedIssueChecksItOut(t *testing.T) {
 // goes with it: an editor that cannot read the keyboard is an editor nobody can
 // type into, so the interface releases the screen for as long as it runs.
 func TestFilingAnIssueHandsTheEditorTheTerminal(t *testing.T) {
-	t.Parallel()
 
 	var got ui.Streams
 
@@ -174,7 +183,7 @@ func TestFilingAnIssueHandsTheEditorTheTerminal(t *testing.T) {
 		onNew:   func(s ui.Streams) { got = s },
 	}
 
-	require.Contains(t, press(t, acting(w), 110, 24, []string{"n"}, "ISU-newone1"),
+	require.Contains(t, pressUntil(t, acting(w), 110, 24, []string{"n"}, w.did(1, 1)),
 		"ISU-newone1 on report/ISU-newone1")
 
 	_, _, filed, reloads := w.count()
@@ -190,18 +199,20 @@ func TestNoActionFailsSilently(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		key   string
-		wired *wired
-		want  string
+		name    string
+		key     string
+		wired   *wired
+		reloads int
+		want    string
 	}{
-		{"claim", "c", &wired{claimErr: errors.New("the claim did not go")},
+		{"claim", "c", &wired{claimErr: errors.New("the claim did not go")}, 0,
 			"the claim did not go"},
-		{"branch", "g", &wired{gotoErr: errors.New("the checkout did not go")},
+		{"branch", "g", &wired{gotoErr: errors.New("the checkout did not go")}, 0,
 			"the checkout did not go"},
-		{"new", "n", &wired{newErr: errors.New("the editor did not go")},
+		{"new", "n", &wired{newErr: errors.New("the editor did not go")}, 0,
 			"the editor did not go"},
-		{"reload", "c", &wired{claimSaid: "done", reloadErr: errors.New("the re-read did not go")},
+		{"reload", "c",
+			&wired{claimSaid: "done", reloadErr: errors.New("the re-read did not go")}, 1,
 			"the re-read did not go"},
 	}
 
@@ -209,8 +220,8 @@ func TestNoActionFailsSilently(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			require.Contains(t,
-				press(t, acting(tt.wired), 140, 24, []string{tt.key}, tt.want), tt.want)
+			require.Contains(t, pressUntil(t, acting(tt.wired), 140, 24,
+				[]string{tt.key}, tt.wired.did(1, tt.reloads)), tt.want)
 		})
 	}
 }
@@ -261,8 +272,9 @@ func TestAReloadKeepsWhereSomebodyWas(t *testing.T) {
 // PLAN.md M6-S5: "proven by a test that fails if the TUI package calls git
 // directly."
 //
-// internal/gitx's own suite already greps internal/ for exec.Command, which is
-// the rule that nothing outside it builds a git command. This is the stronger
+// internal/gitx's own suite greps internal/ for the call that starts a process,
+// which is the rule that nothing outside it builds a git command — and that
+// grep is why this comment does not spell the call out. This is the stronger
 // statement M6-S5 asks for, about this package specifically: it does not reach
 // the git binary, and it does not reach the two packages that do. A renderer
 // that could run a git process would run one per frame.

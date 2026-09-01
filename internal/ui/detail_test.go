@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dgorshkov/isu/internal/issue"
@@ -48,48 +48,164 @@ func press(t *testing.T, in ui.Input, width, height int, keys []string, until st
 	return script{width: width, height: height, keys: keys, after: until}.run(t, in)
 }
 
+// pressUntil waits on a condition rather than on the screen.
+//
+// One test needs it, and the reason is worth writing down: a frame drawn
+// between tea.Exec handing the terminal back and the renderer's next flush does
+// not reliably reach the output. The model is right — the message is on the
+// final frame every time — but the intermediate byte stream is not something to
+// synchronise on, so the editor's test waits for the fake to have been called
+// and reads the frame the program ended on.
+func pressUntil(
+	t *testing.T, in ui.Input, width, height int, keys []string, until func() bool,
+) string {
+	t.Helper()
+
+	return script{width: width, height: height, keys: keys, settled: until}.run(t, in)
+}
+
 // script is one run of the interface: wait, type, wait, quit.
 type script struct {
 	width, height int
 	before        string
 	keys          []string
 	after         string
+	settled       func() bool
 }
 
+// run drives one bubbletea program over a pair of buffers, which is what `isu
+// ui` itself does with a pipe on either side of it.
+//
+// teatest is used where PLAN.md M6-S1 asks for it — the golden frames and the
+// assertion that `q` ends the program — and not here. tea.Exec, which is how
+// `n` hands the terminal to an editor, does not come back reliably under
+// teatest's harness: measured at about one run in two, the program released the
+// terminal and never repainted, and waiting for the first frame before typing
+// made it every run. The same program over an ordinary pair of buffers did not
+// fail in two hundred, and internal/cli asserts the editor end to end through
+// the real command as well.
 func (s script) run(t *testing.T, in ui.Input) string {
 	t.Helper()
 
-	tm := teatest.NewTestModel(t, ui.New(in), teatest.WithInitialTermSize(s.width, s.height))
+	input, output := &buffer{}, &buffer{}
+	p := tea.NewProgram(ui.New(in), tea.WithInput(input), tea.WithOutput(output))
 
-	waitFor(t, tm, s.before)
-
-	for _, name := range s.keys {
-		tm.Send(key(name))
+	type ended struct {
+		model tea.Model
+		err   error
 	}
 
-	waitFor(t, tm, s.after)
+	finished := make(chan ended, 1)
 
-	tm.Send(key("q"))
-	tm.WaitFinished(t, teatest.WithFinalTimeout(5*time.Second))
+	go func() {
+		last, err := p.Run()
+		finished <- ended{model: last, err: err}
+	}()
 
-	final, ok := tm.FinalModel(t).(ui.Model)
-	require.True(t, ok)
+	p.Send(tea.WindowSizeMsg{Width: s.width, Height: s.height})
 
-	return final.View()
+	// Nothing is typed at a program that has not drawn yet: the header is on
+	// every frame, so waiting for it is waiting for the event loop to be
+	// running and the renderer to have started.
+	await(t, output, "isu  ")
+	await(t, output, s.before)
+
+	for _, name := range s.keys {
+		p.Send(key(name))
+	}
+
+	await(t, output, s.after)
+	settle(t, s.settled)
+
+	p.Send(key("q"))
+
+	select {
+	case done := <-finished:
+		require.NoError(t, done.err)
+
+		final, ok := done.model.(ui.Model)
+		require.True(t, ok)
+
+		return final.View()
+	case <-time.After(5 * time.Second):
+		p.Kill()
+		require.Fail(t, "the interface did not quit", "last frame:\n%s", output.String())
+
+		return ""
+	}
 }
 
-// waitFor holds until the screen says something, and returns at once when there
+// await holds until the screen says something, and returns at once when there
 // is nothing to wait for.
-func waitFor(t *testing.T, tm *teatest.TestModel, until string) {
+func await(t *testing.T, out *buffer, until string) {
 	t.Helper()
 
 	if until == "" {
 		return
 	}
 
-	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte(until))
-	}, teatest.WithDuration(5*time.Second))
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
+		if strings.Contains(out.String(), until) {
+			return
+		}
+
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	require.Failf(t, "the interface never said it", "waiting for %q in:\n%s",
+		until, out.String())
+}
+
+// settle holds until a condition about the fake is true, and returns at once
+// when there is nothing to wait for.
+func settle(t *testing.T, until func() bool) {
+	t.Helper()
+
+	if until == nil {
+		return
+	}
+
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
+		if until() {
+			// One more turn of the event loop, so that whatever the action
+			// asked for next has been applied before the frame is read.
+			time.Sleep(20 * time.Millisecond)
+
+			return
+		}
+
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	require.Fail(t, "the interface never got there")
+}
+
+// buffer is a terminal's worth of bytes, written by the program's renderer and
+// read by the test. Both happen on their own goroutines, so it is locked.
+type buffer struct {
+	mu      sync.Mutex
+	written bytes.Buffer
+}
+
+func (b *buffer) Read(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.written.Read(p)
+}
+
+func (b *buffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.written.Write(p)
+}
+
+func (b *buffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.written.String()
 }
 
 // detailPane is the right-hand half of a frame.
