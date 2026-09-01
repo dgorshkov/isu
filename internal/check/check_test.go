@@ -40,7 +40,7 @@ func (f fake) Run(in check.Input) []check.Finding {
 	return f.findings
 }
 
-func fails(name, id, message string) check.Finding {
+func fails(id, message string) check.Finding {
 	return check.Finding{Severity: check.SeverityFail, ID: id, Message: message}
 }
 
@@ -97,7 +97,7 @@ func TestTheEngineStampsEachFindingWithTheCheckThatFoundIt(t *testing.T) {
 
 	r := check.NewRegistry()
 	r.MustRegister(fake{name: "links", findings: []check.Finding{
-		fails("links", "ISU-7f3akq", "parent names nothing"),
+		fails("ISU-7f3akq", "parent names nothing"),
 	}})
 
 	report := r.Run(check.Input{})
@@ -182,7 +182,7 @@ func TestAFailingCheckIsNotOKAndAWarningIs(t *testing.T) {
 	require.Equal(t, 0, report.Count(check.SeverityFail))
 
 	r.MustRegister(fake{name: "links", findings: []check.Finding{
-		fails("links", "ISU-7f3akq", "parent names nothing"),
+		fails("ISU-7f3akq", "parent names nothing"),
 	}})
 
 	report = r.Run(check.Input{})

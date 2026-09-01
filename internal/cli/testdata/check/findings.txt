@@ -1,0 +1,5 @@
+main · 6 checks · 3 failures · no remote refs
+
+fail  epics   ISU-epical  an epic with no children folds over nothing: give it one, or make it an issue of its own
+fail  links   ISU-7f3akq  parent ISU-nobody does not exist on any ref isu can see
+fail  schema  ISU-7f3akq  owner: required: name the human answerable for this issue
