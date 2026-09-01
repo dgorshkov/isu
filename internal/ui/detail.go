@@ -105,7 +105,7 @@ func (m Model) pane(width int) []string {
 	}
 
 	out = append(out, m.children(item, width)...)
-	out = append(out, m.body(item, width)...)
+	out = append(out, m.body(item)...)
 	out = append(out, m.beside(item, width)...)
 
 	return wrapAll(out, width)
@@ -148,36 +148,39 @@ func (m Model) children(item *model.Item, width int) []string {
 //
 // `isu show` prints it verbatim and says so; this is the pane that does not
 // have to, and glamour is in PLAN.md's allowlist for exactly this.
-func (m Model) body(item *model.Item, width int) []string {
+func (m Model) body(item *model.Item) []string {
 	if item.Issue == nil || strings.TrimSpace(item.Issue.Body) == "" {
 		return nil
 	}
 
-	return append([]string{""}, m.markdown(item.Issue.Body, width)...)
+	return append([]string{""}, m.markdown(item.Issue.Body)...)
 }
 
 // beside is what lives in the issue's folder, once it has arrived.
 func (m Model) beside(item *model.Item, width int) []string {
-	held, arrived := m.folders[item.ID]
+	beside, arrived := m.folders[item.ID]
 	if !arrived {
 		return nil
 	}
 
-	var out []string
-
-	if held.err != nil {
-		return []string{"", m.styles.title.Render("beside it"),
-			"could not be read: " + held.err.Error()}
+	if beside.err != nil {
+		return []string{
+			"",
+			m.styles.title.Render("beside it"),
+			"could not be read: " + beside.err.Error(),
+		}
 	}
 
-	if len(held.folder.Attachments) > 0 {
+	var out []string
+
+	if len(beside.folder.Attachments) > 0 {
 		out = append(out, "", m.styles.title.Render("attachments"))
-		for _, name := range held.folder.Attachments {
+		for _, name := range beside.folder.Attachments {
 			out = append(out, "  "+name)
 		}
 	}
 
-	for _, comment := range held.folder.Comments {
+	for _, comment := range beside.folder.Comments {
 		out = append(out, "", m.styles.title.Render("comment "+comment.Name))
 		out = append(out, wrapAll(lines(strings.TrimRight(comment.Body, "\n")), width)...)
 	}
@@ -193,7 +196,7 @@ func (m Model) beside(item *model.Item, width int) []string {
 // render, which is a style name this package chose and a width it computed —
 // so it cannot fail on anything a user did, and the body is printed rather than
 // lost, which is what `isu show` does anyway.
-func (m Model) markdown(text string, width int) []string {
+func (m Model) markdown(text string) []string {
 	if m.md == nil {
 		return lines(strings.TrimRight(text, "\n"))
 	}

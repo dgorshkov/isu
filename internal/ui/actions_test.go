@@ -175,7 +175,6 @@ func TestGoingToTheBranchOfAClaimedIssueChecksItOut(t *testing.T) {
 // goes with it: an editor that cannot read the keyboard is an editor nobody can
 // type into, so the interface releases the screen for as long as it runs.
 func TestFilingAnIssueHandsTheEditorTheTerminal(t *testing.T) {
-
 	var got ui.Streams
 
 	w := &wired{
@@ -205,15 +204,23 @@ func TestNoActionFailsSilently(t *testing.T) {
 		reloads int
 		want    string
 	}{
-		{"claim", "c", &wired{claimErr: errors.New("the claim did not go")}, 0,
-			"the claim did not go"},
-		{"branch", "g", &wired{gotoErr: errors.New("the checkout did not go")}, 0,
-			"the checkout did not go"},
-		{"new", "n", &wired{newErr: errors.New("the editor did not go")}, 0,
-			"the editor did not go"},
-		{"reload", "c",
+		{
+			"claim", "c", &wired{claimErr: errors.New("the claim did not go")}, 0,
+			"the claim did not go",
+		},
+		{
+			"branch", "g", &wired{gotoErr: errors.New("the checkout did not go")}, 0,
+			"the checkout did not go",
+		},
+		{
+			"new", "n", &wired{newErr: errors.New("the editor did not go")}, 0,
+			"the editor did not go",
+		},
+		{
+			"reload", "c",
 			&wired{claimSaid: "done", reloadErr: errors.New("the re-read did not go")}, 1,
-			"the re-read did not go"},
+			"the re-read did not go",
+		},
 	}
 
 	for _, tt := range tests {
