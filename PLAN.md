@@ -4,8 +4,8 @@
 request that fixes a bug also closes it, in the same diff. Written in Go, shipped as one
 binary containing a CLI and a TUI.
 
-This document is the build order. Work it top to bottom, one story per branch, one pull
-request per story. Do not skip ahead, do not batch stories, do not merge your own work.
+This document is the build order. Work it top to bottom. A pull request carries one story, or
+a group of related stories where §0 allows it. Do not skip ahead, do not merge your own work.
 
 ---
 
@@ -13,8 +13,18 @@ request per story. Do not skip ahead, do not batch stories, do not merge your ow
 
 **Read this section before every session.**
 
-- **One story = one branch = one pull request.** Branch name is the story id, slugged:
-  `isu/M3-S2-derive-epic-rollup`.
+- **One branch = one pull request. A pull request carries one story, or several related
+  stories.** A single story is the default unit and the safest one; grouping is allowed, not
+  required. Group only stories that are neighbours in this document, belong to the same
+  milestone, and share one subject a reviewer can hold in their head at once — M1's five
+  issue-file stories, or M4's eight commands, are the shape of it. Never group across a
+  milestone boundary. Never group so much that one sitting cannot review it: a pull request
+  nobody finishes reading is worse than the four they would have finished.
+  Branch name is the story id, slugged: `isu/M3-S2-derive-epic-rollup`; a branch carrying
+  several stories is named for the range and its subject: `isu/M1-S1-S5-issue-files`.
+  Everything else in this document stays **per story** whatever the branch carries — its own
+  red-then-green commits, its own tests, its own `**Done**` line — and the pull request
+  description lists the story ids it closes.
 - **TDD, visibly.** The failing test is its own commit and precedes the commit that makes it
   pass. Refactor after. A reviewer must be able to see red-then-green in the commit history.
   **CI gates the branch head, not every commit.** A Go test naming types that do not exist yet
@@ -37,10 +47,12 @@ request per story. Do not skip ahead, do not batch stories, do not merge your ow
   `golangci-lint run`, `go test ./...` all pass, and coverage stays at or above the floors in
   the definition of done. The floors are the gate; there is no per-story ratchet on top of
   them, because a ratchet punishes honest deletion.
-- **Name the reviewer before M0-S1.** Fifty-one pull requests arrive one at a time and none of
-  them merge without a human. The schedule below is that person's calendar, not the agent's.
+- **Name the reviewer before M0-S1.** Somewhere between a dozen and fifty-one pull requests
+  arrive one at a time, depending on how much travels together, and none of them merge without a
+  human. The schedule below is that person's calendar, not the agent's.
 - **Mark it done in this file, in the same pull request.** The pull request that finishes a
-  story also updates PLAN.md, or the story is not finished. Specifically:
+  story also updates PLAN.md, or the story is not finished — and one carrying several stories
+  does this for every one of them. Specifically:
   - append ` ✅` to the story heading, and add a `**Done**` line directly beneath it naming
     the pull request and the date it merged — `**Done** #1, 2026-08-24`;
   - update the **status** column of that story's milestone in the Milestones table;
@@ -459,7 +471,7 @@ Ten milestones. Stop for review at the end of each.
 
 Estimated in pull requests, because the reviewer is the constraint and the compiler is not.
 
-| milestone | PRs | shape |
+| milestone | stories | shape |
 |---|---|---|
 | M0 Foundations | 4 | small, mostly config; M0-S4 is the one that matters |
 | M1 Issue files | 5 | small, pure functions, heavy table tests |
@@ -472,8 +484,11 @@ Estimated in pull requests, because the reviewer is the constraint and the compi
 | M8 Website | 3 | medium |
 | M9 Release | 4 | small, except M9-S3 which is open-ended by design |
 
-**51 pull requests.** At three reviewed per day that is roughly four weeks; at one per day,
-roughly eleven. The agent is not the bottleneck — plan your own calendar, not its.
+**Fifty-one stories, and at most fifty-one pull requests** — an upper bound rather than a
+forecast, since §0 lets related stories travel together and M1 through M4 each arrived as a
+single pull request. At three reviewed per day that bound is roughly four weeks; at one per day,
+roughly eleven. Grouping moves that number, not the work underneath it. The agent is not the
+bottleneck — plan your own calendar, not its.
 
 Two stories can generate unplanned work and should not be scheduled tightly: **M4-S8**,
 where real repositories get their say, and **M9-S3**, where hardening turns every defect into
@@ -555,8 +570,8 @@ right early is the difference between fast tests and a swamp.
 # M1 · Issue files ✅
 
 **Status** done — all five stories landed in one pull request rather than five. That was
-asked for explicitly; it is recorded here because §0 says otherwise and the next session
-should not read this milestone as precedent. The milestone boundary rule still applies: M2
+asked for explicitly at the time, and §0 now allows it outright: five neighbouring stories on
+one subject are the group it describes. The milestone boundary rule still applies: M2
 does not start without explicit approval.
 
 ### M1-S1 · Frontmatter parser ✅
@@ -664,9 +679,9 @@ rather than by inspection.
 # M2 · Git layer ✅
 
 **Status** done — all five stories landed in one pull request rather than five. That was
-asked for explicitly, as it was for M1. §0 says otherwise, and two milestones running is
-not precedent: the next session should assume one story per pull request unless it is told
-otherwise in the same words. The milestone boundary rule still applies: M3 does not start
+asked for explicitly, as it was for M1, and §0 now allows it outright. What §0 still asks for
+is the judgement, milestone by milestone: group what one reviewer reads in one sitting, not
+whatever happens to be adjacent. The milestone boundary rule still applies: M3 does not start
 without explicit approval.
 
 **Claim refs are not loaded yet.** M3-S1 names them among its inputs, but M0-S4's note
@@ -852,9 +867,9 @@ single ref; it is not a number the product's main operation can be held to.
 # M3 · Derivation ✅
 
 **Status** done — all five stories landed in one pull request rather than five. That was asked
-for explicitly, as it was for M1 and M2. §0 says otherwise, and three milestones running is
-still not precedent: the next session should assume one story per pull request unless it is
-told otherwise in the same words. The milestone boundary rule applies as ever — M4 does not
+for explicitly, as it was for M1 and M2, and §0 now allows it outright. M3 is where the size of
+a group starts to cost something: this milestone is the product, and it drew more review time
+than anything before it. The milestone boundary rule applies as ever — M4 does not
 start without explicit approval.
 
 **Two corrections and one question came out of the tests**, and all three are recorded where
@@ -1061,9 +1076,10 @@ title.
 # M4 · CLI ✅
 
 **Status** done — all eight stories landed in one pull request rather than eight. That was asked
-for explicitly, as it was for M1, M2 and M3. §0 says otherwise, and four milestones running is
-still not precedent: the next session should assume one story per pull request unless it is told
-otherwise in the same words. The milestone boundary rule applies as ever — M5 does not start
+for explicitly, as it was for M1, M2 and M3, and §0 now allows it outright. Eight commands in one
+pull request sits at the top of what §0's one-sitting test tolerates, and it is why that test is
+written down: M5's seven checks do not depend on each other and are better off as two or three
+pull requests than as one. The milestone boundary rule applies as ever — M5 does not start
 without explicit approval.
 
 **One correction, two defects and three limitations came out of this milestone**, and each is
@@ -1367,8 +1383,8 @@ dependency graph is acyclic, every epic has at least one child, and every non-ep
 the conversion controls — `parent` stays optional in the schema, because a repository with no
 epics at all is a perfectly good repository.
 **Done when** isu tracks its own construction and its own CI enforces it. From here on every
-story pull request also flips its own issue file to `resolved` — and M5-S3 turns that into a
-failing check if the pull request contains nothing else.
+pull request also flips the issue file of each story it carries to `resolved` — and M5-S3 turns
+that into a failing check if the pull request contains nothing else.
 
 ---
 
@@ -1624,6 +1640,9 @@ The first three are deferrals, not rejections, and each has a milestone's worth 
 already written in this file's history.
 
 ## Definition of done, every story
+
+This list is per story, not per pull request: one carrying several stories satisfies all of it
+for each of them separately.
 
 1. The failing test is its own commit, and it precedes the commit that makes it pass.
 2. `go build ./...`, `go vet ./...`, `golangci-lint run`, `go test ./...` all pass at the
