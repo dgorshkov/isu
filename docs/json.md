@@ -222,6 +222,7 @@ Which commands fill which:
 | `failures` | number | how many findings are failures |
 | `warnings` | number | how many are warnings |
 | `ok` | bool | nothing failed |
+| `worktree` | bool | the rules read the issues on disk rather than at a ref |
 | `freshness` | `Freshness` | how old the refs it read are |
 
 Exit status is `1` when `ok` is false and `0` when it is true. **A warning does

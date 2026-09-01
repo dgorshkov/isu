@@ -45,12 +45,12 @@ func (evidenceCheck) Run(in Input) []Finding {
 			continue
 		}
 
-		switch change.After.State {
-		case issue.StateResolved:
+		// Terminal is resolved or dropped, and resolving() has already said it
+		// is one of them.
+		if change.After.State == issue.StateResolved {
 			out = append(out, resolutionFindings(in, change)...)
-		case issue.StateDropped:
+		} else {
 			out = append(out, dropFindings(in, change)...)
-		case issue.StateOpen:
 		}
 	}
 

@@ -137,12 +137,7 @@ func (r *Repo) LoadWorktreeFiles(ctx context.Context) (Files, error) {
 			continue
 		}
 
-		found, err := r.folderFiles(id, ignored)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(found) > 0 {
+		if found := r.folderFiles(id, ignored); len(found) > 0 {
 			files[id] = found
 		}
 	}
@@ -151,37 +146,36 @@ func (r *Repo) LoadWorktreeFiles(ctx context.Context) (Files, error) {
 }
 
 // folderFiles walks one issue's folder, in name order.
-func (r *Repo) folderFiles(id string, ignored map[string]bool) ([]File, error) {
+//
+// Nothing here fails. A path that vanished between being listed and being
+// looked at is a path this cannot weigh, and what is beside an issue is not a
+// fact about the issue: a whole check run that refused to answer because one
+// attachment moved would be worse than an answer that does not mention it. The
+// same reasoning is why `isu show` walks a folder rather than going through
+// issue.Load.
+func (r *Repo) folderFiles(id string, ignored map[string]bool) []File {
 	dir := filepath.Join(r.root, IssuesDir, id)
+	prefix := dir + string(filepath.Separator)
 
 	var found []File
 
-	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if entry.IsDir() || !entry.Type().IsRegular() {
-			// A directory is walked into rather than weighed, and anything
-			// that is not a regular file — a symlink, a socket — is not an
-			// attachment. `ls-tree` calls a symlink a blob and this does not;
-			// what a size cap is about is bytes in everybody's clone.
+	_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		// A directory is walked into rather than weighed, and anything that is
+		// not a regular file — a symlink, a socket — is not an attachment.
+		// `ls-tree` calls a symlink a blob and this does not; what a size cap
+		// is about is bytes in everybody's clone.
+		if err != nil || entry.IsDir() || !entry.Type().IsRegular() {
 			return nil
 		}
 
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
-		}
-
-		name := filepath.ToSlash(rel)
+		name := filepath.ToSlash(strings.TrimPrefix(path, prefix))
 		if name == issue.ReadmeName || ignored[IssuesDir+"/"+id+"/"+name] {
 			return nil
 		}
 
 		info, err := entry.Info()
 		if err != nil {
-			return err
+			return nil //nolint:nilerr // a file that has gone is a file with no size
 		}
 
 		found = append(found, File{
@@ -194,13 +188,10 @@ func (r *Repo) folderFiles(id string, ignored map[string]bool) ([]File, error) {
 
 		return nil
 	})
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", IssuesDir+"/"+id, err)
-	}
 
 	sort.SliceStable(found, func(a, b int) bool { return found[a].Name < found[b].Name })
 
-	return found, nil
+	return found
 }
 
 // issueFile reads the issue and the folder-relative name out of a path under

@@ -219,11 +219,10 @@ func parentFindings(in Input, id, parent string) []Finding {
 }
 
 // known reports whether an id resolves to something on the board.
+//
+// It is only ever asked from inside a walk over that board, so there is no nil
+// to guard here: a guard that cannot be reached is a guard nobody has seen work.
 func known(in Input, id string) bool {
-	if in.Board == nil {
-		return false
-	}
-
 	_, ok := in.Board.Get(id)
 
 	return ok

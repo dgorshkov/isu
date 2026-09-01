@@ -10,6 +10,12 @@ hook isu init writes runs the tree rules only, because at pre-commit time the
 change being committed is not a commit yet and the branch rules would be
 answering from the commits already there.
 
+--worktree reads the issues on disk instead of at a ref, which is what that hook
+needs: a check that read a ref before a commit would be answering about the
+commit before the one being made, and would refuse the commit that fixed what it
+was complaining about. It implies --scope tree, because the working tree is not
+a set of commits and there is nothing there to ask the branch rules about.
+
 The checks:
   attachments  tree    no attachment is bigger than attachment_max_bytes
   claims       tree    nobody is working on the same issue twice, and no claim has gone quiet
@@ -27,6 +33,7 @@ Usage:
 Flags:
   -h, --help           help for check
       --scope string   which checks to run: tree, branch or all (default "all")
+      --worktree       read the issues on disk rather than at a ref, uncommitted edits included
 
 Global Flags:
       --fetch         update remote refs before reading
