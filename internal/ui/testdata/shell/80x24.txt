@@ -21,4 +21,4 @@ open (2)                             │
                                      │
 ────────────────────────────────────────────────────────────────────────────────
 
-enter open · c claim · n new · r ready · g branch · / filter · q quit
+enter open · c claim · n new · r ready · g branch · / filter · h fold · q quit

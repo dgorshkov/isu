@@ -16,6 +16,9 @@ type row struct {
 	// depth is how far the row is indented, which is how an epic's children are
 	// shown to belong to it.
 	depth int
+	// hidden is how many rows this epic's fold is holding back, and is zero on
+	// everything that is not a folded epic.
+	hidden int
 }
 
 // selectable reports whether the cursor may land here. It may not land on a
@@ -28,7 +31,10 @@ func (r row) selectable() bool { return r.item != nil }
 // list, which is what makes `r`, a filter and an action all leave somebody
 // where they were rather than at the top.
 func (m *Model) rebuild() {
-	was := m.selectedID()
+	was := m.sticky
+	if was == "" {
+		was = m.selectedID()
+	}
 
 	m.rows = m.rows[:0]
 
@@ -39,9 +45,9 @@ func (m *Model) rebuild() {
 			m.rows = append(m.rows, row{item: item})
 		}
 	} else {
-		for _, group := range m.in.Groups {
+		for _, group := range m.filtered() {
 			m.rows = append(m.rows, row{heading: string(group.Status), count: len(group.Items)})
-			m.rows = arrange(m.rows, group.Items)
+			m.rows = arrange(m.rows, group.Items, m.collapsed)
 		}
 	}
 
@@ -62,7 +68,7 @@ func (m *Model) rebuild() {
 // each other's ancestors, which is `isu check`'s to report and this function's
 // to survive: the sweep at the end draws whatever the walk could not reach,
 // rather than following the chain until the stack runs out.
-func arrange(rows []row, items []*model.Item) []row {
+func arrange(rows []row, items []*model.Item, collapsed map[string]bool) []row {
 	children := map[string][]*model.Item{}
 	here := make(map[string]bool, len(items))
 
@@ -86,6 +92,18 @@ func arrange(rows []row, items []*model.Item) []row {
 		}
 
 		drawn[item.ID] = true
+		if collapsed[item.ID] {
+			// The children are still in the group and still counted; what a
+			// fold takes away is the rows, and `j` steps over them because
+			// they are not there to step onto.
+			rows = append(rows, row{
+				item: item, depth: depth, hidden: countUnder(children, item.ID),
+			})
+			markDrawn(drawn, children, item.ID)
+
+			return
+		}
+
 		rows = append(rows, row{item: item, depth: depth})
 
 		for _, child := range children[item.ID] {
@@ -106,6 +124,29 @@ func arrange(rows []row, items []*model.Item) []row {
 	}
 
 	return rows
+}
+
+// countUnder is how many rows a fold is holding back, which is what its row
+// says instead of drawing them.
+func countUnder(children map[string][]*model.Item, id string) int {
+	n := 0
+
+	for _, child := range children[id] {
+		n += 1 + countUnder(children, child.ID)
+	}
+
+	return n
+}
+
+// markDrawn says a folded epic's children have been dealt with, so that the
+// sweep for a parent cycle does not draw them at the top level instead.
+func markDrawn(drawn map[string]bool, children map[string][]*model.Item, id string) {
+	for _, child := range children[id] {
+		if !drawn[child.ID] {
+			drawn[child.ID] = true
+			markDrawn(drawn, children, child.ID)
+		}
+	}
 }
 
 // parentOf is the epic an issue names, or nothing.
@@ -203,6 +244,10 @@ func (m Model) list(width, height int) []string {
 // emptyLine is what an empty list says. A blank pane is a bug report waiting to
 // be filed; a sentence is an answer.
 func (m Model) emptyLine() string {
+	if m.filter != "" {
+		return "nothing matches " + m.filter
+	}
+
 	if m.ready {
 		return "nothing is ready: everything open is blocked, claimed or untriaged"
 	}
@@ -240,7 +285,15 @@ func (m Model) line(i, ids, width int) string {
 	}
 
 	id := strings.Repeat(" ", r.depth*indent) + r.item.ID
-	body := column(id, ids) + "  " + priorityOf(r.item) + "  " + titleOf(r.item)
+	title := titleOf(r.item)
+
+	if r.hidden > 0 {
+		// The fold is named beside the title rather than beside the id,
+		// because a marker glued to an id is a marker somebody copies with it.
+		title += "  (" + strconv.Itoa(r.hidden) + " folded)"
+	}
+
+	body := column(id, ids) + "  " + priorityOf(r.item) + "  " + title
 
 	marker := "  "
 	if i == m.cursor {

@@ -21,4 +21,4 @@ open (41)                                     │ ISU-epical
     ISU-c00015  p2  Import batch 16           │
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-enter open · c claim · n new · r ready · g branch · / filter · q quit
+enter open · c claim · n new · r ready · g branch · / filter · h fold · q quit

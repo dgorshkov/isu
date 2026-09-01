@@ -91,16 +91,36 @@ func (m Model) footer() []string {
 	return []string{m.rule(), m.message(), m.hints()}
 }
 
-// message is what the last action reported. Nothing to say is an empty line
-// rather than a missing one — see chromeLines.
-func (m Model) message() string { return "" }
+// message is the filter line, or what the last action reported. Nothing to say
+// is an empty line rather than a missing one — see chromeLines.
+func (m Model) message() string {
+	switch {
+	case m.filtering:
+		return "/" + m.filter + "▌"
+	case m.filter != "":
+		return m.styles.dim.Render("/" + m.filter + "  ·  esc clears it")
+	default:
+		return ""
+	}
+}
 
 // hints is the key map, which is where a person learns it. PLAN.md M6-S1 names
-// these seven and this is all of them.
+// seven of these and the eighth is the fold M6-S3's navigation needs.
+//
+// While the filter line is open the map is a different one, because every
+// printable key is a character in the needle and offering `c claim` there would
+// be offering something that does not happen.
 func (m Model) hints() string {
-	return m.styles.dim.Render(strings.Join([]string{
-		"enter open", "c claim", "n new", "r ready", "g branch", "/ filter", "q quit",
-	}, " · "))
+	keys := []string{
+		"enter open", "c claim", "n new", "r ready",
+		"g branch", "/ filter", "h fold", "q quit",
+	}
+
+	if m.filtering {
+		keys = []string{"type to narrow", "↑↓ move", "enter accepts", "esc clears"}
+	}
+
+	return m.styles.dim.Render(strings.Join(keys, " · "))
 }
 
 func (m Model) rule() string { return m.styles.dim.Render(strings.Repeat("─", m.width)) }

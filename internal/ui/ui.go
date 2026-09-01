@@ -80,6 +80,22 @@ type Model struct {
 
 	// ready says the list is showing the ready queue rather than the board.
 	ready bool
+
+	// filter is the needle, lowercased, and filtering says its line is open.
+	// A needle survives its line closing: what somebody has narrowed to is the
+	// list they wanted.
+	filter    string
+	filtering bool
+	// collapsed holds the epics that are folded, by id.
+	collapsed map[string]bool
+	// search is every issue's filterable text, lowercased once — see
+	// searchable.
+	search map[string]string
+	// sticky is the issue somebody last chose, which is not always the issue
+	// the cursor is on: a filter can hide it. It is what the cursor goes back
+	// to when the filter that hid it goes, and it is only ever set by a
+	// deliberate move.
+	sticky string
 }
 
 // The size a terminal is assumed to be until it says otherwise. PLAN.md asks
@@ -93,10 +109,12 @@ const (
 // New builds the interface over one derivation of a repository.
 func New(in Input) Model {
 	m := Model{
-		in:     in,
-		styles: newStyles(in.Renderer),
-		width:  defaultWidth,
-		height: defaultHeight,
+		in:        in,
+		styles:    newStyles(in.Renderer),
+		width:     defaultWidth,
+		height:    defaultHeight,
+		collapsed: map[string]bool{},
+		search:    index(in.Groups, in.Ready),
 	}
 
 	m.rebuild()
@@ -124,15 +142,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // key is one keypress.
+//
+// The filter line comes first and takes every printable key, so the whole
+// command map below is unreachable while it is open. That is the point of it:
+// see typeInto.
 func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	name := msg.String()
+
+	if m.filtering {
+		if next, handled := m.typeInto(name, msg.Runes); handled {
+			return next, nil
+		}
+	}
+
+	switch name {
 	case "q", "ctrl+c":
 		return m, tea.Quit
+	case "/":
+		m.filtering = true
+
+		return m, nil
+	case "esc":
+		m.filter = ""
+		m.rebuild()
+
+		return m, nil
 	case "r":
 		m.ready = !m.ready
 		m.rebuild()
 
 		return m, nil
+	case "up", "k":
+		return m.move(-1), nil
+	case "down", "j":
+		return m.move(1), nil
+	case "pgup":
+		return m.move(-m.bodyHeight()), nil
+	case "pgdown":
+		return m.move(m.bodyHeight()), nil
+	case "home":
+		return m.jump(false), nil
+	case "end":
+		return m.jump(true), nil
+	case "left", "h":
+		return m.fold(), nil
+	case "right", "l":
+		return m.unfold(), nil
 	}
 
 	return m, nil
