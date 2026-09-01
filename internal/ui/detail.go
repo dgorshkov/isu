@@ -21,6 +21,16 @@ type Actions interface {
 	// Folder is what lives beside an issue: the attachments, and the comments.
 	// It is `isu show`'s own loader.
 	Folder(id string) (Folder, error)
+	// Claim says somebody is working on an issue, and is `isu claim`.
+	Claim(id string) (string, error)
+	// Goto checks out the branch claiming an issue.
+	Goto(id string) (string, error)
+	// New files an issue through the user's editor, which is why it is handed
+	// the terminal.
+	New(streams Streams) (string, error)
+	// Reload re-derives the repository, after one of the three above changed
+	// what it says.
+	Reload() (Data, error)
 }
 
 // Folder is what lives beside an issue's README.

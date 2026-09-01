@@ -28,8 +28,26 @@ import (
 	"github.com/dgorshkov/isu/internal/model"
 )
 
-// Input is everything the interface reads.
+// Input is everything the interface reads: one derivation of a repository, the
+// things it cannot do itself, and whether it may use colour.
 type Input struct {
+	Data
+	// Actions are the things the interface cannot do itself. A nil Actions is a
+	// read-only interface: everything derived is still on the screen, and what
+	// has to be loaded or written is not.
+	Actions Actions
+	// Renderer decides whether this screen may use colour. Nil means it may
+	// not, which is what a test wants and what a pipe deserves.
+	Renderer *lipgloss.Renderer
+}
+
+// Data is the derivation, and the only part of an Input a reload replaces.
+//
+// It is separate from the wiring because a reload is a re-read of a repository
+// and not a rebuild of the interface: the streams, the palette and the actions
+// are the same ones, and the filter, the fold and the cursor are meant to
+// survive somebody pressing `c`.
+type Data struct {
 	// Trunk is what to call the ref the board was derived from.
 	Trunk string
 	// Board is the derivation the groups were taken from. It is what an id in
@@ -115,6 +133,18 @@ type Model struct {
 	// md renders the body. It is rebuilt on a resize, because the wrap width is
 	// the pane's, and it is nil on a pane too narrow to wrap into.
 	md *glamour.TermRenderer
+
+	// said is what the last action reported, which is the footer's middle line.
+	// An action that said nothing is one nobody can tell happened.
+	said string
+	// working says an action is in flight, so that the footer does not read as
+	// though nothing was pressed.
+	working bool
+	// quitting is `q` pressed while an action was in flight. Leaving in the
+	// middle of a push would abandon it half way through the one operation in
+	// this product that has to be atomic, so the key is remembered and acted on
+	// when the action reports.
+	quitting bool
 }
 
 // focus is which pane the keys go to.
@@ -177,11 +207,51 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.folders[msg.id] = held{folder: msg.folder, err: msg.err}
 
 		return m, nil
+	case doneMsg:
+		return m.done(msg)
+	case reloadMsg:
+		return m.reloaded(msg)
 	case tea.KeyMsg:
-		return m.key(msg)
+		return m.keys(msg)
 	}
 
 	return m, nil
+}
+
+// keys applies one key message, which is not always one keypress.
+//
+// A burst of printable characters arrives as a single message carrying several
+// runes: that is how a terminal delivers a paste, and how it delivers somebody
+// typing faster than the read loop drains. Each rune is one keypress here. A
+// `j` that did nothing because it arrived in the same read as the `c` after it
+// would make the interface drop keys under exactly the condition somebody is
+// going fast, and a pasted needle would be one key the filter had never heard
+// of.
+func (m Model) keys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.Type != tea.KeyRunes || len(msg.Runes) <= 1 {
+		return m.key(msg)
+	}
+
+	var cmds []tea.Cmd
+
+	next := m
+
+	for _, r := range msg.Runes {
+		model, cmd := next.key(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}, Alt: msg.Alt})
+
+		one, ok := model.(Model)
+		if !ok {
+			return model, cmd
+		}
+
+		next = one
+
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	return next, tea.Batch(cmds...)
 }
 
 // key is one keypress.
@@ -203,6 +273,12 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// thing a person has to keep in their head, and this map is meant to be
 	// forgettable.
 	if name == "q" || name == "ctrl+c" {
+		if m.working {
+			m.quitting = true
+
+			return m, nil
+		}
+
 		return m, tea.Quit
 	}
 
@@ -215,6 +291,12 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = onDetail
 
 		return m, nil
+	case "c":
+		return m.act(claiming)
+	case "g":
+		return m.act(going)
+	case "n":
+		return m.file()
 	case "/":
 		m.filtering = true
 

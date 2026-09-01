@@ -177,13 +177,13 @@ func input(items ...*model.Item) ui.Input {
 		board.Items[it.ID] = it
 	}
 
-	return ui.Input{
+	return ui.Input{Data: ui.Data{
 		Trunk:     "main",
 		Board:     board,
 		Groups:    groups,
 		Freshness: "remote refs 2h ago",
 		Now:       now(),
-	}
+	}}
 }
 
 // golden compares a frame with a recorded one, and rewrites it under -update.
@@ -245,7 +245,7 @@ func resize(width, height int) tea.Msg {
 func key(name string) tea.Msg {
 	switch name {
 	case "enter", "esc", "tab", "up", "down", "left", "right", "home", "end",
-		"pgup", "pgdown", "backspace":
+		"pgup", "pgdown", "backspace", "ctrl+c", "ctrl+z":
 		return tea.KeyMsg{Type: keyTypes[name]}
 	default:
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(name)}
@@ -269,6 +269,7 @@ var keyTypes = map[string]tea.KeyType{
 	"up": tea.KeyUp, "down": tea.KeyDown, "left": tea.KeyLeft, "right": tea.KeyRight,
 	"home": tea.KeyHome, "end": tea.KeyEnd,
 	"pgup": tea.KeyPgUp, "pgdown": tea.KeyPgDown, "backspace": tea.KeyBackspace,
+	"ctrl+c": tea.KeyCtrlC, "ctrl+z": tea.KeyCtrlZ,
 }
 
 // lines splits a frame the way a terminal reads it.

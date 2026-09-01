@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/dgorshkov/isu/internal/issue"
 	"github.com/dgorshkov/isu/internal/model"
+	"github.com/dgorshkov/isu/internal/ui"
 )
 
 // collisionAttempts is how many times `isu new` regenerates a token that
@@ -119,27 +121,42 @@ func (a *app) create(cmd *cobra.Command, opts *newOptions) error {
 		return a.reportWrite(Write{ID: draft.ID, Paths: []string{file.path}})
 	}
 
+	written, err := s.report(ctx, draft)
+	if err != nil {
+		return err
+	}
+
+	return a.reportWrite(written)
+}
+
+// report puts a new issue on its own branch, which is what `isu new` does when
+// it is not asked for a bulk conversion.
+//
+// It is separate so that `isu ui` files through this and not through something
+// that looks like it — the same reason claimIssue is separate.
+func (s *session) report(ctx context.Context, draft *issue.Issue) (Write, error) {
+	file := change{path: readmePath(draft.ID), blob: draft.Encode()}
 	branch := reportBranchPrefix + draft.ID
 
 	// The files are written before the switch so that a switch that cannot
 	// happen — a branch of that name already there — leaves the working tree
 	// carrying the report rather than losing it.
 	if _, wrote := s.stage(ctx, []change{file}); wrote != nil {
-		return wrote
+		return Write{}, wrote
 	}
 
 	if switched := s.git.Switch(ctx, branch, true); switched != nil {
-		return switched
+		return Write{}, switched
 	}
 
 	commit, err := s.git.Commit(ctx, "report "+draft.ID+"\n\n"+draft.Title+"\n")
 	if err != nil {
-		return err
+		return Write{}, err
 	}
 
-	return a.reportWrite(Write{
+	return Write{
 		ID: draft.ID, Branch: branch, Commit: commit, Paths: []string{file.path},
-	})
+	}, nil
 }
 
 // draft builds the issue file, generating an id nothing else is using.
@@ -319,4 +336,97 @@ func short(oid string) string {
 	}
 
 	return oid[:8]
+}
+
+// newIssueTemplate is what `n` in the interface opens the editor on.
+//
+// It is a whole issue file rather than a form, so that what comes back is
+// parsed by internal/issue and validated by the schema every other issue in the
+// repository is held to. There is no second format to keep in step, and an
+// editor configured for markdown behaves like one.
+const newIssueTemplate = `---
+schema: %d
+title: 
+type: bug
+state: open
+owner: %s
+created: %s
+priority: %s
+repro: 
+---
+Anything below the frontmatter is the issue's body, in markdown.
+
+Save an empty file to file nothing.
+`
+
+// errNothingWritten is somebody changing their mind in the editor, which is not
+// a failure and must not read like one.
+var errNothingWritten = errors.New("nothing was written, so nothing was filed")
+
+// fileFromEditor is `n` from the interface: the user's editor on a new issue,
+// and then the same branch-and-commit `isu new` makes.
+//
+// The id is allocated after the edit rather than before, because it is a hash
+// of the issue's own fields and the fields are what the editor is for.
+func (a *app) fileFromEditor(
+	ctx context.Context, s *session, io ui.Streams,
+) (Write, error) {
+	owner, err := s.whoami(ctx, "")
+	if err != nil {
+		return Write{}, err
+	}
+
+	year, month, day := a.env.now().UTC().Date()
+	created := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+
+	seed := fmt.Sprintf(newIssueTemplate,
+		issue.CurrentSchema, owner, created.Format(time.DateOnly), issue.DefaultPriority)
+
+	text, err := a.editText(ctx, s, "NEW_ISSUE.md", seed,
+		streams{in: io.In, out: io.Out, err: io.Err})
+	if err != nil {
+		return Write{}, err
+	}
+
+	if strings.TrimSpace(text) == "" {
+		return Write{}, errNothingWritten
+	}
+
+	draft, err := decodeDraft(text)
+	if err != nil {
+		return Write{}, err
+	}
+
+	v, err := s.view(ctx)
+	if err != nil {
+		return Write{}, err
+	}
+
+	id, err := s.allocate(v.taken, draft)
+	if err != nil {
+		return Write{}, err
+	}
+
+	draft.ID, draft.Folder = id, id
+
+	if err := draft.Validate(); err != nil {
+		return Write{}, err
+	}
+
+	return s.report(ctx, draft)
+}
+
+// decodeDraft reads what came back from the editor, in internal/issue's words.
+func decodeDraft(text string) (*issue.Issue, error) {
+	doc, err := issue.Parse([]byte(text))
+	if err != nil {
+		return nil, fmt.Errorf("that is not an issue file: %w", err)
+	}
+
+	draft, err := issue.Decode(doc)
+	if err != nil {
+		return nil, fmt.Errorf("that is not an issue file: %w", err)
+	}
+
+	return draft, nil
 }

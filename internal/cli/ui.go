@@ -74,13 +74,22 @@ func (a *app) uiInput(s *session, v *view) ui.Input {
 	}
 
 	return ui.Input{
+		Data:     uiData(s, v, groups),
+		Actions:  &actions{app: a, session: s},
+		Renderer: a.rendererFor(a.env.Stdout),
+	}
+}
+
+// uiData is one derivation of the repository, as the interface reads it. A
+// reload replaces this and nothing else — see ui.Data.
+func uiData(s *session, v *view, groups []ui.Group) ui.Data {
+	return ui.Data{
 		Trunk:     v.trunkName,
 		Board:     v.board,
 		Groups:    groups,
 		Ready:     readyItems(v),
 		Freshness: freshnessLine(v.freshness, s.cfg.FetchWarnAfter()),
 		Now:       v.now,
-		Renderer:  a.rendererFor(a.env.Stdout),
 	}
 }
 

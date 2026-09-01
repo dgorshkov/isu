@@ -194,17 +194,18 @@ func TestClaimingFromTheInterfaceIsAClaim(t *testing.T) {
 
 	r := board(t).WithRemote()
 
-	// The cursor opens on the first issue of the first group, which is the one
-	// resolved at trunk; `j` twice reaches an issue nobody has.
-	got := tui(t, r.Dir(), "jjc").ok(t)
+	// The cursor opens on the first issue of the first group — the one resolved
+	// at trunk — and four rows down is ISU-reopen, which is on trunk, open, and
+	// nobody's.
+	got := tui(t, r.Dir(), "jjjjcq").ok(t)
 
-	require.Contains(t, got.stdout, "ISU-triage")
+	require.Contains(t, got.stdout, "ISU-reopen")
 
-	require.Contains(t, r.Branches(), "isu/ISU-triage",
+	require.Contains(t, r.Branches(), "isu/ISU-reopen",
 		"a claim is a branch, and the interface makes the same one isu claim makes")
-	require.Contains(t, r.Git("show", "isu/ISU-triage:issues/ISU-triage/README.md"),
+	require.Contains(t, r.Git("show", "isu/ISU-reopen:issues/ISU-reopen/README.md"),
 		"state: resolved")
-	require.Contains(t, r.Git("log", "-1", "--format=%B", "isu/ISU-triage"), "Isu-Claim:")
+	require.Contains(t, r.Git("log", "-1", "--format=%B", "isu/ISU-reopen"), "Isu-Claim:")
 }
 
 // Losing the race is `isu claim`'s sentence, and the interface prints it rather
@@ -215,7 +216,7 @@ func TestClaimingSomethingAlreadyClaimedFromTheInterfaceNamesTheHolder(t *testin
 	r := board(t).WithRemote()
 
 	// ISU-inprog is claimed on isu/ISU-inprog by alice, and the branch is here.
-	got := tui(t, r.Dir(), "jjjc").ok(t)
+	got := tui(t, r.Dir(), "jjjcq").ok(t)
 
 	require.Contains(t, got.stdout, "already here")
 	require.Contains(t, got.stdout, "alice")
@@ -227,7 +228,7 @@ func TestGoingToTheBranchFromTheInterfaceChecksItOut(t *testing.T) {
 
 	r := board(t)
 
-	tui(t, r.Dir(), "jjjg").ok(t)
+	tui(t, r.Dir(), "jjjgq").ok(t)
 
 	require.Equal(t, "isu/ISU-inprog", r.Git("rev-parse", "--abbrev-ref", "HEAD"))
 }
@@ -239,7 +240,7 @@ func TestGoingToTheBranchOfAnUnclaimedIssueChangesNothing(t *testing.T) {
 	r := board(t)
 	before := r.Git("rev-parse", "--abbrev-ref", "HEAD")
 
-	got := tui(t, r.Dir(), "jjg").ok(t)
+	got := tui(t, r.Dir(), "jjgq").ok(t)
 
 	require.Contains(t, got.stdout, "nobody has claimed")
 	require.Equal(t, before, r.Git("rev-parse", "--abbrev-ref", "HEAD"))
@@ -292,7 +293,7 @@ func TestAnEditorThatWritesSomethingInvalidIsToldWhy(t *testing.T) {
 
 	got := tuiIn(t, r.Dir(), map[string]string{"EDITOR": editor}, "n").ok(t)
 
-	require.Contains(t, got.stdout, "will not decode")
+	require.Contains(t, got.stdout, "not an issue file")
 }
 
 // An editor that writes nothing filed nothing, which is how somebody changes

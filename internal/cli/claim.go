@@ -77,13 +77,28 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 		return err
 	}
 
+	written, err := s.claimIssue(ctx, v, id)
+	if err != nil {
+		return err
+	}
+
+	return a.reportWrite(written)
+}
+
+// claimIssue is the claim itself, without the command around it.
+//
+// It is separate so that `isu ui` can claim through this and not through
+// something that looks like it: PLAN.md M6-S5 asks that the interface share
+// command implementations with the CLI, and sharing means one function, not two
+// that agree.
+func (s *session) claimIssue(ctx context.Context, v *view, id string) (Write, error) {
 	item, ok := v.board.Get(id)
 	if !ok {
-		return fmt.Errorf("no issue %s on %s or any branch beside it", id, v.trunkName)
+		return Write{}, fmt.Errorf("no issue %s on %s or any branch beside it", id, v.trunkName)
 	}
 
 	if item.Status.Terminal() {
-		return fmt.Errorf(
+		return Write{}, fmt.Errorf(
 			"%s is already %s: claiming it would say a finished issue is being worked on",
 			id, item.Status)
 	}
@@ -91,12 +106,12 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 	branch := claimBranchPrefix + id
 
 	if taken := s.branchIsFree(ctx, branch, item); taken != nil {
-		return taken
+		return Write{}, taken
 	}
 
 	flipped, err := s.readIssueAt(ctx, s.trunk, id)
 	if err != nil {
-		return err
+		return Write{}, err
 	}
 
 	flipped.State = issue.StateResolved
@@ -108,7 +123,7 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 		changes: []change{{path: readmePath(id), blob: flipped.Encode()}},
 	})
 	if err != nil {
-		return err
+		return Write{}, err
 	}
 
 	if err := s.push(ctx, branch); err != nil {
@@ -116,13 +131,39 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 		// whole reason the commit was built without a checkout.
 		_ = s.git.DeleteRef(ctx, "refs/heads/"+branch)
 
-		return s.lostRace(ctx, id, branch, err)
+		return Write{}, s.lostRace(ctx, id, branch, err)
 	}
 
-	return a.reportWrite(Write{
+	return Write{
 		ID: id, Branch: branch, Commit: commit,
 		Paths: []string{readmePath(id)}, Pushed: true,
-	})
+	}, nil
+}
+
+// checkout moves the working tree onto the branch claiming an issue, which is
+// what `g` does from the interface.
+//
+// An issue nobody has claimed from this clone is a no-op with a sentence rather
+// than a branch created out of nowhere: `isu claim` is how a claim is made, and
+// making one as a side effect of navigating to it would claim work for whoever
+// pressed a key by mistake.
+func (s *session) checkout(ctx context.Context, id string) (string, error) {
+	branch := claimBranchPrefix + id
+
+	if _, err := s.git.RevParse(ctx, "refs/heads/"+branch); err != nil {
+		if errors.Is(err, gitx.ErrUnknownRevision) {
+			return "", fmt.Errorf(
+				"there is no %s here: nobody has claimed %s from this clone", branch, id)
+		}
+
+		return "", err
+	}
+
+	if err := s.git.Switch(ctx, branch, false); err != nil {
+		return "", err
+	}
+
+	return "on " + branch, nil
 }
 
 // branchIsFree refuses a claim whose branch is already here, naming whoever

@@ -97,6 +97,8 @@ func (m Model) message() string {
 	switch {
 	case m.filtering:
 		return "/" + m.filter + "▌"
+	case m.said != "":
+		return m.said
 	case m.filter != "":
 		return m.styles.dim.Render("/" + m.filter + "  ·  esc clears it")
 	default:
