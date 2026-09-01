@@ -2,6 +2,10 @@ package cli
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -173,4 +177,179 @@ func TestTheInterfaceNamesTheRefItReadAsTrunk(t *testing.T) {
 	drawn := tui(t, board(t).Dir(), "q").ok(t).stdout
 
 	require.Contains(t, drawn, gittest.DefaultBranch)
+}
+
+// M6-S5 · Actions from the TUI.
+//
+// These are the assertions that the interface runs the commands rather than
+// something that looks like them: the branch a claim makes, the checkout `g`
+// performs and the issue an editor files are all read back out of the
+// repository afterwards, with git.
+
+// PLAN.md M6-S5: "`c` claims through the same code path as `isu claim`". The
+// proof is the repository: a claim is a branch, a state flip and a push, and
+// all three are here.
+func TestClaimingFromTheInterfaceIsAClaim(t *testing.T) {
+	t.Parallel()
+
+	r := board(t).WithRemote()
+
+	// The cursor opens on the first issue of the first group, which is the one
+	// resolved at trunk; `j` twice reaches an issue nobody has.
+	got := tui(t, r.Dir(), "jjc").ok(t)
+
+	require.Contains(t, got.stdout, "ISU-triage")
+
+	require.Contains(t, r.Branches(), "isu/ISU-triage",
+		"a claim is a branch, and the interface makes the same one isu claim makes")
+	require.Contains(t, r.Git("show", "isu/ISU-triage:issues/ISU-triage/README.md"),
+		"state: resolved")
+	require.Contains(t, r.Git("log", "-1", "--format=%B", "isu/ISU-triage"), "Isu-Claim:")
+}
+
+// Losing the race is `isu claim`'s sentence, and the interface prints it rather
+// than one of its own.
+func TestClaimingSomethingAlreadyClaimedFromTheInterfaceNamesTheHolder(t *testing.T) {
+	t.Parallel()
+
+	r := board(t).WithRemote()
+
+	// ISU-inprog is claimed on isu/ISU-inprog by alice, and the branch is here.
+	got := tui(t, r.Dir(), "jjjc").ok(t)
+
+	require.Contains(t, got.stdout, "already here")
+	require.Contains(t, got.stdout, "alice")
+}
+
+// PLAN.md M6-S5: "`g` checks out the claiming branch."
+func TestGoingToTheBranchFromTheInterfaceChecksItOut(t *testing.T) {
+	t.Parallel()
+
+	r := board(t)
+
+	tui(t, r.Dir(), "jjjg").ok(t)
+
+	require.Equal(t, "isu/ISU-inprog", r.Git("rev-parse", "--abbrev-ref", "HEAD"))
+}
+
+// And on an issue nobody has claimed it is a no-op with a message.
+func TestGoingToTheBranchOfAnUnclaimedIssueChangesNothing(t *testing.T) {
+	t.Parallel()
+
+	r := board(t)
+	before := r.Git("rev-parse", "--abbrev-ref", "HEAD")
+
+	got := tui(t, r.Dir(), "jjg").ok(t)
+
+	require.Contains(t, got.stdout, "nobody has claimed")
+	require.Equal(t, before, r.Git("rev-parse", "--abbrev-ref", "HEAD"))
+}
+
+// PLAN.md M6-S5: "`n` opens an editor for a new issue". The editor is the
+// user's own and it is handed a whole issue file to edit, so that what comes
+// back is parsed by internal/issue and not by something this command invented.
+func TestFilingAnIssueFromTheInterfaceOpensTheEditor(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the editor stand-in is a shell script; CI is linux and macos")
+	}
+
+	r := board(t)
+	editor := writeEditor(t, `---
+schema: 1
+title: Filed from the interface
+type: chore
+state: open
+owner: dmitry
+created: 2026-09-01
+priority: p1
+---
+Typed into the editor.
+`)
+
+	got := tuiIn(t, r.Dir(), map[string]string{"EDITOR": editor}, "n").ok(t)
+
+	require.Contains(t, got.stdout, "report/")
+
+	filed := newestIssue(t, r)
+	require.Contains(t, r.ReadFile(filed), "title: Filed from the interface")
+	require.Contains(t, r.ReadFile(filed), "Typed into the editor.")
+	require.Contains(t, r.Git("rev-parse", "--abbrev-ref", "HEAD"), "report/")
+}
+
+// An editor that hands back something that is not an issue is told what is
+// wrong with it, in internal/issue's own words.
+func TestAnEditorThatWritesSomethingInvalidIsToldWhy(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the editor stand-in is a shell script; CI is linux and macos")
+	}
+
+	r := board(t)
+	editor := writeEditor(t, "this is not an issue file at all\n")
+
+	got := tuiIn(t, r.Dir(), map[string]string{"EDITOR": editor}, "n").ok(t)
+
+	require.Contains(t, got.stdout, "will not decode")
+}
+
+// An editor that writes nothing filed nothing, which is how somebody changes
+// their mind.
+func TestAnEditorThatWritesNothingFilesNothing(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the editor stand-in is a shell script; CI is linux and macos")
+	}
+
+	r := board(t)
+	before := r.Branches()
+
+	got := tuiIn(t, r.Dir(), map[string]string{"EDITOR": writeEditor(t, "")}, "n").ok(t)
+
+	require.Contains(t, got.stdout, "nothing was written")
+	require.Equal(t, before, r.Branches())
+}
+
+// tuiIn is `isu ui` with an environment, which is how the editor is named.
+func tuiIn(t *testing.T, dir string, env map[string]string, typed string) result {
+	t.Helper()
+
+	var stdout, stderr bytes.Buffer
+
+	code := Run(Env{
+		Args:   []string{"--repo", dir, "ui"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  strings.NewReader(typed + "q"),
+		Dir:    dir,
+		Now:    now,
+		Getenv: func(name string) string { return env[name] },
+	})
+
+	return result{code: code, stdout: stdout.String(), stderr: stderr.String()}
+}
+
+// newestIssue is the README of the issue folder this repository did not have
+// before, which is how a test reads back an id it did not choose.
+func newestIssue(t *testing.T, r *gittest.Repo) string {
+	t.Helper()
+
+	entries, err := os.ReadDir(filepath.Join(r.Dir(), "issues"))
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if !slices.Contains([]string{
+			"ISU-epical", "ISU-openly", "ISU-inprog", "ISU-reopen",
+			"ISU-donede", "ISU-dropit", "ISU-triage",
+		}, entry.Name()) {
+			return "issues/" + entry.Name() + "/README.md"
+		}
+	}
+
+	require.Fail(t, "no issue was filed")
+
+	return ""
 }
