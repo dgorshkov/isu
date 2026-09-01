@@ -26,13 +26,24 @@ type view struct {
 	// ref is HEAD, and the ref otherwise.
 	trunkName string
 	freshness Freshness
-	now       time.Time
+	// newestRemote is the date the freshness line is computed from, kept as a
+	// moment rather than as the sentence it renders as: `isu check` hands it to
+	// the rules, which have to compare it against stale_days rather than print
+	// it.
+	newestRemote time.Time
+	now          time.Time
 }
 
-func (s *session) view(ctx context.Context) (*view, error) {
+// view derives the whole repository.
+//
+// extra names refs to load beside the branches, for a caller that knows about
+// one the pattern does not name — `isu check` in a pipeline, where the checkout
+// is detached and the thing under review is HEAD. An empty name is ignored, so
+// a caller with nothing to add says nothing.
+func (s *session) view(ctx context.Context, extra ...string) (*view, error) {
 	now := s.app.env.now()
 
-	loaded, err := s.repo.LoadBoard(ctx, repo.BoardSpec{Trunk: s.trunk})
+	loaded, err := s.repo.LoadBoard(ctx, repo.BoardSpec{Trunk: s.trunk, Refs: extra})
 	if err != nil {
 		// Naming the ref rather than passing git's sentence on. M4-S8 ran this
 		// against three real repositories and a mistyped --ref answered with
@@ -71,9 +82,10 @@ func (s *session) view(ctx context.Context) (*view, error) {
 			Config:  s.cfg,
 			Now:     now,
 		}),
-		trunkName: name,
-		freshness: s.freshness(remotes, now),
-		now:       now,
+		trunkName:    name,
+		freshness:    s.freshness(remotes, now),
+		newestRemote: newest(remotes),
+		now:          now,
 	}, nil
 }
 

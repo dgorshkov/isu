@@ -158,6 +158,13 @@ func (a *app) fail(err error) int {
 		code = exitUsage
 	}
 
+	// `isu check` has already printed its report, and the report is the
+	// message. Saying it again in one vaguer sentence would be the second half
+	// of every failing pipeline's output.
+	if errors.Is(err, errFindings) {
+		return code
+	}
+
 	if a.asJSON {
 		// An agent parsing stderr should not have to find one JSON object in a
 		// page of usage text, so the JSON error is the whole of the output.
@@ -239,6 +246,7 @@ func (a *app) root() *cobra.Command {
 		a.dropCmd(),
 		a.commentCmd(),
 		a.triageCmd(),
+		a.checkCmd(),
 		a.initCmd(),
 	)
 

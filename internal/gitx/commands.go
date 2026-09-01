@@ -26,6 +26,10 @@ type TreeEntry struct {
 	OID string
 	// Path is relative to the repository root, whatever directory git ran in.
 	Path string
+	// Size is the blob's size in bytes, and is set only by LsTreeLong. It is
+	// zero everywhere else, and -1 for an object that has no size — a tree, or
+	// a submodule's gitlink, both of which git reports as `-`.
+	Size int64
 }
 
 // LsTree lists every object under paths at ref, recursively.
@@ -47,8 +51,47 @@ func (g *Git) LsTree(ctx context.Context, ref string, paths ...string) ([]TreeEn
 	return parseTree(out)
 }
 
+// LsTreeLong is LsTree with the size of every blob.
+//
+// It is a separate call rather than a flag on the one above because `-l` makes
+// git look up the size of every object it lists, and the read path in PLAN.md
+// §0 lists five thousand issues without wanting one of them. The attachment cap
+// in M5-S2 is the opposite case: it is asking about sizes and nothing else.
+func (g *Git) LsTreeLong(ctx context.Context, ref string, paths ...string) ([]TreeEntry, error) {
+	args := []string{"ls-tree", "-r", "-l", "-z", "--full-tree", ref}
+	if len(paths) > 0 {
+		args = append(args, "--")
+		args = append(args, paths...)
+	}
+
+	out, err := g.output(ctx, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseTree(out)
+}
+
+// MergeBase is where two revisions diverged.
+//
+// The branch checks in M5 are about what a branch proposes, which is its own
+// difference from trunk and not trunk's difference from it. `git diff trunk
+// head` answers the second question as well as the first: a trunk that has
+// moved on since the branch left shows up as the branch reverting work it never
+// touched. Diffing from the merge base is the fix, and this is the one process
+// it costs.
+func (g *Git) MergeBase(ctx context.Context, a, b string) (string, error) {
+	out, err := g.output(ctx, "merge-base", a, b)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(out), nil
+}
+
 // parseTree reads `ls-tree -z` output: <mode> SP <type> SP <oid> TAB <path>,
-// NUL-terminated.
+// NUL-terminated. Under `-l` a size sits between the object id and the tab, and
+// is `-` for anything that is not a blob.
 func parseTree(out string) ([]TreeEntry, error) {
 	var entries []TreeEntry
 
@@ -59,13 +102,26 @@ func parseTree(out string) ([]TreeEntry, error) {
 		}
 
 		fields := strings.Fields(head)
-		if len(fields) != 3 {
+		if len(fields) != 3 && len(fields) != 4 {
 			return nil, fmt.Errorf("git ls-tree: %q is not a tree entry", record)
 		}
 
-		entries = append(entries, TreeEntry{
+		entry := TreeEntry{
 			Mode: fields[0], Type: fields[1], OID: fields[2], Path: path,
-		})
+		}
+
+		if len(fields) == 4 {
+			size, err := strconv.ParseInt(fields[3], 10, 64)
+			if err != nil {
+				// `-`, which is what git prints for an object whose size it
+				// does not report: a tree, or a submodule's gitlink.
+				size = -1
+			}
+
+			entry.Size = size
+		}
+
+		entries = append(entries, entry)
 	}
 
 	return entries, nil

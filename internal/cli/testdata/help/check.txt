@@ -1,0 +1,27 @@
+check runs isu's rules and reports what they found. A failure exits 1 and a
+warning does not: two people about to do the same work is worth saying and is
+not a reason to refuse a pull request.
+
+There are two kinds of rule. A tree rule is about the repository as it stands —
+a parent that names nothing, an epic with no children — and needs no branch. A
+branch rule is about what this branch proposes: a resolution with no code beside
+it, an owner an agent reassigned. --scope picks one kind, and the pre-commit
+hook isu init writes runs the tree rules only, because at pre-commit time the
+change being committed is not a commit yet and the branch rules would be
+answering from the commits already there.
+
+The checks:
+
+Usage:
+  isu check [flags]
+
+Flags:
+  -h, --help           help for check
+      --scope string   which checks to run: tree, branch or all (default "all")
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)
