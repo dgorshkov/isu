@@ -42,11 +42,11 @@ func TestAnEpicsChildrenAreDrawnUnderIt(t *testing.T) {
 
 	golden(t, "list/nested.txt", frame)
 
-	require.Less(t, at(frame, "ISU-epictop"), at(frame, "ISU-epicmid"),
-		"an epic comes before the children it folds over")
-	require.Less(t, at(frame, "ISU-epicmid"), at(frame, "ISU-deepone"))
-	require.Less(t, at(frame, "ISU-deepone"), at(frame, "ISU-loosely"),
-		"a nested epic takes its own children with it")
+	require.Equal(t,
+		[]string{"ISU-epictop", "ISU-epicmid", "ISU-deepone", "ISU-loosely", "ISU-orphans"},
+		drawnIDs(frame),
+		"an epic comes before the children it folds over, and a nested epic takes "+
+			"its own children with it")
 
 	require.Equal(t, []int{0, 2, 4, 2, 0}, indents(frame,
 		"ISU-epictop", "ISU-epicmid", "ISU-deepone", "ISU-loosely", "ISU-orphans"),
@@ -61,12 +61,12 @@ func TestEveryIssueIsDrawnExactlyOnceWhateverTheNesting(t *testing.T) {
 	t.Parallel()
 
 	in := nested()
-	frame := sized(t, in, 100, 40).View()
+	list := strings.Join(listPane(sized(t, in, 100, 40).View()), "\n")
 
 	for _, group := range in.Groups {
 		for _, drawn := range group.Items {
-			require.Equalf(t, 1, strings.Count(frame, drawn.ID),
-				"%s is drawn %d times", drawn.ID, strings.Count(frame, drawn.ID))
+			require.Equalf(t, 1, strings.Count(list, drawn.ID),
+				"%s is drawn %d times", drawn.ID, strings.Count(list, drawn.ID))
 		}
 	}
 }
@@ -80,10 +80,8 @@ func TestAParentCycleStillDrawsBothOfItsEpics(t *testing.T) {
 	first := item("ISU-aaaaaa", "The first half", epic("ISU-bbbbbb"), parent("ISU-bbbbbb"))
 	second := item("ISU-bbbbbb", "The second half", epic("ISU-aaaaaa"), parent("ISU-aaaaaa"))
 
-	frame := sized(t, input(first, second), 100, 24).View()
-
-	require.Contains(t, frame, "ISU-aaaaaa")
-	require.Contains(t, frame, "ISU-bbbbbb")
+	require.Equal(t, []string{"ISU-aaaaaa", "ISU-bbbbbb"},
+		drawnIDs(sized(t, input(first, second), 100, 24).View()))
 }
 
 // Indentation is inside a group, because the groups are the board's and the
@@ -145,35 +143,57 @@ func TestTheHeaderCountIsTheNumberOfRowsBeneathIt(t *testing.T) {
 	in := nested()
 	frame := sized(t, in, 100, 40).View()
 
-	drawn := 0
-
-	for _, line := range lines(frame) {
-		if strings.Contains(line, "ISU-") && !strings.Contains(line, "│ ISU-") {
-			drawn++
-		}
-	}
-
-	require.Equal(t, 5, drawn, "five issues on the board and five rows in the list")
+	require.Len(t, drawnIDs(frame), 5, "five issues on the board and five rows in the list")
 	require.Contains(t, frame, "open 5")
 	require.Contains(t, frame, "5 issues")
 }
 
-// at is where an id first appears in a frame, so that a test can say one row
-// comes before another without pinning either to a line number.
-func at(frame, id string) int { return strings.Index(frame, id) }
+// listPane is the left-hand half of a frame, which is the list. The detail pane
+// names the selected issue too, so a test counting rows has to look at one pane
+// rather than at the screen.
+func listPane(frame string) []string {
+	var out []string
 
-// indents is how far each id is drawn from the left, past the cursor marker.
+	for _, line := range lines(frame) {
+		if cut := strings.Index(line, gutter); cut >= 0 {
+			out = append(out, strings.TrimRight(line[:cut], " "))
+		}
+	}
+
+	return out
+}
+
+// gutter is what separates the two panes.
+const gutter = "│"
+
+// drawnIDs is every issue the list drew, in the order it drew them.
+func drawnIDs(frame string) []string {
+	var out []string
+
+	for _, line := range listPane(frame) {
+		if id := strings.TrimLeft(line, " ▸"); strings.HasPrefix(id, "ISU-") {
+			out = append(out, strings.Fields(id)[0])
+		}
+	}
+
+	return out
+}
+
+// indents is how far each id is drawn from the left, past the cursor marker —
+// which is measured in characters, because the marker is not an ASCII one.
 func indents(frame string, ids ...string) []int {
 	out := make([]int, 0, len(ids))
 
 	for _, id := range ids {
-		for _, line := range lines(frame) {
-			cut := strings.Index(line, id)
-			if cut < 0 || strings.Contains(line[:cut], "│") {
+		for _, line := range listPane(frame) {
+			runes := []rune(line)
+
+			cut := strings.Index(string(runes), id)
+			if cut < 0 {
 				continue
 			}
 
-			out = append(out, cut-len([]rune("  ")))
+			out = append(out, len([]rune(line[:cut]))-markerWidth)
 
 			break
 		}
@@ -181,3 +201,6 @@ func indents(frame string, ids ...string) []int {
 
 	return out
 }
+
+// markerWidth is the cursor column every row starts past.
+const markerWidth = 2
