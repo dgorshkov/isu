@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dgorshkov/isu/internal/check"
+	"github.com/dgorshkov/isu/internal/config"
 	"github.com/dgorshkov/isu/internal/gittest"
 )
 
@@ -152,4 +153,47 @@ func TestTheHelpListsTheChecksThemselves(t *testing.T) {
 	}
 
 	require.True(t, strings.HasPrefix(help, "check runs isu's rules"))
+}
+
+func TestSummarisingWhatARunFound(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "nothing to report", summarise(0, 0))
+	require.Equal(t, "1 failure", summarise(1, 0))
+	require.Equal(t, "2 warnings", summarise(0, 2))
+	require.Equal(t, "2 failures, 1 warning", summarise(2, 1))
+}
+
+// A finding about the repository rather than about one issue has no id, and the
+// column that would hold it holds the file instead. Nothing registered today
+// produces one; the JSON contract says a finding may, so the renderer has to.
+func TestAFindingWithNoIssueIsRenderedAgainstItsFile(t *testing.T) {
+	t.Parallel()
+
+	var out strings.Builder
+
+	a := &app{env: Env{Stdout: &out}}
+	s := &session{app: a, cfg: config.Default()}
+
+	a.renderCheck(s, CheckPayload{
+		Trunk:  "main",
+		Checks: []string{"schema"},
+		Findings: []Finding{
+			{Check: "schema", Severity: "fail", Path: ".isu.yml", Message: "unreadable"},
+		},
+		Failures: 1,
+	})
+
+	require.Contains(t, out.String(), "fail  schema  .isu.yml  unreadable")
+}
+
+func TestCheckWithoutAConfigurationSaysWhatIsMissing(t *testing.T) {
+	t.Parallel()
+
+	r := gittest.New(t).File("README.md", "a repository\n").Commit("first")
+
+	got := isu(t, r.Dir(), "check")
+
+	require.Equal(t, 1, got.code)
+	require.Contains(t, got.stderr, ".isu.yml")
 }

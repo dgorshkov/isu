@@ -112,6 +112,25 @@ func TestAViolationOnABranchNamesTheBranch(t *testing.T) {
 	require.Contains(t, found.Message, "on topic: title: required")
 }
 
+// A file that decodes at trunk and does not on the branch. The branch's copy is
+// the one under review, so it is the one reported — and the finding names the
+// branch, because a reader sent to trunk would find nothing wrong there.
+func TestAnIssueOnlyTheBranchCannotDecodeIsReportedAgainstTheBranch(t *testing.T) {
+	t.Parallel()
+
+	r := configured(t).
+		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
+		Branch("topic").Checkout("topic").
+		File("issues/ISU-7f3akq/README.md", "there is no frontmatter here\n").
+		Commit("break it on the branch").
+		Checkout(gittest.DefaultBranch)
+
+	found := only(t, rules(t, r))
+
+	require.Equal(t, "schema", found.Check)
+	require.Contains(t, found.Message, "on topic: will not decode")
+}
+
 func TestTwoBranchesReportingDifferentIssuesUnderOneIdFail(t *testing.T) {
 	t.Parallel()
 
@@ -350,3 +369,77 @@ func TestGoldenCheckReport(t *testing.T) {
 
 	golden(t, "check/findings.txt", isu(t, r.Dir(), "check").stdout)
 }
+
+// The pre-commit hook reads the working tree, and this is why. A check that
+// read a ref before a commit would be answering about the commit before the one
+// being made: it would miss what is about to land, and it would refuse the
+// commit that fixed what it was complaining about.
+func TestTheWorktreeRunReadsWhatIsAboutToBeCommitted(t *testing.T) {
+	t.Parallel()
+
+	r := configured(t)
+
+	r.WriteFile("issues/ISU-7f3akq/README.md", brokenIssue)
+
+	require.Empty(t, rules(t, r).Findings, "nothing is committed, so no ref says anything")
+
+	found := only(t, rules(t, r, "--worktree"))
+	require.Equal(t, "schema", found.Check)
+	require.Contains(t, found.Message, "owner: required")
+}
+
+func TestTheWorktreeRunDoesNotRefuseTheCommitThatFixesTheProblem(t *testing.T) {
+	t.Parallel()
+
+	r := configured(t).
+		File("issues/ISU-7f3akq/README.md", brokenIssue).
+		Commit("commit something broken")
+
+	require.Len(t, rules(t, r).Findings, 1, "the ref says it is broken, and it is")
+
+	r.WriteFile("issues/ISU-7f3akq/README.md", fixedIssue)
+
+	require.Empty(t, rules(t, r, "--worktree").Findings,
+		"a hook that read the ref here would refuse the commit that fixes it")
+}
+
+func TestTheWorktreeRunSaysSoAndAsksNoBranchQuestions(t *testing.T) {
+	t.Parallel()
+
+	r := resolved(t)
+
+	require.Len(t, rules(t, r).Findings, 1, "the branch resolved an issue and wrote no code")
+
+	payload := rules(t, r, "--worktree")
+
+	require.True(t, payload.Worktree)
+	require.Empty(t, payload.Findings,
+		"the working tree is not a set of commits, so there is nothing here for "+
+			"the branch rules to be about")
+	require.Contains(t, isu(t, r.Dir(), "check", "--worktree").ok(t).stdout,
+		"the working tree")
+}
+
+// brokenIssue and fixedIssue are one file, without and with the one field that
+// makes it valid.
+const (
+	brokenIssue = `---
+schema: 1
+id: ISU-7f3akq
+title: Login retries
+type: chore
+state: open
+created: 2026-08-24
+---
+`
+	fixedIssue = `---
+schema: 1
+id: ISU-7f3akq
+title: Login retries
+type: chore
+state: open
+owner: dmitry
+created: 2026-08-24
+---
+`
+)

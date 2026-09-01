@@ -43,3 +43,37 @@ func TestIssueIDAcceptsOnlyAnIssuesReadme(t *testing.T) {
 		})
 	}
 }
+
+// The same question for everything else in an issue's folder, which is what the
+// size cap and a spike's artifact are about. It is asked directly for the same
+// reason as above: every caller has already limited git to issues/, so the
+// paths that are not under it can only arrive here from a future caller who
+// forgot to.
+func TestIssueFileNamesWhatSitsInsideAnIssuesFolder(t *testing.T) {
+	for _, tc := range []struct {
+		path, id, name string
+	}{
+		{path: "issues/ISU-7f3akq/repro.har", id: "ISU-7f3akq", name: "repro.har"},
+		{
+			path: "issues/ISU-7f3akq/comments/2026-08-29-sam-01.md",
+			id:   "ISU-7f3akq", name: "comments/2026-08-29-sam-01.md",
+		},
+		{path: "issues/ISU-7f3akq/README.md", id: "ISU-7f3akq", name: "README.md"},
+
+		// Not under issues/ at all.
+		{path: "README.md"},
+		{path: "src/main.go"},
+
+		// Under issues/ and not inside an issue.
+		{path: "issues/README.md"},
+		{path: "issues/ISU 7f3akq/repro.har"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			id, name, ok := issueFile(tc.path)
+
+			require.Equal(t, tc.id != "", ok)
+			require.Equal(t, tc.id, id)
+			require.Equal(t, tc.name, name)
+		})
+	}
+}

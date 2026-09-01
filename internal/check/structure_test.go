@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dgorshkov/isu/internal/check"
+	"github.com/dgorshkov/isu/internal/config"
+	"github.com/dgorshkov/isu/internal/gitx"
 	"github.com/dgorshkov/isu/internal/issue"
 	"github.com/dgorshkov/isu/internal/model"
 	"github.com/dgorshkov/isu/internal/repo"
@@ -78,6 +80,68 @@ func TestARingIsReportedOnceHoweverManyWaysInThereAre(t *testing.T) {
 	require.Contains(t, found[0].Message, "ISU-aaaaaa, ISU-bbbbbb")
 	require.NotContains(t, found[0].Message, "ISU-cccccc",
 		"the frames that reached the ring are not in it")
+}
+
+// A claim whose first commit was never looked up is still a claim: what the
+// file says is the claim, and the lookup only names who made it.
+func TestAClaimWithNoClaimantIsStillAClaim(t *testing.T) {
+	t.Parallel()
+
+	item := &model.Item{ID: "ISU-7f3akq", Claims: []model.Claim{
+		{Ref: "refs/heads/isu/ISU-7f3akq"},
+		{Ref: "refs/heads/isu/ISU-7f3akq-again", Claimant: "bob"},
+	}}
+
+	found := rule(t, "claims").Run(check.Input{
+		Board: &model.Board{Items: map[string]*model.Item{item.ID: item}},
+	})
+
+	require.Len(t, found, 1)
+	require.Contains(t, found[0].Message, "isu/ISU-7f3akq (someone)")
+	require.Contains(t, found[0].Message, "isu/ISU-7f3akq-again (bob)")
+}
+
+// An agent that files an issue has not reassigned anything: there was no owner
+// to move.
+func TestAnAgentCreatingAnIssueIsNotAReassignment(t *testing.T) {
+	t.Parallel()
+
+	found := rule(t, "owner").Run(check.Input{
+		Config: config.Config{Agents: []string{"claude"}},
+		Branch: &repo.Branch{Commits: []repo.Commit{{
+			OID:    "d8cfdb0163",
+			Author: gitx.Signature{Name: "claude", Email: "claude@example.invalid"},
+			Edits: []repo.Edit{
+				{ID: "ISU-7f3akq", Added: true, After: &issue.Issue{Owner: "dmitry"}},
+				{ID: "ISU-40b1cc", Removed: true, Before: &issue.Issue{Owner: "dmitry"}},
+			},
+		}}},
+	})
+
+	require.Empty(t, found)
+}
+
+// A commit id short enough to be its own abbreviation is left alone, which is
+// only ever a fixture's — and a fixture that crashed the renderer would be a
+// test suite failing for the wrong reason.
+func TestAShortCommitIdIsPrintedAsItIs(t *testing.T) {
+	t.Parallel()
+
+	found := rule(t, "owner").Run(check.Input{
+		Config: config.Config{Agents: []string{"claude@example.invalid"}},
+		Branch: &repo.Branch{Commits: []repo.Commit{{
+			OID:    "d8cfdb0",
+			Author: gitx.Signature{Name: "claude", Email: "claude@example.invalid"},
+			Edits: []repo.Edit{{
+				ID:     "ISU-7f3akq",
+				Before: &issue.Issue{Owner: "dmitry"},
+				After:  &issue.Issue{Owner: "alice"},
+			}},
+		}}},
+	})
+
+	require.Len(t, found, 1)
+	require.Contains(t, found[0].Message, "commit d8cfdb0 moves owner")
 }
 
 // derived is a board built out of issues rather than out of a repository, for

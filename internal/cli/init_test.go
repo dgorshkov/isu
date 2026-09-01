@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,8 +32,9 @@ func TestInitWritesTheHookAndThePipeline(t *testing.T) {
 
 	body, err := os.ReadFile(hook) //nolint:gosec // a path this test just wrote
 	require.NoError(t, err)
-	require.Contains(t, string(body), "isu check --scope tree",
-		"the branch rules cannot be asked before the commit exists")
+	require.Contains(t, string(body), "isu check --worktree",
+		"a hook that read a ref would be answering about the commit before the "+
+			"one being made")
 
 	if runtime.GOOS != "windows" {
 		info, statErr := os.Stat(hook)
@@ -162,6 +164,92 @@ func TestInitStillNeedsAPrefixWhenThereIsNoConfiguration(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(r.Dir(), ".git", "hooks", "pre-commit"),
 		"a hook that runs isu check in a repository isu cannot read is a hook "+
 			"that fails every commit")
+}
+
+// The three writes init makes can each be refused by the filesystem, and a
+// command that says "writing .github/workflows/isu.yml: permission denied" is
+// one somebody can act on. Every one of these is arranged by putting something
+// where isu is about to put something else, which needs no privileges and works
+// the same for root — the suite runs as root often enough that a chmod proves
+// nothing.
+func TestInitSaysWhichFileItCouldNotWrite(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name  string
+		put   string
+		args  []string
+		wants string
+	}{
+		{
+			name: "a directory where the configuration goes", put: ".isu.yml",
+			args: []string{"init", "--prefix", "NEW"}, wants: "reading .isu.yml",
+		},
+		{
+			name: "a file where the workflow directory goes", put: ".github/workflows",
+			args:  []string{"init", "--prefix", "NEW", "--actions"},
+			wants: "reading .github/workflows/isu.yml",
+		},
+		{
+			name: "a directory where the workflow goes", put: ".github/workflows/isu.yml",
+			args:  []string{"init", "--prefix", "NEW", "--actions"},
+			wants: "reading .github/workflows/isu.yml",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := gittest.New(t).File("README.md", "a repository\n").Commit("first")
+
+			path := filepath.Join(r.Dir(), filepath.FromSlash(tt.put))
+
+			if strings.HasSuffix(tt.put, "workflows") {
+				require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+				require.NoError(t, os.WriteFile(path, []byte("in the way\n"), 0o644))
+			} else {
+				require.NoError(t, os.MkdirAll(path, 0o755))
+			}
+
+			got := isu(t, r.Dir(), tt.args...)
+
+			require.Equal(t, 1, got.code)
+			require.Contains(t, got.stderr, tt.wants)
+		})
+	}
+}
+
+// A symlink pointing at nothing reads as a file that is not there and writes as
+// a path that cannot be made, which is the one shape that separates "there is
+// nothing here yet" from "I could not put it here".
+func TestInitSaysSoWhenTheFileItWritesCannotBeWritten(t *testing.T) {
+	t.Parallel()
+
+	r := gittest.New(t).File("README.md", "a repository\n").Commit("first")
+
+	path := filepath.Join(r.Dir(), ".github", "workflows", "isu.yml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.Symlink(filepath.Join(r.Dir(), "nowhere", "isu.yml"), path))
+
+	got := isu(t, r.Dir(), "init", "--prefix", "NEW", "--actions")
+
+	require.Equal(t, 1, got.code)
+	require.Contains(t, got.stderr, "writing .github/workflows/isu.yml")
+}
+
+// core.hooksPath may be absolute, and a repository that says so means it.
+func TestTheHookGoesToAnAbsoluteHooksPath(t *testing.T) {
+	t.Parallel()
+
+	r := configured(t)
+	dir := t.TempDir()
+
+	r.Git("config", "core.hooksPath", dir)
+
+	isu(t, r.Dir(), "init", "--hooks").ok(t)
+
+	body, err := os.ReadFile(filepath.Join(dir, "pre-commit")) //nolint:gosec // a path this test made
+	require.NoError(t, err)
+	require.Contains(t, string(body), "isu check")
 }
 
 // The hook is a shell script, and the two things that matter about it are

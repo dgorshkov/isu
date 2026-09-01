@@ -82,3 +82,78 @@ func TestLoadFilesSkipsWhatIsNotABlob(t *testing.T) {
 func TestAttachmentsOfAnIssueNobodyHasHeardOfIsNothing(t *testing.T) {
 	require.Empty(t, repo.Files{}.Attachments("ISU-nobody"))
 }
+
+func TestLoadWorktreeFilesReadsWhatIsOnDiskAndNotWhatIsCommitted(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq", gittest.Attachment("repro.har", "0123456789")).
+		Commit("report ISU-7f3akq")
+
+	r.WriteFile("issues/ISU-7f3akq/decision.md", "we measured it\n")
+	r.WriteFile("issues/ISU-7f3akq/comments/2026-08-24-support-01.md", "it happens here too\n")
+	r.WriteFile("issues/README.md", "the issues live here\n")
+
+	loader := open(t, r)
+
+	committed, err := loader.LoadFiles(t.Context(), gittest.DefaultBranch)
+	require.NoError(t, err)
+	require.Len(t, committed["ISU-7f3akq"], 1, "the ref has not seen the rest")
+
+	files, err := loader.LoadWorktreeFiles(t.Context())
+	require.NoError(t, err)
+
+	names := make([]string, 0, len(files["ISU-7f3akq"]))
+	for _, f := range files["ISU-7f3akq"] {
+		names = append(names, f.Name)
+	}
+
+	require.Equal(t,
+		[]string{"comments/2026-08-24-support-01.md", "decision.md", "repro.har"}, names)
+
+	attachments := files.Attachments("ISU-7f3akq")
+	require.Len(t, attachments, 2)
+	require.EqualValues(t, 10, attachments[1].Size)
+	require.Equal(t, "issues/ISU-7f3akq/repro.har", attachments[1].Path)
+}
+
+func TestLoadWorktreeFilesSkipsWhatGitWouldNotTrack(t *testing.T) {
+	r := gittest.New(t).
+		File(".gitignore", "issues/*/*.log\nissues/ISU-40b1cc/\n").
+		Issue("ISU-7f3akq", gittest.Attachment("repro.har", "{}\n")).
+		Commit("report ISU-7f3akq")
+
+	r.WriteFile("issues/ISU-7f3akq/debug.log", "noise\n")
+	r.WriteFile("issues/ISU-40b1cc/README.md", "not tracked\n")
+	r.WriteFile("issues/ISU-40b1cc/repro.har", "{}\n")
+	r.WriteFile("issues/not an id/README.md", "not an issue either\n")
+
+	files, err := open(t, r).LoadWorktreeFiles(t.Context())
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"repro.har"}, []string{files["ISU-7f3akq"][0].Name})
+	require.Len(t, files["ISU-7f3akq"], 1, "an ignored file is not in this repository")
+	require.NotContains(t, files, "ISU-40b1cc", "an ignored folder is not either")
+	require.NotContains(t, files, "not an id")
+}
+
+func TestLoadWorktreeFilesSkipsAnIssueWithNothingBesideItsReadme(t *testing.T) {
+	r := gittest.New(t).Issue("ISU-7f3akq").Commit("report ISU-7f3akq")
+
+	files, err := open(t, r).LoadWorktreeFiles(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, files, "an issue that is only its README has nothing beside it")
+}
+
+func TestLoadWorktreeFilesReportsAnIssuesDirectoryThatIsNotOne(t *testing.T) {
+	r := gittest.New(t).File("issues", "not a directory\n").Commit("first")
+
+	_, err := open(t, r).LoadWorktreeFiles(t.Context())
+	require.ErrorContains(t, err, "reading issues")
+}
+
+func TestLoadWorktreeFilesOfARepositoryWithNoIssuesDirectory(t *testing.T) {
+	r := gittest.New(t).File("README.md", "a repository\n").Commit("first")
+
+	files, err := open(t, r).LoadWorktreeFiles(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, files)
+}

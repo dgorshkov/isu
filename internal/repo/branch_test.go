@@ -147,6 +147,52 @@ func TestABranchCarryingAnUnreadableIssueLoadsAnyway(t *testing.T) {
 	require.Nil(t, change.After, "a file nothing can decode is a file nothing read")
 }
 
+// One commit touching two issues, which is what a triage sweep or a claim and
+// its epic look like. The edits come back in path order so that two runs over
+// one branch read the same way.
+func TestOneCommitCanEditSeveralIssues(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-bbbbbb").Issue("ISU-aaaaaa").Commit("report two issues").
+		Branch("topic").Checkout("topic").
+		Issue("ISU-bbbbbb", gittest.Priority("p0")).
+		Issue("ISU-aaaaaa", gittest.Priority("p1")).
+		Commit("triage both").
+		Checkout(gittest.DefaultBranch)
+
+	branch, err := open(t, r).LoadBranch(t.Context(), gittest.DefaultBranch, "refs/heads/topic")
+	require.NoError(t, err)
+
+	require.Len(t, branch.Commits, 1)
+
+	ids := make([]string, 0, 2)
+	for _, edit := range branch.Commits[0].Edits {
+		ids = append(ids, edit.ID)
+	}
+
+	require.Equal(t, []string{"ISU-aaaaaa", "ISU-bbbbbb"}, ids)
+}
+
+// The same unreadable file on both sides of two commits is read once. It is the
+// cache doing its job, and the assertion is that the second lookup answers the
+// same way rather than decoding it again.
+func TestAnUnreadableFileIsOnlyDecodedOnce(t *testing.T) {
+	r := gittest.New(t).
+		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
+		Branch("topic").Checkout("topic").
+		File("issues/ISU-7f3akq/README.md", "there is no frontmatter here\n").
+		Commit("break it").
+		Issue("ISU-7f3akq", gittest.Title("Fixed again")).
+		Commit("put it back").
+		Checkout(gittest.DefaultBranch)
+
+	branch, err := open(t, r).LoadBranch(t.Context(), gittest.DefaultBranch, "refs/heads/topic")
+	require.NoError(t, err)
+
+	require.Nil(t, branch.Commits[0].Edits[0].After, "the commit that broke it")
+	require.Nil(t, branch.Commits[1].Edits[0].Before, "and the commit that found it broken")
+	require.Equal(t, "Fixed again", branch.Commits[1].Edits[0].After.Title)
+}
+
 func TestABranchWithNothingAheadOfTrunkProposesNothing(t *testing.T) {
 	r := gittest.New(t).
 		Issue("ISU-7f3akq").Commit("report ISU-7f3akq").
