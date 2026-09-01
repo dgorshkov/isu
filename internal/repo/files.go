@@ -3,6 +3,10 @@ package repo
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -97,6 +101,106 @@ func (r *Repo) LoadFiles(ctx context.Context, ref string) (Files, error) {
 	}
 
 	return files, nil
+}
+
+// LoadWorktreeFiles lists what lives beside every issue's README on disk,
+// uncommitted files included.
+//
+// It is LoadFiles' answer for the tree nobody has committed yet, and it exists
+// for the pre-commit hook: a hook that read a ref would be answering about the
+// commit before the one being made, which is not a slower answer but a wrong
+// one — the file it complained about would be the file you were fixing.
+//
+// One git process, spent on .gitignore, for the same reason LoadWorktree spends
+// it: an ignored file is not tracked, so it is not in this repository, and
+// reimplementing the ignore rules to avoid asking would be a second opinion
+// about what .gitignore means.
+func (r *Repo) LoadWorktreeFiles(ctx context.Context) (Files, error) {
+	ignored, err := r.ignored(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	files := Files{}
+
+	entries, err := os.ReadDir(filepath.Join(r.root, IssuesDir))
+	if errors.Is(err, fs.ErrNotExist) {
+		return files, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", IssuesDir, err)
+	}
+
+	for _, entry := range entries {
+		id := entry.Name()
+		if !entry.IsDir() || !issue.ValidID(id) || ignored[IssuesDir+"/"+id+"/"] {
+			continue
+		}
+
+		found, err := r.folderFiles(id, ignored)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(found) > 0 {
+			files[id] = found
+		}
+	}
+
+	return files, nil
+}
+
+// folderFiles walks one issue's folder, in name order.
+func (r *Repo) folderFiles(id string, ignored map[string]bool) ([]File, error) {
+	dir := filepath.Join(r.root, IssuesDir, id)
+
+	var found []File
+
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if entry.IsDir() || !entry.Type().IsRegular() {
+			// A directory is walked into rather than weighed, and anything
+			// that is not a regular file — a symlink, a socket — is not an
+			// attachment. `ls-tree` calls a symlink a blob and this does not;
+			// what a size cap is about is bytes in everybody's clone.
+			return nil
+		}
+
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+
+		name := filepath.ToSlash(rel)
+		if name == issue.ReadmeName || ignored[IssuesDir+"/"+id+"/"+name] {
+			return nil
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		found = append(found, File{
+			ID:      id,
+			Name:    name,
+			Path:    IssuesDir + "/" + id + "/" + name,
+			Size:    info.Size(),
+			Comment: strings.HasPrefix(name, issue.CommentsDir+"/"),
+		})
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", IssuesDir+"/"+id, err)
+	}
+
+	sort.SliceStable(found, func(a, b int) bool { return found[a].Name < found[b].Name })
+
+	return found, nil
 }
 
 // issueFile reads the issue and the folder-relative name out of a path under

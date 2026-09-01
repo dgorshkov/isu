@@ -10,6 +10,7 @@ import (
 
 	"github.com/dgorshkov/isu/internal/check"
 	"github.com/dgorshkov/isu/internal/gitx"
+	"github.com/dgorshkov/isu/internal/model"
 	"github.com/dgorshkov/isu/internal/repo"
 )
 
@@ -22,7 +23,10 @@ import (
 var errFindings = errors.New("")
 
 func (a *app) checkCmd() *cobra.Command {
-	var scope string
+	var (
+		scope    string
+		worktree bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -30,12 +34,14 @@ func (a *app) checkCmd() *cobra.Command {
 		Long:  checkLong(),
 		Args:  noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return a.check(cmd, scope)
+			return a.check(cmd, scope, worktree)
 		},
 	}
 
-	cmd.Flags().StringVar(&scope, "scope", "all",
-		"which checks to run: tree, branch or all")
+	f := cmd.Flags()
+	f.StringVar(&scope, "scope", "all", "which checks to run: tree, branch or all")
+	f.BoolVar(&worktree, "worktree", false,
+		"read the issues on disk rather than at a ref, uncommitted edits included")
 
 	return cmd
 }
@@ -50,7 +56,13 @@ branch rule is about what this branch proposes: a resolution with no code beside
 it, an owner an agent reassigned. --scope picks one kind, and the pre-commit
 hook isu init writes runs the tree rules only, because at pre-commit time the
 change being committed is not a commit yet and the branch rules would be
-answering from the commits already there.`
+answering from the commits already there.
+
+--worktree reads the issues on disk instead of at a ref, which is what that hook
+needs: a check that read a ref before a commit would be answering about the
+commit before the one being made, and would refuse the commit that fixed what it
+was complaining about. It implies --scope tree, because the working tree is not
+a set of commits and there is nothing there to ask the branch rules about.`
 
 // checkLong is the help, with the rules themselves in it.
 //
@@ -76,12 +88,19 @@ func checkLong() string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-func (a *app) check(cmd *cobra.Command, scope string) error {
+func (a *app) check(cmd *cobra.Command, scope string, worktree bool) error {
 	ctx := cmd.Context()
 
 	scopes, err := parseScope(cmd, scope)
 	if err != nil {
 		return err
+	}
+
+	if worktree {
+		// The working tree is not a set of commits, so there is nothing here
+		// for the branch rules to be about. Saying so rather than running them
+		// over an empty diff, which would report nothing and look like a pass.
+		scopes = []check.Scope{check.ScopeTree}
 	}
 
 	s, err := a.open(ctx)
@@ -92,6 +111,10 @@ func (a *app) check(cmd *cobra.Command, scope string) error {
 	head, err := s.headRef(ctx)
 	if err != nil {
 		return err
+	}
+
+	if worktree {
+		head = ""
 	}
 
 	// The head is handed to the loader as well as to the checks. On a branch it
@@ -110,6 +133,12 @@ func (a *app) check(cmd *cobra.Command, scope string) error {
 		return err
 	}
 
+	if worktree {
+		if err := s.readWorktree(ctx, &in, v); err != nil {
+			return err
+		}
+	}
+
 	report := check.Checks.Run(in, scopes...)
 
 	payload := CheckPayload{
@@ -120,6 +149,7 @@ func (a *app) check(cmd *cobra.Command, scope string) error {
 		Failures:  report.Count(check.SeverityFail),
 		Warnings:  report.Count(check.SeverityWarn),
 		OK:        report.OK(),
+		Worktree:  worktree,
 		Freshness: v.freshness,
 	}
 
@@ -179,6 +209,38 @@ func (s *session) checkInput(ctx context.Context, v *view, head string) (check.I
 	in.Branch = branch
 
 	return in, nil
+}
+
+// readWorktree points the tree rules at the issues on disk.
+//
+// The whole board is rebuilt from what is there, rather than the ref's board
+// being patched, because the rules about one repository — a parent that names
+// nothing, an epic with no children — are questions about a whole set and half
+// a set answers them wrong. What is lost is every status that comes from
+// comparing refs, and none of the tree rules reads one.
+func (s *session) readWorktree(ctx context.Context, in *check.Input, v *view) error {
+	set, err := s.repo.LoadWorktree(ctx)
+	if err != nil {
+		return err
+	}
+
+	files, err := s.repo.LoadWorktreeFiles(ctx)
+	if err != nil {
+		return err
+	}
+
+	loaded := &repo.Board{
+		Trunk:   set,
+		Refs:    map[string]*repo.Set{},
+		Changed: map[string][]string{},
+	}
+
+	in.Loaded = loaded
+	in.Files = files
+	in.Branch = nil
+	in.Board = model.Derive(model.Input{Loaded: loaded, Config: s.cfg, Now: v.now})
+
+	return nil
 }
 
 // headRef is the ref under review.
@@ -263,7 +325,10 @@ func (a *app) renderCheck(s *session, payload CheckPayload) {
 	t := a.themeFor(out)
 
 	where := payload.Trunk
-	if payload.Head != "" {
+	switch {
+	case payload.Worktree:
+		where += " · the working tree"
+	case payload.Head != "":
 		where += " ← " + payload.Head
 	}
 

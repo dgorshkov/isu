@@ -172,7 +172,10 @@ type CheckPayload struct {
 	Warnings int       `json:"warnings"`
 	// OK says nothing failed. Warnings do not clear it and do not set it: a
 	// pull request with something worth saying about it still merges.
-	OK        bool      `json:"ok"`
+	OK bool `json:"ok"`
+	// Worktree says the rules read the issues on disk rather than at a ref,
+	// which is what the pre-commit hook asks for.
+	Worktree  bool      `json:"worktree"`
 	Freshness Freshness `json:"freshness"`
 }
 

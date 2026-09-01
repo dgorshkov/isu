@@ -92,8 +92,9 @@ const preCommitHook = `#!/bin/sh
 # Written by ` + "`isu init --hooks`" + `.
 #
 # Issues are folders in this repository, so a commit can break one. This runs
-# the checks that are true of the repository as it stands: the schema, the
-# links between issues, the cycles, the epics and the attachment sizes.
+# the checks that are true of the repository as it stands — the schema, the
+# links between issues, the cycles, the epics and the attachment sizes — over
+# the working tree, which is what is about to be committed.
 #
 # It deliberately does not run the checks about what a branch proposes. The
 # change being committed is not a commit yet, so those would be answered from
@@ -108,7 +109,7 @@ if ! command -v isu >/dev/null 2>&1; then
 	exit 0
 fi
 
-exec isu check --scope tree
+exec isu check --worktree
 `
 
 // workflow is the pipeline, and the branch rules are the reason it takes some
