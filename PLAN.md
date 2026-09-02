@@ -1554,7 +1554,7 @@ a thing an agent can read; refusing to answer would leave one guessing, and inve
 shape would be a contract nobody asked for. What the interface would open on is the board.
 
 ### M6-S1 · Shell, layout and key map ✅
-**Done** #PRNUM, 2026-09-02. `internal/ui` is a pure function of what it was handed, the way
+**Done** #12, 2026-09-02. `internal/ui` is a pure function of what it was handed, the way
 `internal/model` is a pure function of what `internal/repo` loaded: the whole repository arrives
 as an `Input` — the groups `isu board` renders, the derived board behind them, the freshness
 sentence and the moment — and a frame is that plus which keys have been pressed. That layering is
@@ -1579,7 +1579,7 @@ cleanly and restores the terminal.
 **Done when** golden frames are stable across runs.
 
 ### M6-S2 · List and grouping ✅
-**Done** #PRNUM, 2026-09-02. The grouping is one function used twice rather than two orderings
+**Done** #12, 2026-09-02. The grouping is one function used twice rather than two orderings
 that agree: `view.itemGroups` buckets by derived status in the precedence order of §1's table,
 `isu board` renders it as JSON and `isu ui` hands the same slice to the interface. That is what
 "matches exactly" can mean and keep meaning, and a shared fixture in `internal/cli` asserts it
@@ -1604,7 +1604,7 @@ list of zero issues rendering the empty state rather than a blank pane.
 **Done when** the grouping matches `isu board` exactly, asserted by a shared fixture.
 
 ### M6-S3 · Filter and navigation ✅
-**Done** #PRNUM, 2026-09-02. Every printable key goes into the needle while the filter line is
+**Done** #12, 2026-09-02. Every printable key goes into the needle while the filter line is
 open, which makes the whole command map unreachable there — a `q` that quit half way through
 typing "queue" would make the filter unusable — and the key hints change with it, because offering
 `c claim` on a line that cannot claim is offering something that does not happen. The arrows still
@@ -1629,7 +1629,7 @@ metacharacters is treated literally.
 **Done when** filtering a 5,000-issue fixture stays inside one frame budget.
 
 ### M6-S4 · Detail pane ✅
-**Done** #PRNUM, 2026-09-02. "Can I start this?" is a question with four parts — what is it, has
+**Done** #12, 2026-09-02. "Can I start this?" is a question with four parts — what is it, has
 anybody got it, what is it waiting on, and what does done look like — and the pane answers each:
 the type's own required field, both claimants on a contended issue, every blocker with its own
 status, and an epic's children with theirs. A child is told where in its epic it sits, because
@@ -1656,7 +1656,7 @@ contended issue shows both claimants.
 **Done when** the detail pane answers "can I start this?" without leaving the TUI.
 
 ### M6-S5 · Actions from the TUI ✅
-**Done** #PRNUM, 2026-09-02. `claimIssue` and `report` are `isu claim` and `isu new` with the
+**Done** #12, 2026-09-02. `claimIssue` and `report` are `isu claim` and `isu new` with the
 command taken off the front, so the interface calls the function rather than something that agrees
 with it. `checkout` is new and is deliberately not a claim: `g` on an issue nobody has claimed
 from this clone is a sentence, because making a claim as a side effect of navigating to something
