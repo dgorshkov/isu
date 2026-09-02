@@ -36,11 +36,12 @@ you change behaviour the plan specifies, write the reason there.
 Every gate is a make target, and CI calls these and nothing else.
 
 ```sh
-make all       # build vet lint test cover dogfood — the whole gate
+make all       # build vet lint test perf cover dogfood — the whole gate
 make build     # go build -o isu ./cmd/isu, and go build ./...
 make lint      # golangci-lint (errcheck, govet, revive, staticcheck, gofumpt)
 make fmt       # rewrite files to satisfy the formatters
 make test      # go test ./...
+make perf      # M2-S5's wall-clock budgets, measured with the machine to itself
 make cover     # the coverage floors: 99% overall, 100% internal/model
 make dogfood   # ./isu check over this repository, with the isu just built
 make stress    # the //go:build stress races, out of the default suite
@@ -94,6 +95,16 @@ cmd/isu -> internal/cli -> internal/check   (rules, pure)
 - **`internal/gittest` builds real repositories** in `t.TempDir()`. Nothing in this project is
   mocked: tests script history and let the code read it as it would read a clone. Its methods
   fail the test rather than returning an error (`Try` is the exception).
+
+**The wall-clock budgets are asserted by `make perf` and nowhere else.** A budget on elapsed
+time is a claim about the whole machine, and `go test ./...` runs `internal/cli`'s seventy
+seconds of git beside the package being timed — which put this gate red on macOS three times
+before the measurement was moved somewhere quiet. `make perf` runs the one package in one
+process and sets `ISU_PERF` to say so; the default suite still runs those tests and still logs
+what they measured, and the **process-count** assertions beside them — the ones that actually
+prevent the regression — hold in every pass. macOS carries a further factor-of-two allowance,
+because `macos-latest` is a measured three times slower at this workload than the runner the
+budgets were taken on. See PLAN.md M2-S5.
 
 ### The read path is a hard requirement
 
