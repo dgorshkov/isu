@@ -48,6 +48,13 @@ jobs:
       - run: make vet
       - run: make lint
       - run: make test
+
+      # M2-S5's wall-clock budgets are asserted here and nowhere else: a figure
+      # taken while `go test ./...` runs another package's git beside it is a
+      # measurement of the runner, not of the read path. This step has the
+      # machine to itself.
+      - run: make perf
+
       - run: make cover
 
       # M5-S7: the rules this project builds, run over the project that builds

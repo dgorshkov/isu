@@ -14,9 +14,9 @@ GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || echo $(GOBIN)/g
 BINARY ?= isu
 COVERAGE_PROFILE ?= coverage.out
 
-.PHONY: all help build vet lint fmt test stress cover dogfood tools clean
+.PHONY: all help build vet lint fmt test perf stress cover dogfood tools clean
 
-all: build vet lint test cover dogfood
+all: build vet lint test perf cover dogfood
 
 help:
 	@echo 'build   compile every package'
@@ -24,6 +24,7 @@ help:
 	@echo 'lint    golangci-lint, including the formatters'
 	@echo 'fmt     rewrite files to satisfy the formatters'
 	@echo 'test    go test ./...'
+	@echo 'perf    M2-S5 wall-clock gate, measured with the machine to itself'
 	@echo 'stress  the build-tagged races, which are out of the default suite'
 	@echo 'cover   run the tests and enforce both coverage floors'
 	@echo 'dogfood run isu check over this repository, with the isu just built'
@@ -45,6 +46,20 @@ fmt:
 
 test:
 	$(GO) test ./...
+
+# The wall-clock half of M2-S5's gate, and the only place it is asserted.
+#
+# A budget on elapsed time is a claim about the whole machine, so this measures
+# with the machine to itself: one package, one test process, nothing else in
+# flight. `go test ./...` still runs these tests, and still reports the number
+# they measure — what it does not do is hold a figure taken beside seventy
+# seconds of somebody else's git to a budget calibrated without it. The process
+# counts, which are what actually prevent the regression, are asserted in every
+# pass either way.
+#
+# -count 1 because a timing measurement is never the cached one.
+perf:
+	ISU_PERF=1 $(GO) test -count 1 -p 1 -run IsFast ./internal/repo/
 
 # The races M4-S4 keeps out of the default suite. Repeating a network operation
 # a hundred times per CI run buys confidence in the network and not in the code,
