@@ -3,7 +3,7 @@ schema: 1
 id: ISU-g4702b
 title: M6-S3 · Filter and navigation
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
