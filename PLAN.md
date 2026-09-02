@@ -890,6 +890,17 @@ the authoritative number is on the record of every CI run — this section asks 
 revisit if a run ever comes back close to the budget, and that is only possible if the run says
 what it measured. The budgets themselves are otherwise the plan's, unchanged.
 
+**The quiet gate's first macOS numbers say how close all of this was.** With the machine to
+itself, `LoadRef` measures **707 ms** there and the whole board **3.66 s**, against 274 ms and
+1.41 s on the machine the budgets were taken on — a ratio of 2.58 and 2.60, measured on the
+operations themselves rather than inferred from package times. So the plan's 1.5 s and 6 s left
+**2.12× of headroom for `LoadRef` and 1.64× for the board** on that runner with nothing else
+running at all, before any of the contention above. **The board was the tighter of the two the
+whole time.** `LoadRef` is simply the gate whose luck ran out first; the contention that put it
+through 1.5 s would have put the board through 6 s too. That is why the allowance applies to
+both budgets rather than to the one that went red, and it is the number to watch: every CI run
+now prints it.
+
 **What did not change, and is the reason this was only ever a red build and never a defect:**
 the process counts. They are asserted in every pass, they are what this story says actually
 prevents the regression, and no amount of contention can move them.

@@ -73,6 +73,17 @@ const (
 	// is a factor of three, and it turns the 273 ms this gate was calibrated at
 	// into something near a second before anything else is running.
 	//
+	// The quiet gate has since measured the operation itself rather than the
+	// package around it, and says the same thing more precisely: **707 ms for
+	// LoadRef and 3.66 s for the whole board on macOS**, against 274 ms and
+	// 1.41 s on the machine the budgets were taken on — 2.58 and 2.60. Which
+	// means the plan's numbers left **2.12x of headroom for LoadRef and 1.64x
+	// for the board** on that runner with nothing else running at all. The board
+	// was the tighter of the two the whole time; LoadRef is simply the one whose
+	// luck ran out first, and the same contention would have taken the board
+	// through 6 s as well. That is why this applies to both budgets and not to
+	// the one that went red.
+	//
 	// So the plan's 1.5 s was never a budget for the slowest runner in the
 	// matrix, which is what M2-S5 says these budgets are. Two is the allowance
 	// that makes it one, and like coverFactor it is bracketed above by the
