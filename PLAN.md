@@ -78,11 +78,14 @@ a group of related stories where §0 allows it. Do not skip ahead, do not merge 
 
 That is the entire dependency allowlist. Adding anything else requires asking first.
 
-**The minimum was 1.23 until M1.** `golangci-lint` v2.5.0 needs 1.24 or newer to build, so with a
-1.23 directive `go install` switched toolchains — to whatever Go had released most recently,
-resolved fresh on every CI run — and the lint gate went red the day one of those releases arrived
-incomplete. A gate that fails on a schedule nobody controls is the pipeline §0 warns about, so the
-directive moved to 1.24 rather than the symptom being pinned around.
+**The minimum was 1.23 until M1, and 1.24.0 until M6.** `golangci-lint` v2.5.0 needs 1.24 or
+newer to build, so with a 1.23 directive `go install` switched toolchains — to whatever Go had
+released most recently, resolved fresh on every CI run — and the lint gate went red the day one of
+those releases arrived incomplete. A gate that fails on a schedule nobody controls is the pipeline
+§0 warns about, so the directive moved to 1.24 rather than the symptom being pinned around. It
+moved again to **1.24.2** in M6, because three of the modules bubbletea and lipgloss bring declare
+that and a module's directive must be at least its dependencies'. Still no `toolchain` line: the
+directive is a minimum, and pinning a toolchain is the thing that went wrong in the first place.
 
 Frontmatter is parsed by hand (M1-S1) because it is a flat key/value block and the round-trip
 guarantee in M1-S3 is easier to hold without a YAML serialiser reformatting it. `.isu.yml` and
@@ -462,7 +465,7 @@ Ten milestones. Stop for review at the end of each.
 | M3 | Derivation | statuses, epics, claims, contention | done |
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | done |
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | done |
-| M6 | TUI | `isu ui` | not started |
+| M6 | TUI | `isu ui` | done |
 | M7 | Importers | safe writes, Jira | not started |
 | M8 | Public website | content, landing page, docs, deploy | not started |
 | M9 | Release | goreleaser, brew, docs, v1.0.0 | not started |
@@ -1524,9 +1527,49 @@ that into a failing check if the pull request contains nothing else.
 
 ---
 
-# M6 · TUI
+# M6 · TUI ✅
 
-### M6-S1 · Shell, layout and key map
+**Status** done — all five stories landed in one pull request. §0's grouping rule allows it: they
+are neighbours in this document, they belong to one milestone, and they share one subject a
+reviewer can hold at once — the branch would have been `isu/M6-S1-S5-tui`, and this work was done
+on `claude/next-milestone-gzyx59`, which the session that produced it was told to use. The story
+ids are in every commit subject, where the rest of §0 puts them.
+
+**`bubbles` is in the allowlist and is not used.** The list, the filter and the detail pane's
+scroll are a handful of statements each over state this package already holds, and a component
+that brings its own key map and its own styles would have been more to reconcile than to write —
+the filter alone would have had to have its blinking cursor turned off to keep a golden frame
+stable. bubbletea, lipgloss and glamour are all used, and teatest is used for what M6-S1 asks it
+for. Removing a dependency the allowlist permits is not adding one, and go.mod says so.
+
+**Two keys the map in M6-S1 does not name.** `h`/`←` folds an epic and `l`/`→` unfolds it, because
+M6-S3's "navigating across a collapsed epic" requires a way to collapse one and this document
+names none; and `esc` clears a filter, closes the filter line, and gives the keys back from the
+detail pane. `q` quits from everywhere, including the pane `enter` opened — a key that quits from
+one pane and does something else from another is the one thing a person has to keep in their head.
+
+**`isu ui --json` prints `isu board`'s payload**, and that is a decision this document does not
+make. Every command supports `--json` and `contract_test.go` enforces it, but an interface is not
+a thing an agent can read; refusing to answer would leave one guessing, and inventing a second
+shape would be a contract nobody asked for. What the interface would open on is the board.
+
+### M6-S1 · Shell, layout and key map ✅
+**Done** #PRNUM, 2026-09-02. `internal/ui` is a pure function of what it was handed, the way
+`internal/model` is a pure function of what `internal/repo` loaded: the whole repository arrives
+as an `Input` — the groups `isu board` renders, the derived board behind them, the freshness
+sentence and the moment — and a frame is that plus which keys have been pressed. That layering is
+what makes M6-S5's structural test easy to pass rather than something to arrange: a package that
+cannot load anything cannot call git by accident.
+
+Six lines of chrome whatever the terminal is, and **the message line is kept even when there is
+nothing to say** — a footer that grows a line when an action reports moves the list up by one
+under somebody's cursor, and the moment after `c` is the moment they are looking hardest. Every
+line of a frame is trimmed on the right, which is not cosmetic: a pane padded to its width leaves
+a run of spaces that is invisible on a terminal and very loud in a golden file.
+
+**`-update` is not this package's flag.** The golden-file helper teatest brings registers one of
+that name, and two flags of one name is a panic at init rather than a warning, so the golden
+helper here reads it instead of declaring it.
 **Branch** `isu/M6-S1-tui-shell`
 **Build** bubbletea program: header with status counts, list pane, detail pane, footer key
 hints. Resize-aware down to 80×24. Keys: `enter` open, `c` claim, `n` new, `r` ready queue,
@@ -1535,7 +1578,24 @@ hints. Resize-aware down to 80×24. Keys: `enter` open, `c` claim, `n` new, `r` 
 cleanly and restores the terminal.
 **Done when** golden frames are stable across runs.
 
-### M6-S2 · List and grouping
+### M6-S2 · List and grouping ✅
+**Done** #PRNUM, 2026-09-02. The grouping is one function used twice rather than two orderings
+that agree: `view.itemGroups` buckets by derived status in the precedence order of §1's table,
+`isu board` renders it as JSON and `isu ui` hands the same slice to the interface. That is what
+"matches exactly" can mean and keep meaning, and a shared fixture in `internal/cli` asserts it
+against a real repository.
+
+**Within a group the order is the board's, with one thing done to it**: a child whose epic is in
+the same group is drawn immediately after that epic, one level in. Which group an issue is in is
+untouched, so a child whose epic has finished stands at the top of its own group rather than under
+an epic three groups away — the alternative, nesting across groups, would have meant a list whose
+statuses no longer add up to the counts above them. A folded epic says how many rows it is holding
+back beside its title rather than beside its id, because a marker glued to an id is a marker
+somebody copies with it.
+
+Every issue is emitted once. A parent cycle is two epics that are each other's ancestors, which is
+`isu check`'s to report and this arrangement's to survive: the walk marks what it drew and a sweep
+at the end draws whatever it could not reach.
 **Branch** `isu/M6-S2-tui-list`
 **Build** the issue list with epics as parents and their children indented beneath, status
 colouring, and the counts in the header staying consistent with the list beneath them.
@@ -1543,7 +1603,23 @@ colouring, and the counts in the header staying consistent with the list beneath
 list of zero issues rendering the empty state rather than a blank pane.
 **Done when** the grouping matches `isu board` exactly, asserted by a shared fixture.
 
-### M6-S3 · Filter and navigation
+### M6-S3 · Filter and navigation ✅
+**Done** #PRNUM, 2026-09-02. Every printable key goes into the needle while the filter line is
+open, which makes the whole command map unreachable there — a `q` that quit half way through
+typing "queue" would make the filter unusable — and the key hints change with it, because offering
+`c claim` on a line that cannot claim is offering something that does not happen. The arrows still
+move.
+
+**The cursor remembers what somebody chose rather than where it happens to be.** A filter that
+hides the selected issue moves the cursor; clearing it puts them back, because the thing they
+picked is still what they picked. Only a deliberate move changes that, which is the difference
+between the two halves of this story's own sentence.
+
+**The frame budget was missed on the first draft and the fix was one line of design.** Lowercasing
+five fields per issue on every keystroke is twenty-five thousand allocations a keypress on a
+five-thousand-issue board: 5–8 ms against a 16 ms frame. Each issue's searchable text is
+lowercased once at startup instead — it cannot change underneath the index, because nothing in
+this package loads anything — and the same keystrokes now cost **2.6 ms**.
 **Branch** `isu/M6-S3-tui-filter`
 **Build** incremental filter across id, title, type, status and owner; vim and arrow keys;
 selection preserved across filter changes where the selected issue still matches.
@@ -1552,7 +1628,26 @@ collapsed epic; filtering to zero results and back; a filter string containing r
 metacharacters is treated literally.
 **Done when** filtering a 5,000-issue fixture stays inside one frame budget.
 
-### M6-S4 · Detail pane
+### M6-S4 · Detail pane ✅
+**Done** #PRNUM, 2026-09-02. "Can I start this?" is a question with four parts — what is it, has
+anybody got it, what is it waiting on, and what does done look like — and the pane answers each:
+the type's own required field, both claimants on a contended issue, every blocker with its own
+status, and an epic's children with theirs. A child is told where in its epic it sits, because
+being one of forty is a different proposition from being the last of three.
+
+The body is rendered rather than printed, which is where glamour earns its place in the allowlist
+and what `isu show`'s "v1.0.0 does not render markdown" was waiting for. A pane too narrow to wrap
+into gets the body as it was written, which is the answer `isu show` gives anyway.
+
+**What lives beside an issue is loaded, so it arrives through an action and is asked for once** —
+the answer costs a git process and the cursor walks over the same issue every time somebody
+scrolls past it. A folder that could not be read is kept as the failure it was: never failing
+silently is M6-S5's rule and it applies to the read as much as to the writes.
+
+`enter` gives the keys to the pane so it can be scrolled and `esc` gives them back. The wrap this
+story needed also fixed one M6-S1 had shipped: folding rebuilt a line out of its words, which
+collapsed the two spaces holding a key away from its value, so the first fold in a pane unaligned
+every column in it.
 **Branch** `isu/M6-S4-tui-detail`
 **Build** body rendered with `glamour`, title, priority, claim line, acceptance/repro,
 attachments, comment list, epic position, and `blocked_by` showing each blocker's own status.
@@ -1560,7 +1655,37 @@ attachments, comment list, epic position, and `blocked_by` showing each blocker'
 contended issue shows both claimants.
 **Done when** the detail pane answers "can I start this?" without leaving the TUI.
 
-### M6-S5 · Actions from the TUI
+### M6-S5 · Actions from the TUI ✅
+**Done** #PRNUM, 2026-09-02. `claimIssue` and `report` are `isu claim` and `isu new` with the
+command taken off the front, so the interface calls the function rather than something that agrees
+with it. `checkout` is new and is deliberately not a claim: `g` on an issue nobody has claimed
+from this clone is a sentence, because making a claim as a side effect of navigating to something
+would claim work for whoever pressed a key by mistake.
+
+`n` opens the editor on **a whole issue file rather than a form**. What comes back is parsed by
+`internal/issue` and validated by the schema every other issue is held to, so there is no second
+format to keep in step — and the id is allocated after the edit, because it is a hash of the
+fields the editor is for. The terminal goes with it: `tea.Exec` releases the screen for as long as
+the editor runs, and this package hands over a `Run()` rather than a process, which is how it
+keeps the structural rule below.
+
+**The proof M6-S5 asks for is stronger than the grep `internal/gitx` already runs.** That one says
+nothing outside gitx builds a git command; this one says `internal/ui` does not import the git
+binary or either of the two packages that reach it. A renderer that could run a git process would
+run one per frame.
+
+**Two things this milestone had to learn about terminals, and both were defects.** A burst of
+printable characters arrives as one message carrying several runes — that is how a paste and a
+fast typist both look — and every rune but the first was being dropped, so the interface lost keys
+under exactly the condition somebody is going fast. And `q` pressed while an action is in flight
+is now remembered rather than obeyed: leaving in the middle of a push would abandon the one
+operation in this product that has to be atomic.
+
+**teatest does not survive `tea.Exec`, and that is worth writing down.** Measured at about one run
+in two, the program released the terminal and never repainted — and every run once the test waited
+for a frame before typing. The model was right each time; what was wrong was synchronising on an
+intermediate byte stream. The action tests run the same program over an ordinary pair of buffers,
+which is what `isu ui` itself runs over, and wait on the fake rather than on the screen.
 **Branch** `isu/M6-S5-tui-actions`
 **Build** `c` claims through the same code path as `isu claim`; `n` opens an editor for a new
 issue; `g` checks out the claiming branch. Every action reports its result inline and never
@@ -1832,6 +1957,21 @@ for each of them separately.
    objects did not, a base git resolves for the load and refuses two processes later, and
    `config.NewID` failing — which it cannot, since the generator reads no file and takes no
    lock, but its signature says it might.
+
+   **M6 took the module to 4,009 statements and left thirty-one uncovered, which is 99.2% and
+   nine statements of headroom.** Six of those are this milestone's, and the shape of the argument
+   is the one below: two are glamour refusing to build a renderer or to render — a style name this
+   package chose and a width it computed, so neither can fail on anything a user did, and the body
+   is printed as it was written rather than lost; two are the checkout `g` performs, where git
+   answers something other than "no such revision" and where the switch itself fails; and two are
+   `isu new`'s own pair, git having no `user.name` and an id generator that has stopped being
+   random, reached through the editor path this milestone added.
+
+   **The floor did what this section says it is for, twice in one milestone.** Both things it made
+   somebody look at were defects rather than missing tests: a fold measured its width in characters
+   and counted escape sequences among them, so every coloured line would have folded early on a
+   terminal and never in a test; and `n` opened the editor before deriving the repository, so an
+   editor somebody spent ten minutes in could close on "isu cannot read that ref".
 
    **M5 took the module to 3,304 statements and left twenty-five uncovered, which is 99.2% and
    eight statements of headroom.** Five of those are this milestone's and each is argued for
