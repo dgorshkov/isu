@@ -100,9 +100,10 @@ cmd/isu -> internal/cli -> internal/check   (rules, pure)
 time is a claim about the whole machine, and `go test ./...` runs `internal/cli`'s seventy
 seconds of git beside the package being timed — which put this gate red on macOS three times
 before the measurement was moved somewhere quiet. `make perf` runs the one package in one
-process and sets `ISU_PERF` to say so; the default suite still runs those tests and still logs
-what they measured, and the **process-count** assertions beside them — the ones that actually
-prevent the regression — hold in every pass. macOS carries a further factor-of-two allowance,
+process and sets `ISU_PERF` to say so, with `-v` so the number it measured is on the record of
+every run; the default suite still runs those tests and logs the same figure, and the
+**process-count** assertions beside them — the ones that actually prevent the regression — hold
+in every pass. macOS carries a further factor-of-two allowance,
 because `macos-latest` is a measured three times slower at this workload than the runner the
 budgets were taken on. See PLAN.md M2-S5.
 

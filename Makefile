@@ -51,15 +51,18 @@ test:
 #
 # A budget on elapsed time is a claim about the whole machine, so this measures
 # with the machine to itself: one package, one test process, nothing else in
-# flight. `go test ./...` still runs these tests, and still reports the number
-# they measure — what it does not do is hold a figure taken beside seventy
-# seconds of somebody else's git to a budget calibrated without it. The process
+# flight. `go test ./...` still runs these tests, and still logs the number they
+# measure — what it does not do is hold a figure taken beside seventy seconds of
+# somebody else's git to a budget calibrated without it. The process
 # counts, which are what actually prevent the regression, are asserted in every
 # pass either way.
 #
-# -count 1 because a timing measurement is never the cached one.
+# -count 1 because a timing measurement is never the cached one, and -v because
+# `go test` hides a passing test's log: without it this step records that the
+# budgets held but not what they held, and a gate whose number nobody can see is
+# one nobody will notice drifting until it fails.
 perf:
-	ISU_PERF=1 $(GO) test -count 1 -p 1 -run IsFast ./internal/repo/
+	ISU_PERF=1 $(GO) test -count 1 -p 1 -v -run IsFast ./internal/repo/
 
 # The races M4-S4 keeps out of the default suite. Repeating a network operation
 # a hundred times per CI run buys confidence in the network and not in the code,

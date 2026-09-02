@@ -124,19 +124,24 @@ func budget(base time.Duration, instrumented bool, goos string) (time.Duration, 
 //
 // So the clock is asserted where it means something: `make perf` gives this
 // measurement the machine and nothing else, and sets perfEnv to say so.
-// Everywhere else the number is still taken and still reported, because a
-// measurement nobody can see is one nobody will notice moving. The process
-// counts either side of this call are asserted every time regardless — **those
-// are the assertions that actually prevent the regression**, which is what this
-// story says they are, and contention cannot move them.
+// Everywhere else the number is still taken and logged, where `go test -v` shows
+// it — and `make perf` passes -v for exactly that reason, so the authoritative
+// measurement is on the record of every CI run. A gate whose number nobody can
+// see is one nobody will notice drifting until it fails, and this section asks
+// for a line to revisit if a run ever comes back close to its budget. The
+// process counts either side of this call are asserted every time regardless —
+// **those are the assertions that actually prevent the regression**, which is
+// what this story says they are, and contention cannot move them.
 func withinBudget(t *testing.T, what string, took, base time.Duration) {
 	t.Helper()
 
 	held, why := budget(base, testing.CoverMode() != "", runtime.GOOS)
 
+	t.Logf("%s took %s, against a budget of %s for %s", what, took, held, why)
+
 	if os.Getenv(perfEnv) == "" {
-		t.Logf("%s took %s, against a budget of %s for %s — measured beside the "+
-			"rest of the suite, so %s is what asserts it", what, took, held, why, perfEnv)
+		t.Logf("not asserted: measured beside the rest of the suite, so %s and "+
+			"`make perf` are what hold it to that budget", perfEnv)
 
 		return
 	}

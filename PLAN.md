@@ -884,8 +884,11 @@ two, four and eight competing processes: roughly linear in the oversubscription.
 added `internal/ui` to that set and M7 through M9 will add more, so the number was going to keep
 drifting. **So the clock is no longer asserted beside anything.** `make perf` runs this package
 alone, in one process, and sets `ISU_PERF` to say the measurement has the machine; `make test`
-and `make cover` still run these tests and still report what they measured, but only that
-target holds the figure to a budget. The budgets themselves are otherwise the plan's, unchanged.
+and `make cover` still run these tests and still log what they measured, which `go test -v`
+shows, but only that target holds the figure to a budget. `make perf` passes `-v` itself, so
+the authoritative number is on the record of every CI run — this section asks for one line to
+revisit if a run ever comes back close to the budget, and that is only possible if the run says
+what it measured. The budgets themselves are otherwise the plan's, unchanged.
 
 **What did not change, and is the reason this was only ever a red build and never a defect:**
 the process counts. They are asserted in every pass, they are what this story says actually
