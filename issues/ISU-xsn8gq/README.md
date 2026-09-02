@@ -3,7 +3,7 @@ schema: 1
 id: ISU-xsn8gq
 title: M6-S5 · Actions from the TUI
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
