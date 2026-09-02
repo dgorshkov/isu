@@ -6,7 +6,8 @@ what git already knows rather than stored and kept in sync by hand. One binary c
 and a TUI.
 
 v1.0.0 deliberately ships no web UI, no bidirectional sync with other trackers, and no sprints,
-points or burndown. Import from Jira is one-way and one-time. See PLAN.md for the full list.
+points or burndown. Import from GitHub Issues is one-way and one-time. See PLAN.md for the
+full list.
 
 ## Install
 

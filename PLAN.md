@@ -297,6 +297,19 @@ that is what lets `blocked_by` on one branch keep pointing at the right issue wh
 other branches are in flight. **Imported issues keep their source key verbatim** as their id —
 `PROJ-1234` is a valid id, and the format above governs generation, not validation.
 
+**A source key that cannot be an id is formed into one, and that is the only case in which an
+import does not keep the key.** GitHub numbers issues per repository, from the same sequence it
+numbers pull requests, so the key anybody actually writes is `#1234` or `owner/repo#1234` and
+neither is a folder name: `#` and `/` are not in the id character set. M7-S4 therefore writes
+`<PREFIX>-1234`, taking the prefix from `.isu.yml` and keeping the number, which is the half a
+human recognises and the half every link contains; `owner/repo#1234` and the issue's URL go to
+`source.yml`, so nothing about the source is lost. `--id-prefix` overrides the prefix for a team
+importing into a tracker whose own prefix means something else. Milestones become epics and are
+numbered from a second sequence, so they take `<PREFIX>-M<number>` — `ISU-M3` and `ISU-3` are
+different issues, and a milestone's title is renameable where its number is not. Cross-repo
+issues are out of scope, so one import cannot collide with itself; two imports into one tracker
+can, and M7-S4 refuses rather than overwriting.
+
 ### Configuration
 
 `.isu.yml` sits at the repository root. This is the whole schema; stories below may not invent
@@ -466,7 +479,7 @@ Ten milestones. Stop for review at the end of each.
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | done |
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | done |
 | M6 | TUI | `isu ui` | done |
-| M7 | Importers | safe writes, Jira | not started |
+| M7 | Importers | safe writes, GitHub Issues | not started |
 | M8 | Public website | content, landing page, docs, deploy | not started |
 | M9 | Release | goreleaser, brew, docs, v1.0.0 | not started |
 
@@ -483,7 +496,7 @@ Estimated in pull requests, because the reviewer is the constraint and the compi
 | M4 CLI | 8 | medium; M4-S8 has no code and may generate several follow-ups |
 | M5 Checks | 7 | small each, and highly parallel in principle |
 | M6 TUI | 5 | medium; golden-frame tests are fiddly to stabilise |
-| M7 Importers | 5 | large; M7-S5 is the biggest single PR in the plan |
+| M7 Importers | 5 | large; M7-S4 is the biggest single PR in the plan |
 | M8 Website | 3 | medium |
 | M9 Release | 4 | small, except M9-S3 which is open-ended by design |
 
@@ -1751,33 +1764,66 @@ if the TUI package calls git directly.
 
 # M7 · Importers
 
+**The importer is GitHub Issues, and it used to be Jira.** The swap is less a change of target
+than a change of what the source can be asked. Somebody adopting isu is already in a git
+repository, that repository is overwhelmingly on GitHub, and the issues they want out are
+therefore sitting beside the code they are migrating — no export request, no admin, no licence.
+GitHub also answers for free two questions Jira answers through an integration somebody had to
+install: **which pull request closed this issue**, and **what is this issue blocked by**. And it
+can be read without credentials, which is what lets these stories be tested against real public
+repositories rather than against a fixture nobody can check. Jira joins Linear on the
+out-of-scope list as a deferral, and M7-S1's source interface is the seam it comes back through.
+
+**Four things GitHub Issues can now do did not exist when this milestone was first written**,
+and each is read where present rather than assumed: **issue types** (organisation-level, at most
+twenty-five, `type` on the issue itself, defaulting to Task/Bug/Feature); **sub-issues** (100
+children per parent, eight levels of nesting, and they may cross repositories); **issue
+dependencies** — `blocked_by` and `blocking`, August 2025 — which is isu's `blocked_by` under
+its own name; and **issue fields**, structured custom metadata that reached general availability
+in July 2026 and is precisely the two hundred custom fields M7-S1 refuses to let into
+frontmatter. A repository with none of them still imports, and the dry run says which it found.
+
+**Ids are the one place the data model had to be amended, and section 1 carries the amendment.**
+A Jira key is already a legal id; a GitHub key is `#1234`, which is repo-scoped, shares its
+sequence with pull requests, and is not a folder name. `<PREFIX>-1234` it is.
+
 ### M7-S1 · Import framework and dry run
 **Branch** `isu/M7-S1-import-framework`
 **Build** `internal/importer`: a source interface, field mapping to the isu schema, an
 evidence-tier recorder, and a `--dry-run` report showing counts, coverage and samples without
-writing anything. **Source keys become ids verbatim** — `PROJ-1234` stays `PROJ-1234`,
-because every link, bookmark and commit message your team has ever written points at it. Unmapped source fields go to `source.yml` in
-the issue folder, never into frontmatter — a mature tracker has two hundred custom fields and
-they must not poison the schema.
-**Tests first** dry run writes no files; mapping preserves keys; a source with two hundred
-custom fields produces clean frontmatter and a complete `source.yml`.
+writing anything. **A source key becomes the id verbatim where it is already a legal one, and
+is formed from it where it is not** — `PROJ-1234` stays `PROJ-1234`, GitHub's `#1234` becomes
+`<PREFIX>-1234`, and either way the thing your team has been writing in commit messages for
+years is still legible in the id. Section 1 governs the shape; this story owns the rule that
+the mapping is total and reversible. Unmapped source fields go to `source.yml` in the issue
+folder, never into frontmatter — a mature tracker has two hundred custom fields and they must
+not poison the schema.
+**Tests first** dry run writes no files; an id maps back to the source key it was formed from,
+for a key that was legal and for one that was not; a source with two hundred custom fields
+produces clean frontmatter and a complete `source.yml`.
 **Done when** `--dry-run` is the default and writing requires `--write`.
 
 ### M7-S2 · Safe writes
 **Branch** `isu/M7-S2-safe-writes`
 **Why** An importer writes attacker-influenced data into your repository. Ticket titles,
-filenames and attachments all originate outside your control. v1.0.0 never serves that data over
-HTTP — the web UI is out of scope, and `glamour` renders to a terminal — so **writing it to disk
-is the entire attack surface, and it gets its own story.**
+comment bodies, author display names and custom field values all originate outside your
+control, and on a public repository "outside your control" means anyone with a browser.
+v1.0.0 never serves that data over HTTP — the web UI is out of scope, and `glamour` renders to
+a terminal — so **writing it to disk is the entire attack surface, and it gets its own story.**
 **Build** one guarded write path that every importer must use. Filenames sanitised and
 constrained to the issue's own folder — reject `..`, absolute paths, symlinks, control
 characters, reserved Windows names, and names over 255 bytes. Per-file and per-issue size
-caps. A decompressed-size limit for anything archived. Content type sniffed rather than taken
-from the server's header. API tokens read from the environment or a credential helper, never
-from a flag, never written to disk, and redacted from every log line and error string.
+caps. API tokens read from the environment or a credential helper, never from a flag, never
+written to disk, and redacted from every log line and error string.
+**The decompressed-size limit and the content-type sniffing are deferred along with the
+downloads that needed them.** v1.0.0's one importer records attachment links and fetches
+nothing (M7-S5), so a zip-bomb guard here would be a defence with no traffic on it and a 99%
+coverage floor to answer to. They return with the first importer that fetches a file, and the
+guard they belong behind is this one.
 **Tests first** one payload per attack: `../../etc/passwd`, an absolute path, a symlink, a
-1 GB attachment, a zip bomb, a 4,000-character filename, a filename containing a newline, and
-a token interpolated into an error message.
+4,000-character filename, a filename containing a newline, **a comment author whose display
+name is a path** — the comment file is named for the author, so this is the live one — an issue
+body over the per-issue cap, and a token interpolated into an error message.
 **Done when** every importer writes exclusively through this path, asserted by a grep test in
 the same style as M2-S1.
 
@@ -1788,44 +1834,112 @@ commit message, key in a merge commit's branch name, key in a squash subject. (I
 after the switch to isu carry an `Isu-Resolves:` trailer and need none of this — these tiers
 exist for the years of history that predate it.) Record which
 tier produced each link; unlinked issues import with their resolution date only.
+**A GitHub key is `#1234`, and it is ambiguous in a way `PROJ-1234` never was.** Issues and
+pull requests are numbered from one sequence, so `Merge pull request #456 from …` names a pull
+request, a squash subject ending `(#456)` almost always does too, and `#1234` turns up in prose
+about nothing at all. Every tier match is therefore checked against the set of numbers actually
+being imported and discarded when it is not one of them — which means this scan cannot run
+before the issue list is in hand, and the story is ordered accordingly.
 **Tests first** a fixture repo deliberately mixing all three conventions plus a long tail of
 commits with no key; assert per-tier counts exactly; assert an issue matched at two tiers
-records the stronger one.
+records the stronger one; **assert a `(#456)` squash subject naming a pull request produces no
+link**, and that the same subject does produce one when 456 is an imported issue.
 **Done when** the scanner runs against a real repository and reports its coverage.
 
-### M7-S4 · Jira: issues, types and hierarchy
-**Branch** `isu/M7-S4-jira-core`
-**Build** read a Jira JSON export. Map issue types to the **five** isu types — a Jira Epic
-becomes `type: epic` and, like every epic, is written **without `state:`**; everything else maps
-to `bug`, `story`, `chore` or `spike`. Map status to state for those: terminal statuses become
-`resolved` or `dropped`, and **everything non-terminal becomes `open`** — in-flight statuses are
-not imported, because in this model they are derived from branches, and a ticket parked in
-review for eight months was never in review. A `dropped` issue also needs `resolution`, which is
-now mandatory: map Jira's own resolution field onto the enum, and anything unrecognised becomes
-`wontfix` with the original string preserved in `source.yml`. Collapse Epic Link, parent and
-subtask into the single `parent` field — and since M5-S2 requires a `parent` to name an epic,
-a subtask whose parent is an ordinary issue keeps the link only when that parent is itself
-imported as an epic; otherwise the link goes to `source.yml` and is reported in the dry run.
-**Tests first** a fixture export covering epics, subtasks, dropped issues and a four-level
-hierarchy; assert the collapse is lossless in the sense that the parent graph is preserved and
-acyclic; assert imported Epics carry `type: epic` and no `state:`; assert every dropped issue
-has a `resolution` drawn from the enum; assert a subtask under a non-epic parent does not emit
-a `parent` that would fail the check.
-**Done when** the imported tree passes `isu check` with zero failures — which, with the epic
-and resolution rules above, is now a reachable bar rather than a contradiction.
+### M7-S4 · GitHub: issues, types, milestones and state
+**Branch** `isu/M7-S4-github-core`
+**Build** read issues from the GitHub API, or from a saved `gh issue list --json` dump —
+`--fetch-only` writes that dump, the tests read one, and an import is therefore reproducible
+without a network and reviewable as a diff. **Pull requests are not issues.** The REST list
+returns both and they are told apart by the `pull_request` key; dropping them is the first
+thing this importer does and the classic bug in every one that skips it.
 
-### M7-S5 · Jira: comments, attachments and dev-status links
-**Branch** `isu/M7-S5-jira-content`
+- **Type.** The organisation's issue type where the repository has one, a configured label map
+  where it does not, `chore` where neither answers. GitHub's own defaults map Bug to `bug`,
+  Feature to `story` and Task to `chore`; every other type and every label is the map's
+  business, and the dry run lists what it could not place.
+- **Epics are milestones.** A milestone is a named container whose progress is a fold over the
+  issues in it, which is exactly what an isu epic is, and an issue belongs to at most one — so
+  it lands in the single `parent` field with no collapse to design. The epic is written
+  **without `state:`** like every epic, the milestone's description becomes its body, and its
+  own open/closed state and due date go to `source.yml`, because here the fold is what decides.
+  Its id is `<PREFIX>-M<number>`: milestones are numbered from their own sequence, so `ISU-M3`
+  and `ISU-3` are different issues and must not collide. **A milestone with no imported children
+  is not written at all** — M5-S2 makes an empty epic a check failure, and `--state open` empties
+  every milestone whose issues are all closed.
+- **Sub-issues do not become `parent`.** The field is spent on the milestone, isu has one, and a
+  sub-issue tree is eight levels deep where an epic is one. The hierarchy is written whole to
+  `source.yml` and its depth and size are reported by the dry run. This is the largest thing
+  v1.0.0 knowingly declines to model, it is on the out-of-scope list under its own heading, and
+  recording it losslessly is what makes modelling it later a story rather than a re-import.
+- **State.** `open` becomes `open`. `closed` with `state_reason: completed`, **or with no
+  `state_reason` at all**, becomes `resolved` — the field only exists since 2022 and everything
+  older is an ordinary closed issue rather than an unknown. `not_planned` becomes `dropped` with
+  `resolution: wontfix`, `duplicate` becomes `dropped` with `resolution: duplicate`, and
+  `reopened` becomes `open`, because isu derives reopening from trunk history and will not read
+  it from a field it would then have to keep in sync.
+- **`blocked_by` is `blocked_by`.** GitHub's dependencies say what isu's field says. A blocker
+  outside the import goes to `source.yml` rather than being written as an id that resolves to
+  nothing, which M5-S2 would fail on.
+- **Owner.** The first assignee; failing that `--owner`; failing that the import refuses and the
+  dry run says how many issues have neither. The author is recorded in `source.yml` and is
+  deliberately not the owner: the person who filed a bug is usually not the person answerable
+  for it, and M5-S4 makes `owner` expensive to correct afterwards.
+- **The type's required field.** `repro`, `acceptance` and `question` are required by the
+  schema, GitHub supplies none of them, and a naive import would emit thousands of files that
+  fail `Validate()` on the first `isu check`. Each is written as a provenance line —
+  `repro: imported from owner/repo#1234; see the body` — and the dry run counts them so nobody
+  mistakes archaeology for content. The rejected alternative was to call everything a `chore`,
+  which validates trivially and throws away the bug/story distinction across the entire history
+  in one move.
+- **Rate limits are handled, not hoped for.** Five thousand points an hour, a hundred concurrent
+  requests, and a cap per minute besides. A 5,000-issue import fits comfortably inside that and
+  only if it batches; on a 403 or a 429 the importer waits out `retry-after`, or
+  `x-ratelimit-reset` when there is no `retry-after`, then backs off, and the dry run reports
+  what the budget cost.
+
+**Tests first** a fixture dump covering issue types and a repository with none, milestones
+including an empty one, a four-level sub-issue tree, every `state_reason` including its absence,
+dependencies pointing inside and outside the import, and unassigned issues. Assert pull requests
+in the list are not imported; assert imported milestones carry `type: epic` and no `state:`;
+assert every dropped issue has a `resolution` from the enum and a `reason`; assert an issue whose
+milestone was skipped emits no `parent`; assert an out-of-import blocker leaves `blocked_by`
+absent rather than dangling; **assert the whole import makes no per-issue request for anything
+the list already carried** — a process count in the spirit of M2-S5, against a transport that
+counts.
+**Done when** the imported tree passes `isu check` with zero failures, and 5,000 issues are read
+in pages of a hundred with no request per issue.
+
+### M7-S5 · GitHub: comments, fields and closing pull requests
+**Branch** `isu/M7-S5-github-content`
 **Build** comments become files under `comments/`, named by date, author and sequence per
-section 1 — an active Jira ticket routinely has three comments from the same person on the same
-day, and without the sequence the importer would silently keep only the last. Attachments
-download through the M7-S2 write path subject to the caps. Optional `--dev-status` queries
-Jira for the commit and branch links it already stores — for a team that installed the
-Jira/forge integration, this is the highest-yield evidence source there is.
-**Tests first** against a recorded transcript, never the live API: a 40 MB attachment is
-skipped with a warning rather than crashing; a comment containing frontmatter delimiters does
-not corrupt the issue file; `--dev-status` results outrank the M7-S3 scan when both have a
-link for the same issue.
+section 1 — an active issue routinely has three comments from the same person on the same day,
+and without the sequence the importer would silently keep only the last. **Issue field values
+join everything else unmapped in `source.yml`**: they are read per issue from
+`/repos/{owner}/{repo}/issues/{number}/issue-field-values`, they are the case M7-S1 wrote its
+rule for, and a field an organisation invents next year must not need a schema bump here.
+**Attachments are recorded rather than downloaded, and that is a finding rather than a
+preference.** A GitHub attachment is a `github.com/user-attachments/assets/…` link inside the
+markdown. On a private repository it cannot be fetched with a personal access token or a GitHub
+App token at all: the asset wants a browser session, and the only programmatic route is to
+re-request the issue with `Accept: application/vnd.github.full+json` and race a JWT out of
+`body_html` before it expires minutes later. An importer whose completeness depends on winning
+that race is one that half-works on exactly the repositories people most want migrated. So
+v1.0.0 rewrites nothing: the links stay in the body byte for byte, they are listed in
+`source.yml`, and the dry run says how many there are and that resolving them still needs
+github.com. This is why M7-S2 defers its decompression limit, and why this story is no longer
+the largest in this milestone.
+**Closing pull requests are the strongest evidence tier there is, and here they are free.**
+GitHub already stores which pull request closed an issue — `closedByPullRequestsReferences`,
+and the `closed` timeline event's `commit_id` where a commit closed one directly — and both
+arrive with the issue rather than through an integration somebody had to install. They outrank
+every tier of M7-S3's scan, which is what that recorder was built to arbitrate.
+**Tests first** against a recorded transcript, never the live API: a comment containing
+frontmatter delimiters does not corrupt the issue file; three comments by one author on one day
+produce three files rather than one; forty custom field values produce clean frontmatter and a
+complete `source.yml`; an attachment link survives the body byte for byte and is listed;
+`closedByPullRequestsReferences` outranks the M7-S3 scan when both have a link for the same
+issue.
 **Done when** a realistic export imports completely and idempotently — running it twice
 produces a zero-length diff.
 
@@ -1872,8 +1986,9 @@ requests.
 ### M8-S3 · Docs, gates and deploy
 **Branch** `isu/M8-S3-docs-deploy`
 **Build** `docs/`: getting started, the data model, every derived status with its rule, the
-check catalogue, the JSON contract, importing from Jira, and a page on what isu deliberately
-does not do. Then `make site` producing the whole site from a clean checkout, the gates —
+check catalogue, the JSON contract, importing from GitHub Issues, and a page on what isu
+deliberately does not do. Then `make site` producing the whole site from a clean checkout, the
+gates —
 internal link checker, HTML validity, a 300 KB per-page weight budget, an accessibility pass,
 responsive down to 360 px, `prefers-reduced-motion` honoured — and publishing on merge to trunk
 from CI, with favicon, Open Graph and Twitter cards, sitemap, canonical URLs and a
@@ -1932,12 +2047,22 @@ State this in the README so nobody has to ask:
 - **The local web UI** (`isu serve`). v1.0.0 is a CLI and a TUI. Dropping it also drops the
   markdown-to-HTML pipeline, the HTML sanitiser and the XSS surface that came with them —
   `glamour` renders to a terminal, where a `<script>` tag is just text.
-- **Linear import.** Jira is where the teams looking for an exit actually are. One importer,
-  done properly, beats two done at the same time.
+- **Jira and Linear import.** v1.0.0 imports from GitHub Issues and nothing else. Whoever is
+  adopting isu is already in a git repository, that repository is almost always on GitHub, and
+  GitHub answers for free — with no licence and no admin — what Jira answers through an
+  integration somebody installed. One importer, done properly, beats three done at once, and
+  M7-S1's source interface is the seam the next one arrives through.
 - **The WebAssembly derivation demo.** The most convincing possible proof of the central claim,
   and pure marketing: it gates nothing and it is the hardest thing on the website.
 - **isu Tower** — the hosted app for people without a clone. Separate repo, after v1.
-- Cross-repo issues. Monorepo-first is a position, not an omission.
+- Cross-repo issues. Monorepo-first is a position, not an omission — and it is what keeps
+  M7-S4's `<PREFIX>-<number>` ids from colliding, since two repositories' `#1` never meet.
+- **Sub-issue hierarchies.** isu has one `parent`, it must name an epic, and M7-S4 spends it on
+  the milestone. A GitHub tree eight levels deep is recorded whole in `source.yml` rather than
+  flattened into a shape that would misrepresent it, which makes modelling it in v1.1 a story
+  rather than a re-import.
+- **Downloading imported attachments.** GitHub's assets want a browser session on a private
+  repository, so M7-S5 records the links and leaves them resolvable where they already live.
 - A `fixed/` archive directory. Resolved issues stay in `issues/`.
 - Sprints, story points, burndown, time tracking.
 - Bidirectional sync with anything. Import is one-way and one-time by design.
