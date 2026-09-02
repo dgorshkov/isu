@@ -141,6 +141,8 @@ func withinBudget(t *testing.T, what string, took, base time.Duration) {
 		return
 	}
 
+	asserted++
+
 	require.Less(t, took, held,
 		"%s took %s, and the budget for %s is %s", what, took, why, held)
 }
