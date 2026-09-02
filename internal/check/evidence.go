@@ -63,7 +63,7 @@ func (evidenceCheck) Run(in Input) []Finding {
 // Both halves matter. An issue the branch did not find open here was not marked
 // done by this branch — and an issue the branch *created* in a terminal state
 // was never open in this repository at all, which is what an import is: M7
-// writes thousands of issues that Jira closed years ago, on a branch that
+// writes thousands of issues another tracker closed years ago, on a branch that
 // changes nothing outside issues/ because there is nothing else to change. A
 // rule that demanded code for those would make the importer unimplementable
 // while catching nobody, since nothing anybody was tracking was marked done.
