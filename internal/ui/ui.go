@@ -17,7 +17,6 @@
 package ui
 
 import (
-	"io"
 	"strings"
 	"time"
 
@@ -455,9 +454,3 @@ func atLeast(n, floor int) int {
 
 	return n
 }
-
-// discard is the writer a colourless renderer is built over. lipgloss decides a
-// profile from what it is writing to, and what this is writing to is not a
-// terminal, so the profile is the one with no colour in it — which is exactly
-// the decision internal/cli's theme makes for a pipe, made the same way.
-var discard io.Writer = io.Discard

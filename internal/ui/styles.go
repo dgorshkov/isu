@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"io"
+
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/dgorshkov/isu/internal/model"
@@ -38,7 +40,11 @@ const (
 
 func newStyles(r *lipgloss.Renderer) styles {
 	if r == nil {
-		r = lipgloss.NewRenderer(discard)
+		// lipgloss decides a profile from what it is writing to, and what this
+		// is writing to is not a terminal, so the profile is the one with no
+		// colour in it — which is exactly the decision internal/cli's theme
+		// makes for a pipe, made the same way.
+		r = lipgloss.NewRenderer(io.Discard)
 	}
 
 	plain := r.NewStyle()
