@@ -371,6 +371,14 @@ var errNothingWritten = errors.New("nothing was written, so nothing was filed")
 func (a *app) fileFromEditor(
 	ctx context.Context, s *session, io ui.Streams,
 ) (Write, error) {
+	// The repository is derived before the editor opens rather than after it
+	// closes. An editor that takes ten minutes and then reports that isu could
+	// not read the ref has wasted the ten minutes.
+	v, err := s.view(ctx)
+	if err != nil {
+		return Write{}, err
+	}
+
 	owner, err := s.whoami(ctx, "")
 	if err != nil {
 		return Write{}, err
@@ -393,11 +401,6 @@ func (a *app) fileFromEditor(
 	}
 
 	draft, err := decodeDraft(text)
-	if err != nil {
-		return Write{}, err
-	}
-
-	v, err := s.view(ctx)
 	if err != nil {
 		return Write{}, err
 	}

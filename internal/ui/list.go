@@ -39,7 +39,12 @@ func (m *Model) rebuild() {
 	m.rows = m.rows[:0]
 
 	if m.ready {
-		m.rows = append(m.rows, row{heading: "ready", count: len(m.in.Ready)})
+		// An empty queue gets no heading, for the same reason the board drops a
+		// status nothing matched: a heading with nothing under it is a pane
+		// that has said nothing in more words than saying nothing.
+		if len(m.in.Ready) > 0 {
+			m.rows = append(m.rows, row{heading: "ready", count: len(m.in.Ready)})
+		}
 
 		for _, item := range m.in.Ready {
 			m.rows = append(m.rows, row{item: item})

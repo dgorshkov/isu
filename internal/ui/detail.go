@@ -432,24 +432,40 @@ func wrap(line string, width int) []string {
 
 // breakAt is where to fold a line: the last space that leaves something on both
 // sides of it, and the width itself when there is none.
+//
+// It is only ever called on a line that does not fit, so the width is always
+// reached: a line whose characters ran out before it would have fitted.
 func breakAt(line string, width int) int {
-	last, seen := 0, 0
+	last, seen, at := 0, 0, len(line)
+	inEscape := false
 
 	for i, r := range line {
 		if seen == width {
-			if last > 0 {
-				return last
+			at = i
+
+			break
+		}
+
+		switch {
+		case r == escape:
+			inEscape = true
+		case inEscape:
+			// An escape sequence is not on the screen, so it is not a column
+			// the fold has to leave room for. Counting it would fold every
+			// coloured line early, and every line is coloured on a terminal.
+			inEscape = r != 'm'
+		default:
+			if r == ' ' && seen > 0 {
+				last = i
 			}
 
-			return i
+			seen++
 		}
-
-		if r == ' ' && seen > 0 {
-			last = i
-		}
-
-		seen++
 	}
 
-	return len(line)
+	if last > 0 {
+		return last
+	}
+
+	return at
 }

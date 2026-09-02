@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,4 +41,23 @@ func TestAStatusThePaletteDoesNotKnowIsDrawnPlain(t *testing.T) {
 	s := newStyles(nil)
 
 	require.Equal(t, s.plain, s.forStatus(model.Status("invented")))
+}
+
+// A styled string occupies the columns its characters take and not the bytes
+// its escape sequences take. Counting the sequences would push every right-hand
+// column off the screen the moment colour was switched on — which is the moment
+// nobody is running the tests, because the tests run into a buffer.
+func TestAnEscapeSequenceOccupiesNoColumns(t *testing.T) {
+	t.Parallel()
+
+	const bold = "\x1b[1m"
+
+	require.Equal(t, len("main"), visible(bold+"main"+"\x1b[0m"))
+	require.Equal(t, len("isu  main"), visible("isu  "+bold+"main"+"\x1b[0m"))
+	require.Equal(t, 0, visible(bold+"\x1b[0m"))
+	require.Equal(t, len("plain"), visible("plain"))
+
+	// And a line built out of styled parts still folds at the right column.
+	folded := wrap(strings.Repeat(bold+"word"+"\x1b[0m"+" ", 6), 14)
+	require.Len(t, folded, 3, "fourteen columns holds two four-letter words")
 }

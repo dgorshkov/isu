@@ -48,7 +48,7 @@ type reloadMsg struct {
 }
 
 // act runs the one action that takes an id, and there are two of them.
-func (m Model) act(which what) (tea.Model, tea.Cmd) {
+func (m Model) act(which what) (Model, tea.Cmd) {
 	item := m.selected()
 	if stopped, why := m.cannot(item); why != "" {
 		stopped.said = why
@@ -79,7 +79,7 @@ func (m Model) act(which what) (tea.Model, tea.Cmd) {
 // tea.Exec is what hands the terminal over and takes it back: the interface
 // leaves the alt screen, the editor draws on the terminal somebody is actually
 // looking at, and the frame comes back when it exits.
-func (m Model) file() (tea.Model, tea.Cmd) {
+func (m Model) file() (Model, tea.Cmd) {
 	if m.in.Actions == nil {
 		m.said = readOnly
 
@@ -115,7 +115,7 @@ const readOnly = "read-only: this interface was opened without the commands behi
 // done is an action reporting, and it always reports. "Never fails silently" is
 // M6-S5's rule and this is the whole of it: one message line, written by
 // whichever half of the action finished.
-func (m Model) done(msg doneMsg) (tea.Model, tea.Cmd) {
+func (m Model) done(msg doneMsg) (Model, tea.Cmd) {
 	m.working = false
 
 	if msg.err != nil {
@@ -162,7 +162,7 @@ func (m Model) reload() tea.Cmd {
 // The filter, the fold and the cursor all survive, which is why Data is
 // separate from Input: a reload is a re-read of a repository and not a rebuild
 // of the interface.
-func (m Model) reloaded(msg reloadMsg) (tea.Model, tea.Cmd) {
+func (m Model) reloaded(msg reloadMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
 		m.said = "re-reading the repository: " + msg.err.Error()
 

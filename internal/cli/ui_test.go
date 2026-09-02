@@ -354,3 +354,67 @@ func newestIssue(t *testing.T, r *gittest.Repo) string {
 
 	return ""
 }
+
+// An editor that hands back an issue the schema refuses is told which field is
+// wrong, in internal/issue's words rather than in words this command invented.
+func TestAnEditorThatWritesAnIssueWithNoTitleIsToldWhich(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the editor stand-in is a shell script; CI is linux and macos")
+	}
+
+	r := board(t)
+	editor := writeEditor(t, `---
+schema: 1
+title: 
+type: chore
+state: open
+owner: dmitry
+created: 2026-09-01
+---
+`)
+
+	require.Contains(t, tuiIn(t, r.Dir(), map[string]string{"EDITOR": editor}, "n").ok(t).stdout,
+		"title")
+}
+
+// A schema version isu does not know is refused at the decode, which is the one
+// thing M1-S5 asks of every reader of an issue file.
+func TestAnEditorThatWritesAnUnknownSchemaIsRefused(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the editor stand-in is a shell script; CI is linux and macos")
+	}
+
+	r := board(t)
+	editor := writeEditor(t, `---
+schema: 99
+title: From the future
+type: chore
+state: open
+owner: dmitry
+created: 2026-09-01
+---
+`)
+
+	require.Contains(t, tuiIn(t, r.Dir(), map[string]string{"EDITOR": editor}, "n").ok(t).stdout,
+		"not an issue file")
+}
+
+// An editor that will not run is reported rather than swallowed, and the
+// interface says so on the footer rather than dying.
+func TestAnEditorThatFailsIsReportedOnTheFooter(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the editor stand-in is a shell script; CI is linux and macos")
+	}
+
+	r := board(t)
+
+	require.Contains(t,
+		tuiIn(t, r.Dir(), map[string]string{"EDITOR": "false"}, "n").ok(t).stdout,
+		"running false")
+}

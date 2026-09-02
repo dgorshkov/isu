@@ -212,7 +212,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloadMsg:
 		return m.reloaded(msg)
 	case tea.KeyMsg:
-		return m.keys(msg)
+		next, cmd := m.keys(msg)
+
+		return next, cmd
 	}
 
 	return m, nil
@@ -227,31 +229,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // would make the interface drop keys under exactly the condition somebody is
 // going fast, and a pasted needle would be one key the filter had never heard
 // of.
-func (m Model) keys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) keys(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if msg.Type != tea.KeyRunes || len(msg.Runes) <= 1 {
 		return m.key(msg)
 	}
 
 	var cmds []tea.Cmd
 
-	next := m
-
 	for _, r := range msg.Runes {
-		model, cmd := next.key(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}, Alt: msg.Alt})
+		next, cmd := m.key(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}, Alt: msg.Alt})
 
-		one, ok := model.(Model)
-		if !ok {
-			return model, cmd
-		}
-
-		next = one
+		m = next
 
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}
 
-	return next, tea.Batch(cmds...)
+	return m, tea.Batch(cmds...)
 }
 
 // key is one keypress.
@@ -259,7 +254,7 @@ func (m Model) keys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // The filter line comes first and takes every printable key, so the whole
 // command map below is unreachable while it is open. That is the point of it:
 // see typeInto.
-func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) key(msg tea.KeyMsg) (Model, tea.Cmd) {
 	name := msg.String()
 
 	if m.filtering {
@@ -333,7 +328,7 @@ func (m Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // moved steps the cursor and asks for whatever now sits beside it.
-func (m Model) moved(delta int) (tea.Model, tea.Cmd) {
+func (m Model) moved(delta int) (Model, tea.Cmd) {
 	next := m.move(delta)
 
 	return next, next.fetch(next.selectedID())
@@ -344,7 +339,7 @@ func (m Model) moved(delta int) (tea.Model, tea.Cmd) {
 // It is a short map on purpose: what somebody wants from a pane they have just
 // opened is to move up and down it and then to get out, and every key that is
 // not one of those three is better spent on the list.
-func (m Model) scrollDetail(name string) (tea.Model, tea.Cmd) {
+func (m Model) scrollDetail(name string) (Model, tea.Cmd) {
 	switch name {
 	case "esc", "enter":
 		m.focus = onList
@@ -426,17 +421,13 @@ func date(t time.Time) string {
 // too many scrolls the header off the top on every redraw; a line too few
 // leaves the previous frame's footer sitting under this one.
 func fit(frame []string, width, height int) []string {
-	out := make([]string, 0, height)
+	out := make([]string, height)
 
-	for _, line := range frame {
-		out = append(out, strings.TrimRight(truncate(line, width), " "))
+	for i := range min(len(frame), height) {
+		out[i] = strings.TrimRight(truncate(frame[i], width), " ")
 	}
 
-	for len(out) < height {
-		out = append(out, "")
-	}
-
-	return out[:height]
+	return out
 }
 
 // truncate cuts a line to a width, in characters rather than bytes, and says so
