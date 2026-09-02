@@ -103,9 +103,11 @@ before the measurement was moved somewhere quiet. `make perf` runs the one packa
 process and sets `ISU_PERF` to say so, with `-v` so the number it measured is on the record of
 every run; the default suite still runs those tests and logs the same figure, and the
 **process-count** assertions beside them — the ones that actually prevent the regression — hold
-in every pass. macOS carries a further factor-of-two allowance,
-because `macos-latest` is a measured three times slower at this workload than the runner the
-budgets were taken on. See PLAN.md M2-S5.
+in every pass. macOS carries a further factor-of-two allowance, because `macos-latest` is
+measured at 2.58× the runner the budgets were taken on — 707 ms for `LoadRef` there against
+274 ms here, and 3.66 s for the board against 1.41 s. Those left the plan's own numbers 2.12×
+and 1.64× of headroom on an idle macOS runner, which is why both budgets carry it and not just
+the one that went red. See PLAN.md M2-S5.
 
 ### The read path is a hard requirement
 
