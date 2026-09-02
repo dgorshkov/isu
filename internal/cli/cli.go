@@ -68,6 +68,8 @@ type Env struct {
 	// Stderr is where errors and warnings go, so that `isu ready --json | jq`
 	// never sees a warning as data.
 	Stderr io.Writer
+	// Stdin is where `isu ui` reads keys from. Nil means the process's own.
+	Stdin io.Reader
 	// Dir is the directory isu is being run in. Empty means the process's own.
 	Dir string
 	// Getenv reads the environment. Nil means the process's own.
@@ -248,6 +250,7 @@ func (a *app) root() *cobra.Command {
 		a.triageCmd(),
 		a.checkCmd(),
 		a.initCmd(),
+		a.uiCmd(),
 	)
 
 	return root

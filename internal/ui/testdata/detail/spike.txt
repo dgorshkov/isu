@@ -1,0 +1,24 @@
+isu  main  1 issue                                                                remote refs 2h ago
+open 1
+────────────────────────────────────────────────────────────────────────────────────────────────────
+open (1)                                      │ ISU-aspike
+▸ ISU-aspike  p2  What does contention cost?  │ What does contention cost?
+                                              │
+                                              │ status    open
+                                              │ type      spike
+                                              │ priority  p2
+                                              │ state     open
+                                              │ owner     dmitry
+                                              │ created   <date>
+                                              │ question  how often do two clones race?
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+enter open · c claim · n new · r ready · g branch · / filter · h fold · q quit

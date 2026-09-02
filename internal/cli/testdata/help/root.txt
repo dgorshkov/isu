@@ -25,6 +25,7 @@ Available Commands:
   resolve     say this branch fixes an issue
   show        one issue in full
   triage      set who owns an issue, what blocks it, and how urgent it is
+  ui          the whole board, on one screen
   unclaim     release a claim, keeping the branch
 
 Flags:

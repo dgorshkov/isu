@@ -1,0 +1,24 @@
+isu  main  1 issue                                                                remote refs 2h ago
+open 1
+────────────────────────────────────────────────────────────────────────────────────────────────────
+open (1)                                      │ ISU-achore
+▸ ISU-achore  p2  Upgrade the linter          │ Upgrade the linter
+                                              │
+                                              │ status    open
+                                              │ type      chore
+                                              │ priority  p2
+                                              │ state     open
+                                              │ owner     dmitry
+                                              │ created   <date>
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+enter open · c claim · n new · r ready · g branch · / filter · h fold · q quit

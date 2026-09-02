@@ -1,0 +1,25 @@
+ui opens the terminal interface: the board on the left, everything about
+what the cursor is on down the right, and the same derived statuses every other
+command prints.
+
+It reads the repository once, at startup, exactly as `isu board` does. Actions
+taken from it — claiming, filing, checking a branch out — run the same code the
+commands run and re-read the repository afterwards, so what is on the screen is
+what the refs say and not a cache of what they said.
+
+--json prints what the interface would open on, which is `isu board`'s payload:
+an interface is not a thing an agent can read, and refusing to answer would
+leave one guessing.
+
+Usage:
+  isu ui [flags]
+
+Flags:
+  -h, --help   help for ui
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

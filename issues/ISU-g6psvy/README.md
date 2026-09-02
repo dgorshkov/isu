@@ -3,7 +3,7 @@ schema: 1
 id: ISU-g6psvy
 title: M6-S4 · Detail pane
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2

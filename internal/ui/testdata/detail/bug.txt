@@ -1,0 +1,24 @@
+isu  main  1 issue                                                                remote refs 2h ago
+open 1
+────────────────────────────────────────────────────────────────────────────────────────────────────
+open (1)                                      │ ISU-abug01
+▸ ISU-abug01  p1  Login retries drop the sec… │ Login retries drop the second attempt
+                                              │
+                                              │ status    open
+                                              │ type      bug
+                                              │ priority  p1
+                                              │ state     open
+                                              │ owner     dmitry
+                                              │ created   <date>
+                                              │ repro     post the form twice inside a second
+                                              │
+                                              │   # What happens
+                                              │
+                                              │   The second POST is dropped, and nothing says so.
+                                              │
+                                              │
+                                              │
+                                              │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+enter open · c claim · n new · r ready · g branch · / filter · h fold · q quit

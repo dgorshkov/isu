@@ -1,0 +1,24 @@
+isu  main  7 issues                                                               remote refs 2h ago
+done 1 · dropped 1 · awaiting triage 1 · in progress 1 · reopened 1 · open 2
+────────────────────────────────────────────────────────────────────────────────────────────────────
+in progress (1)                               │ ISU-inprog
+▸ ISU-inprog  p2  Board renders epics         │ Board renders epics
+reopened (1)                                  │
+  ISU-reopen  p2  Upgrade the linter          │ status      in progress
+                                              │ type        story
+                                              │ priority    p2
+                                              │ state       resolved
+                                              │ owner       alice
+                                              │ created     <date>
+                                              │ acceptance  the epic shows its children
+                                              │ branches    isu/ISU-inprog
+                                              │
+                                              │ claimed by alice on isu/ISU-inprog
+                                              │
+                                              │
+                                              │
+                                              │
+                                              │
+────────────────────────────────────────────────────────────────────────────────────────────────────
+/ali▌
+type to narrow · ↑↓ move · enter accepts · esc clears
