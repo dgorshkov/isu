@@ -1,0 +1,27 @@
+[
+  {
+    "number": 42,
+    "title": "A dump written by gh, which spells four keys differently",
+    "body": "",
+    "state": "CLOSED",
+    "stateReason": "NOT_PLANNED",
+    "createdAt": "2026-04-04T09:00:00Z",
+    "url": "https://github.com/acme/widgets/issues/42",
+    "author": {
+      "login": "support"
+    },
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "issueType": {
+      "name": "Feature"
+    },
+    "milestone": {
+      "number": 9,
+      "title": "A milestone gh wrote",
+      "state": "open"
+    }
+  }
+]

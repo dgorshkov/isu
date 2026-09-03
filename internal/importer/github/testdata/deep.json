@@ -1,0 +1,139 @@
+[
+  {
+    "number": 1,
+    "title": "level 1",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      2
+    ]
+  },
+  {
+    "number": 2,
+    "title": "level 2",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      3
+    ]
+  },
+  {
+    "number": 3,
+    "title": "level 3",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      4
+    ]
+  },
+  {
+    "number": 4,
+    "title": "level 4",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      5
+    ]
+  },
+  {
+    "number": 5,
+    "title": "level 5",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      6
+    ]
+  },
+  {
+    "number": 6,
+    "title": "level 6",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      7
+    ]
+  },
+  {
+    "number": 7,
+    "title": "level 7",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      8
+    ]
+  },
+  {
+    "number": 8,
+    "title": "level 8",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      9
+    ]
+  },
+  {
+    "number": 9,
+    "title": "level 9",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ],
+    "sub_issues": [
+      10
+    ]
+  },
+  {
+    "number": 10,
+    "title": "level 10",
+    "state": "open",
+    "created_at": "2026-03-04T09:00:00Z",
+    "assignees": [
+      {
+        "login": "dmitry"
+      }
+    ]
+  }
+]
