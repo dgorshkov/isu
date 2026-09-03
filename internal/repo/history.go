@@ -201,3 +201,32 @@ func assemble(changes []change, states map[string]issue.State) History {
 
 	return history
 }
+
+// LoadCommits reads trunk's own timeline, oldest first and with no diffs.
+//
+// It is what the importer's evidence scan walks: the years of history that
+// predate isu, where the link between a commit and the issue it resolved is
+// whatever somebody typed into a message, a branch name or a squash subject.
+// One git process, whatever the repository holds.
+//
+// --first-parent for the same reason LoadHistory uses it — this is trunk's
+// timeline and not everything that was ever merged into it — and because a
+// merge commit's own subject is where the branch name a merge recorded
+// survives. Without it the walk would descend into the branch and the merge,
+// which is the record of the branch's name, would never be visited.
+func (r *Repo) LoadCommits(ctx context.Context, trunk string) ([]gitx.Commit, error) {
+	commits, err := r.git.Log(ctx, gitx.LogSpec{
+		Rev:         trunk,
+		FirstParent: true,
+		Reverse:     true,
+	})
+	if err != nil {
+		if trunk == unbornHEAD && errors.Is(err, gitx.ErrUnknownRevision) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return commits, nil
+}
