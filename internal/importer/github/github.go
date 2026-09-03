@@ -58,6 +58,9 @@ type Options struct {
 	// TypeMap places a label or an issue type name onto one of isu's types.
 	// GitHub's own defaults are applied first and need no entry.
 	TypeMap map[string]issue.Type
+	// Fields says whether to read each issue's field values, which is one
+	// request per issue and is the only per-issue request this importer makes.
+	Fields bool
 	// Client is how the API is reached. It is nil when Dump is set.
 	Client *Client
 }
@@ -178,6 +181,9 @@ func (s *Source) Load(ctx context.Context) (*importer.Batch, error) {
 	b.Items = append(b.Items, ix.epics(repository)...)
 
 	s.found(b, issues, ix)
+	b.Notes = append(b.Notes,
+		"attachment links are recorded, not fetched: resolving one still needs "+
+			"github.com, because on a private repository the asset wants a browser session")
 
 	sort.Strings(b.Unplaced)
 
@@ -199,7 +205,7 @@ func (s *Source) read(ctx context.Context) ([]Issue, string, int, error) {
 		return issues, repository, 0, nil
 	}
 
-	issues, err := s.opts.Client.Issues(ctx, s.opts.Repository, s.opts.State)
+	issues, err := s.opts.Client.Issues(ctx, s.opts.Repository, s.opts.State, s.opts.Fields)
 	if err != nil {
 		return nil, "", 0, err
 	}
@@ -243,6 +249,8 @@ func (s *Source) found(b *importer.Batch, issues []Issue, ix *index) {
 		features["milestones"] = features["milestones"] || in.Milestone != nil
 		features["sub-issues"] = features["sub-issues"] || len(in.SubIssues) > 0
 		features["dependencies"] = features["dependencies"] || len(in.BlockedBy) > 0
+		features["issue fields"] = features["issue fields"] || len(in.Fields) > 0
+		features["comments"] = features["comments"] || len(in.comments) > 0
 	}
 
 	for name, used := range features {
@@ -269,15 +277,18 @@ func (s *Source) item(
 	key := "#" + strconv.Itoa(in.Number)
 
 	item := importer.Item{
-		Key:     key,
-		Ref:     repository + key,
-		URL:     in.HTMLURL,
-		Title:   in.Title,
-		Type:    s.typeOf(b, in),
-		Owner:   assignee(in),
-		Created: in.CreatedAt,
-		Body:    in.Body,
-		Extra:   map[string]any{},
+		Key:         key,
+		Ref:         repository + key,
+		URL:         in.HTMLURL,
+		Title:       in.Title,
+		Type:        s.typeOf(b, in),
+		Owner:       assignee(in),
+		Created:     in.CreatedAt,
+		Body:        in.Body,
+		Extra:       map[string]any{},
+		Comments:    comments(in),
+		Attachments: attachments(in.Body),
+		Closing:     closing(in),
 	}
 
 	item.State, item.Reason, item.Resolution = state(in)
@@ -326,6 +337,10 @@ func (s *Source) extra(item *importer.Item, in Issue, ix *index) {
 
 	if in.Milestone != nil {
 		item.Extra["milestone"] = in.Milestone.Title
+	}
+
+	if fields := fieldValues(in.Fields); len(fields) > 0 {
+		item.Extra["issue_fields"] = fields
 	}
 
 	if tree := ix.hierarchy(in.Number); tree != nil {

@@ -1,0 +1,51 @@
+import reads another tracker's issues and writes them as folders in this
+repository. v1.0.0 imports from GitHub Issues and nothing else.
+
+A dry run is the default. It says what would be written — how many issues, of
+what types, how many comments, how many attachment links, what it could not
+place — and writes nothing at all. Pass --write when the report says what you
+expected.
+
+Ids keep the source's key where that key is already a legal id, and are formed
+from it where it is not. GitHub numbers issues per repository, from the same
+sequence it numbers pull requests, so #1234 becomes <PREFIX>-1234 and the
+milestone numbered 3 becomes <PREFIX>-M3 — two sequences, two ids, no collision.
+Milestones are epics: an issue belongs to at most one, which is exactly what
+isu's single parent field holds.
+
+Everything the schema has no place for — labels, the author, custom field
+values, the sub-issue hierarchy, attachment links — goes to source.yml in the
+issue's own folder and never into frontmatter. A mature tracker has two hundred
+custom fields, and a schema that absorbs them is not a schema.
+
+Attachments are recorded and not downloaded. A GitHub asset wants a browser
+session on a private repository, so the links stay in the body byte for byte and
+are listed in source.yml, where they still resolve on github.com.
+
+The token is read from $GITHUB_TOKEN, never from a flag, and is redacted from
+every message this command prints. A public repository needs none.
+
+Usage:
+  isu import <source> [owner/repo] [flags]
+
+Flags:
+      --api string             the API root (default "https://api.github.com")
+      --dump string            read a saved dump instead of the API, so an import is reproducible offline
+      --fetch-only string      write the dump to this path and stop, mapping nothing
+      --fields                 read each issue's field values, which is one request per issue (default true)
+  -h, --help                   help for import
+      --id-prefix string       form ids under this prefix instead of the one in .isu.yml
+      --owner string           who owns an issue the source left unassigned
+      --samples int            how many issues the dry run shows in full (default 2)
+      --scan                   scan this repository's history for the commits that resolved these issues (default true)
+      --state string           which issues to read: open, closed or all (default "all")
+      --token-env string       the environment variable holding the API token (default "GITHUB_TOKEN")
+      --type-map stringArray   place a label or an issue type onto an isu type, as name=type; repeatable
+      --write                  write the issues; without it this is a dry run that writes nothing
+
+Global Flags:
+      --fetch         update remote refs before reading
+      --json          print newline-delimited JSON instead of text
+      --no-color      never colour the output
+      --ref string    the ref isu treats as trunk (default: main, else master, else HEAD)
+      --repo string   the repository to read (default: the working directory)

@@ -84,10 +84,26 @@ func (c *Client) Requests() int { return c.requests }
 // Waited is how long it spent sitting on rate limits.
 func (c *Client) Waited() time.Duration { return c.waited }
 
-// Issues reads every issue in a repository.
-func (c *Client) Issues(ctx context.Context, repository, state string) ([]Issue, error) {
-	return pages[Issue](ctx, c,
+// Issues reads every issue in a repository, with its comments and, when asked,
+// its field values.
+func (c *Client) Issues(
+	ctx context.Context, repository, state string, fields bool,
+) ([]Issue, error) {
+	issues, err := pages[Issue](ctx, c,
 		fmt.Sprintf("/repos/%s/issues?state=%s&sort=created&direction=asc", repository, state))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.attachComments(ctx, repository, issues); err != nil {
+		return nil, err
+	}
+
+	if !fields {
+		return issues, nil
+	}
+
+	return issues, c.attachFields(ctx, repository, issues)
 }
 
 // Dump is what --fetch-only writes: the repository's name and the list as it
@@ -99,8 +115,10 @@ type Dump struct {
 }
 
 // Fetch reads the repository and returns the dump bytes.
-func (c *Client) Fetch(ctx context.Context, repository, state string) ([]byte, error) {
-	issues, err := c.Issues(ctx, repository, state)
+func (c *Client) Fetch(
+	ctx context.Context, repository, state string, fields bool,
+) ([]byte, error) {
+	issues, err := c.Issues(ctx, repository, state, fields)
 	if err != nil {
 		return nil, err
 	}

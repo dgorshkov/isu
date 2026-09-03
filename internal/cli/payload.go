@@ -212,6 +212,74 @@ type Write struct {
 	Pushed bool `json:"pushed"`
 }
 
+// ImportPayload is `isu import`: what an import would write, or what it wrote.
+//
+// A dry run and a write print the same shape, and `wrote` is the only field
+// that tells them apart — so a caller that wants to know what an import did
+// reads one document either way.
+type ImportPayload struct {
+	Source     string `json:"source"`
+	Repository string `json:"repository"`
+	// Prefix is what ids were formed under, which is .isu.yml's unless
+	// --id-prefix said otherwise.
+	Prefix string `json:"prefix"`
+	// Wrote says this was a write rather than a dry run.
+	Wrote bool `json:"wrote"`
+	// Items is how many issues the source handed over; Folders is how many
+	// would be written, which is smaller whenever something was refused.
+	Items   int `json:"items"`
+	Folders int `json:"folders"`
+	Epics   int `json:"epics"`
+	// Comments, Attachments and Fields are the three things that would
+	// otherwise be lost: comment files, recorded attachment links, and values
+	// the schema has no place for.
+	Comments    int `json:"comments"`
+	Attachments int `json:"attachments"`
+	Fields      int `json:"fields"`
+	// Provenance is how many required fields were written as a provenance line
+	// because the source supplied none.
+	Provenance int `json:"provenance"`
+	// Unowned is how many issues have neither an assignee nor --owner, which
+	// is what makes --write refuse.
+	Unowned int `json:"unowned"`
+	// Dangling is how many parent or blocked_by links pointed outside the
+	// import and were recorded rather than written as ids resolving to nothing.
+	Dangling int `json:"dangling"`
+	// Requests is what reading the source cost its rate-limit budget.
+	Requests int            `json:"requests"`
+	Types    map[string]int `json:"types"`
+	States   map[string]int `json:"states"`
+	// Evidence is how many issues were linked to a resolving commit, by tier.
+	Evidence map[string]int `json:"evidence"`
+	// Found names the source features this repository actually uses.
+	Found []string `json:"found"`
+	// Unplaced are the type names and labels no map placed.
+	Unplaced []string `json:"unplaced"`
+	// Notes are the sentences the source has to say for itself.
+	Notes   []string       `json:"notes"`
+	Skipped []ImportSkip   `json:"skipped"`
+	Samples []ImportSample `json:"samples"`
+	// Paths are what was written, relative to the repository root, and empty
+	// on a dry run.
+	Paths []string `json:"paths"`
+}
+
+// ImportSkip is one thing an import declined, and why.
+type ImportSkip struct {
+	Ref string `json:"ref"`
+	Why string `json:"why"`
+}
+
+// ImportSample is one issue a dry run shows in full, so that "5,000 issues" is
+// not the only thing anybody sees before agreeing to write them.
+type ImportSample struct {
+	ID    string   `json:"id"`
+	Key   string   `json:"key"`
+	Files []string `json:"files"`
+	// README is the issue file this import would write, verbatim.
+	README string `json:"readme"`
+}
+
 // emit writes one JSON value and the newline that ends its line.
 func emit(w io.Writer, value any) error {
 	return json.NewEncoder(w).Encode(value)
