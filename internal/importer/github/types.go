@@ -71,24 +71,62 @@ type Comment struct {
 	Body      string    `json:"body"`
 }
 
+// SelectOption is one choice of a single- or multi-select issue field. Only
+// its name survives the import: a colour is not data anybody can act on from a
+// terminal, and the id is GitHub's rather than this repository's.
+type SelectOption struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
 // FieldValue is one issue field value — the structured custom metadata that
 // reached general availability in July 2026, and precisely the two hundred
 // custom fields PLAN.md M7-S1 refuses to let into frontmatter.
+//
+// The API spells the name `issue_field_name` and puts a select field's answer
+// in `single_select_option` or `multi_select_options` rather than in `value`.
+// The two shorter spellings below are what a dump somebody assembled by hand
+// tends to use, and cost two comparisons to accept.
 type FieldValue struct {
-	Name  string `json:"name"`
-	Field *Named `json:"field"`
-	Value any    `json:"value"`
+	IssueFieldName     string         `json:"issue_field_name,omitempty"`
+	DataType           string         `json:"data_type,omitempty"`
+	Value              any            `json:"value,omitempty"`
+	SingleSelectOption *SelectOption  `json:"single_select_option,omitempty"`
+	MultiSelectOptions []SelectOption `json:"multi_select_options,omitempty"`
+
+	Name  string `json:"name,omitempty"`
+	Field *Named `json:"field,omitempty"`
 }
 
 func (f FieldValue) name() string {
-	if f.Field != nil && f.Field.Name != "" {
+	switch {
+	case f.IssueFieldName != "":
+		return f.IssueFieldName
+	case f.Field != nil && f.Field.Name != "":
 		return f.Field.Name
+	default:
+		return f.Name
 	}
-
-	return f.Name
 }
 
-func (f FieldValue) value() any { return f.Value }
+// value is the answer, whichever of the three keys carries it. A select field
+// keeps its option's name and drops the id and the colour.
+func (f FieldValue) value() any {
+	switch {
+	case f.SingleSelectOption != nil:
+		return f.SingleSelectOption.Name
+	case len(f.MultiSelectOptions) > 0:
+		names := make([]any, 0, len(f.MultiSelectOptions))
+		for _, option := range f.MultiSelectOptions {
+			names = append(names, option.Name)
+		}
+
+		return names
+	default:
+		return f.Value
+	}
+}
 
 // Issue is one row of the REST list, and the unit this importer's dump is a
 // list of.

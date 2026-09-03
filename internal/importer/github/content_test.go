@@ -23,8 +23,19 @@ func TestIssueFieldValuesJoinEverythingElseUnmapped(t *testing.T) {
 	plan := planned(t, load(t, "dump.json", github.Options{}), importer.Options{})
 	source := body(t, folder(t, plan, "ISU-1"), importer.SourceFileName)
 
+	// The API's own spelling, then the two shorter ones a dump assembled by
+	// hand tends to use.
 	require.Contains(t, source, "Severity: high")
 	require.Contains(t, source, "Team: platform")
+	require.Contains(t, source, "Sprint: 14")
+
+	// A select field's answer is not in `value` at all: it is the option's
+	// name, and the id and the colour are GitHub's rather than this
+	// repository's.
+	require.Contains(t, source, "Stage: in review")
+	require.Contains(t, source, "- cli")
+	require.Contains(t, source, "- tui")
+
 	require.NotContains(t, body(t, folder(t, plan, "ISU-1"), issue.ReadmeName), "Severity")
 }
 

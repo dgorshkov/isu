@@ -2007,6 +2007,14 @@ carries. Issue field values are the one genuine exception, because there is no r
 list of them; they are read per issue as this story specifies, `--fields=false` turns them off,
 and the dry run reports what the budget cost either way.
 
+**A field value is not shaped the way this document assumed, and the difference is silent.** The
+API spells the name `issue_field_name`, not `name`, and a select field's answer is in
+`single_select_option` or `multi_select_options` rather than in `value` — so a reader looking for
+`name` and `value` would have produced a `source.yml` keyed by empty strings with every select
+field blank, and nothing would have said so. Both are read, the shorter spellings a hand-written
+dump uses are accepted beside them, and a select keeps its option's name while dropping the id
+and the colour, which are GitHub's rather than this repository's.
+
 Attachments are recorded and not downloaded, as specified, and the note saying so is
 unconditional: a reader has to be told that resolving one still needs github.com whether or not
 this repository has any.

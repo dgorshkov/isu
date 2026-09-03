@@ -55,14 +55,46 @@
       ],
       "issue_field_values": [
         {
-          "field": {
-            "name": "Severity"
-          },
+          "issue_field_name": "Severity",
+          "data_type": "text",
           "value": "high"
         },
         {
-          "name": "Team",
+          "issue_field_name": "Stage",
+          "data_type": "single_select",
+          "value": null,
+          "single_select_option": {
+            "id": 3,
+            "name": "in review",
+            "color": "BLUE"
+          }
+        },
+        {
+          "issue_field_name": "Surfaces",
+          "data_type": "multi_select",
+          "value": null,
+          "multi_select_options": [
+            {
+              "id": 1,
+              "name": "cli",
+              "color": "GREEN"
+            },
+            {
+              "id": 2,
+              "name": "tui",
+              "color": "RED"
+            }
+          ]
+        },
+        {
+          "field": {
+            "name": "Team"
+          },
           "value": "platform"
+        },
+        {
+          "name": "Sprint",
+          "value": 14
         }
       ],
       "comments": [
