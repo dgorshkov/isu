@@ -3,7 +3,7 @@ schema: 1
 id: ISU-traxr8
 title: M7-S2 · Safe writes
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
