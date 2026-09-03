@@ -3,7 +3,7 @@ schema: 1
 id: ISU-4jsxyw
 title: M7-S3 · Resolving-commit recovery
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
