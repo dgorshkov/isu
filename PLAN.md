@@ -479,7 +479,7 @@ Ten milestones. Stop for review at the end of each.
 | M4 | CLI | board, show, ready, new, claim, resolve, drop, comment, triage, field notes | done |
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | done |
 | M6 | TUI | `isu ui` | done |
-| M7 | Importers | safe writes, GitHub Issues | not started |
+| M7 | Importers | safe writes, GitHub Issues | done |
 | M8 | Public website | content, landing page, docs, deploy | not started |
 | M9 | Release | goreleaser, brew, docs, v1.0.0 | not started |
 
@@ -1762,7 +1762,7 @@ if the TUI package calls git directly.
 
 ---
 
-# M7 · Importers
+# M7 · Importers ✅
 
 **The importer is GitHub Issues, and it used to be Jira.** The swap is less a change of target
 than a change of what the source can be asked. Somebody adopting isu is already in a git
@@ -1787,7 +1787,28 @@ frontmatter. A repository with none of them still imports, and the dry run says 
 A Jira key is already a legal id; a GitHub key is `#1234`, which is repo-scoped, shares its
 sequence with pull requests, and is not a folder name. `<PREFIX>-1234` it is.
 
-### M7-S1 · Import framework and dry run
+### M7-S1 · Import framework and dry run ✅
+**Done** #15, 2026-09-03. The seam is four methods and three of them are description, because
+everything after "which tracker" — ids, folders, the dry run, the guarded write — is the same for
+every source there will ever be. A second tracker is a `Load` method, not a second importer.
+
+**The reverse mapping is recorded rather than computed, and that is not laziness.** This story
+asks that an id map back to the source key it was formed from, for a key that was legal and for
+one that was not — and with a prefix of `PROJ`, the key `#1234` and the key `PROJ-1234` form the
+same id. No function of the id alone can say which one it came from, so a `Mapping` remembers.
+That also makes a collision between two keys something the type refuses rather than something the
+filesystem resolves by overwriting.
+
+**Mapping is two passes, not one, and the second one is a correction this document did not
+anticipate.** A link is only good once the whole import is known: an issue whose epic was refused
+for want of an owner would otherwise be written with a `parent` naming a folder nothing will
+write, which is precisely what M5-S2 fails a repository for. So the issues are built, the links
+that point at anything unwritten are pruned into `source.yml`, and only then are the files
+rendered. `Dangling` in the dry run is that number.
+
+`source.yml` is sorted at every level rather than left to a map's iteration order, which is what
+makes M7-S5's idempotency assertion possible at all: a file whose key order changes per run
+produces a diff every run.
 **Branch** `isu/M7-S1-import-framework`
 **Build** `internal/importer`: a source interface, field mapping to the isu schema, an
 evidence-tier recorder, and a `--dry-run` report showing counts, coverage and samples without
@@ -1803,7 +1824,25 @@ for a key that was legal and for one that was not; a source with two hundred cus
 produces clean frontmatter and a complete `source.yml`.
 **Done when** `--dry-run` is the default and writing requires `--write`.
 
-### M7-S2 · Safe writes
+### M7-S2 · Safe writes ✅
+**Done** #15, 2026-09-03. One payload per attack, and the live one is the display name that is a
+path: a comment file is named for its author, and an author's name is whatever they typed into
+their profile. Everything outside a narrow alphabet becomes a hyphen before `SafeName` gets the
+last word, so `../../../etc/passwd` becomes `etc-passwd` and lands in the folder it belongs in.
+
+Every name is checked before anything is created, so a folder with one bad name in it writes
+nothing rather than half of itself. **The symlink is the one `SafeName` cannot see** — every
+element of that path is an ordinary name, and the escape is that one of them is already a link
+somewhere else — so every element between the root and the file is stat'ed without following.
+
+The grep test is an AST walk for `os.<write>` rather than a text grep, which is the same rule as
+M2-S1's with one improvement: it cannot be fooled by the word appearing in a comment, and this
+file's comments talk about writing constantly.
+
+`Secret` formats as `<redacted>` through `fmt`, `%v`, `%s`, `%#v` and `encoding/json`, so the
+ordinary way of building a message cannot leak one; `Redact` scrubs the messages isu did not
+write, which is the half no type system reaches. **The deferral this story names held**: v1.0.0
+fetches no attachment, so there is still no traffic for a decompression limit to sit on.
 **Branch** `isu/M7-S2-safe-writes`
 **Why** An importer writes attacker-influenced data into your repository. Ticket titles,
 comment bodies, author display names and custom field values all originate outside your
@@ -1827,7 +1866,25 @@ body over the per-issue cap, and a token interpolated into an error message.
 **Done when** every importer writes exclusively through this path, asserted by a grep test in
 the same style as M2-S1.
 
-### M7-S3 · Resolving-commit recovery
+### M7-S3 · Resolving-commit recovery ✅
+**Done** #15, 2026-09-03. The tiers are ordered weakest-first as integers, so "record the stronger
+of two" is a comparison rather than a table, and M7-S5's closing pull request slots in above all
+three without disturbing them.
+
+**One carve-out this document did not make.** On a merge commit the subject is git's own
+composition, so the number in `Merge pull request #456 from alice/topic` is the pull request *by
+construction* — reading it as a candidate would produce a wrong link on every merge in a
+repository whose issue numbers overlap its pull requests', which is every GitHub repository. So a
+merge's subject is read for the branch name it recorded and for nothing else. The squash-subject
+tier is unaffected and still discards `(#456)` unless 456 is an issue being imported.
+
+The walk itself is `repo.LoadCommits`: trunk's own timeline, oldest first, no diffs, one git
+process. `--first-parent` for the same reason `LoadHistory` uses it, and for one more — without
+it the walk descends into the branch and the merge commit, which is the only record of the
+branch's name, is never visited.
+
+`--scan=false` turns the whole thing off, for an import into a repository whose history has
+nothing to do with the tracker being left behind.
 **Branch** `isu/M7-S3-evidence-scan`
 **Build** one pass over history recovering issue-key → commit links at three tiers: key in a
 commit message, key in a merge commit's branch name, key in a squash subject. (Issues resolved
@@ -1846,7 +1903,34 @@ records the stronger one; **assert a `(#456)` squash subject naming a pull reque
 link**, and that the same subject does produce one when 456 is an imported issue.
 **Done when** the scanner runs against a real repository and reports its coverage.
 
-### M7-S4 · GitHub: issues, types, milestones and state
+### M7-S4 · GitHub: issues, types, milestones and state ✅
+**Done** #15, 2026-09-03. **Three decisions this document left open, each recorded here because
+the reason matters more than the answer.**
+
+**The dump is the REST list, and `gh`'s spelling is read as an alias.** This story says "a saved
+`gh issue list --json` dump". `gh` writes camelCase for four keys and the REST API writes
+snake_case, and `--fetch-only` records what the API returned — so the REST shape is the format
+and `stateReason`, `createdAt`, `url`, `author` and `issueType` are accepted beside it. `comments`
+is an integer in the REST list and an array in a dump that carries them, so it is held raw and
+decoded only when it is the second; a count is not a comment, and refusing the import over one
+would refuse every REST dump.
+
+**Sub-issue trees and dependencies are read where the payload carries them, and never fetched.**
+The REST list carries neither, and asking per issue is exactly the request-per-issue this story
+forbids — 5,000 issues would be 10,000 requests against a budget of 5,000 an hour. They are this
+importer's own extension to the REST row, which `--fetch-only` preserves, so an import that has
+them is reproducible and one that does not says so in the dry run's `found`.
+
+**A milestone's first copy wins.** The REST list embeds the whole milestone on every issue in it,
+so the copies are one object repeated; a dump somebody assembled by hand may have thinned the
+later ones, and overwriting would lose the description the first one carried.
+
+Everything else landed as specified. Pull requests are dropped first and `null` under the
+`pull_request` key is not a pull request — which matters because a dump this importer wrote
+round-trips the key as exactly that. The type falls through the organisation's own type, then the
+label map, then `chore`, and an issue GitHub's own type placed never puts its labels on the
+"could not place" list. An issue's `blocked_by` naming another repository is keyed
+`owner/repo#5`, so it stays outside the import rather than resolving to this repository's `#5`.
 **Branch** `isu/M7-S4-github-core`
 **Build** read issues from the GitHub API, or from a saved `gh issue list --json` dump —
 `--fetch-only` writes that dump, the tests read one, and an import is therefore reproducible
@@ -1910,7 +1994,30 @@ counts.
 **Done when** the imported tree passes `isu check` with zero failures, and 5,000 issues are read
 in pages of a hundred with no request per issue.
 
-### M7-S5 · GitHub: comments, fields and closing pull requests
+### M7-S5 · GitHub: comments, fields and closing pull requests ✅
+**Done** #15, 2026-09-03. **Comments cost pages, not issues, and that was worth finding.**
+`/repos/{owner}/{repo}/issues/comments` lists every comment in the repository, so the thing that
+looks like it needs a request per issue does not — they are grouped by the `issue_url` each one
+carries. Issue field values are the one genuine exception, because there is no repository-wide
+list of them; they are read per issue as this story specifies, `--fields=false` turns them off,
+and the dry run reports what the budget cost either way.
+
+Attachments are recorded and not downloaded, as specified, and the note saying so is
+unconditional: a reader has to be told that resolving one still needs github.com whether or not
+this repository has any.
+
+**One decision this document did not make: two imports colliding are told apart by the source
+*ref*, not the key.** This story asks that running one import twice produce a zero-length diff
+and M7-S4 asks that two imports into one tracker be refused rather than overwritten. Both are
+true only if "is this folder already this issue" is asked of `acme/widgets#7` rather than of
+`#7` — a key is repository-relative, so the pair the rule exists to catch is exactly the pair
+that would look identical. A folder isu wrote itself has no `source.yml` at all and is never
+overwritten either.
+
+The command surface is here rather than in M7-S1 because this is the commit that made the whole
+pipeline usable, and M7-S1's own done-when — a dry run by default, `--write` to change that — is
+asserted by the tests in this pair. `isu import` takes the source as an argument rather than
+offering a subcommand per tracker, since everything after "which tracker" is identical.
 **Branch** `isu/M7-S5-github-content`
 **Build** comments become files under `comments/`, named by date, author and sequence per
 section 1 — an active issue routinely has three comments from the same person on the same day,
