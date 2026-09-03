@@ -195,7 +195,7 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 			return res.Body, nil
 		}
 
-		if !throttled(res.Status) || attempt == MaxAttempts {
+		if !throttled(res) || attempt == MaxAttempts {
 			return nil, importer.Redact(fmt.Errorf("GET %s: %d %s: %s",
 				path, res.Status, http.StatusText(res.Status), summary(res.Body)), c.Token)
 		}
@@ -209,11 +209,31 @@ func (c *Client) get(ctx context.Context, path string) ([]byte, error) {
 	}
 }
 
-// throttled reports whether a status is GitHub saying "not so fast". Both
-// answers mean it: 429 is the documented one and 403 is what a secondary rate
-// limit still returns.
-func throttled(status int) bool {
-	return status == http.StatusTooManyRequests || status == http.StatusForbidden
+// throttled reports whether a response is GitHub saying "not so fast".
+//
+// 429 always is. **403 is the hard one, and reading it as a rate limit on its
+// own is a defect this had until somebody pointed it at a repository the token
+// could not read.** GitHub answers 403 both for a secondary rate limit and for
+// "you may not read this", and the two want opposite handling: one is worth
+// waiting out and the other will never improve. Reading every 403 as the first
+// cost five requests and eleven seconds of backoff before a message that was
+// already correct on the first one — against a budget the waiting was supposed
+// to protect.
+//
+// So a 403 is throttling only when the response says so, which is what a
+// permission error never does: a `retry-after`, a spent `x-ratelimit-remaining`,
+// or a body that mentions the limit it is about.
+func throttled(res *Response) bool {
+	switch {
+	case res.Status == http.StatusTooManyRequests:
+		return true
+	case res.Status != http.StatusForbidden:
+		return false
+	case res.Header.Get("retry-after") != "", res.Header.Get("x-ratelimit-remaining") == "0":
+		return true
+	default:
+		return strings.Contains(strings.ToLower(string(res.Body)), "rate limit")
+	}
 }
 
 // retryAfter is how long to wait: what the response said, and a widening

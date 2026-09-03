@@ -181,9 +181,15 @@ func TestARateLimitIsWaitedOutRatherThanFailedOn(t *testing.T) {
 	}{
 		{"retry-after", http.StatusForbidden, http.Header{"Retry-After": {"30"}}, 30 * time.Second},
 		{"the reset", http.StatusTooManyRequests, http.Header{"X-Ratelimit-Reset": {"1000090"}}, 90 * time.Second},
-		{"a reset already past", http.StatusForbidden, http.Header{"X-Ratelimit-Reset": {"999000"}}, 0},
-		{"an hour away", http.StatusForbidden, http.Header{"X-Ratelimit-Reset": {"1003600"}}, github.MaxWait},
-		{"nothing said", http.StatusForbidden, nil, time.Second},
+		// A primary rate limit spends the budget and says so, which is what
+		// tells it from a 403 that means "you may not read this".
+		{"a reset already past", http.StatusForbidden, http.Header{
+			"X-Ratelimit-Remaining": {"0"}, "X-Ratelimit-Reset": {"999000"},
+		}, 0},
+		{"an hour away", http.StatusForbidden, http.Header{
+			"X-Ratelimit-Remaining": {"0"}, "X-Ratelimit-Reset": {"1003600"},
+		}, github.MaxWait},
+		{"nothing said", http.StatusTooManyRequests, nil, time.Second},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -457,7 +463,10 @@ func TestARealWaitEndsWhenTheContextDoes(t *testing.T) {
 
 	tape := &transcript{miss: &github.Response{
 		Status: http.StatusForbidden,
-		Header: http.Header{"X-Ratelimit-Reset": {strconv.FormatInt(time.Now().Add(time.Hour).Unix(), 10)}},
+		Header: http.Header{
+			"X-Ratelimit-Remaining": {"0"},
+			"X-Ratelimit-Reset":     {strconv.FormatInt(time.Now().Add(time.Hour).Unix(), 10)},
+		},
 	}}
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -599,4 +608,48 @@ func TestATransportThatCannotReachAnythingSaysSo(t *testing.T) {
 	_, err := (&github.Client{Base: base}).
 		Issues(t.Context(), "acme/widgets", github.StateAll, false)
 	require.Error(t, err)
+}
+
+// GitHub answers 403 both for a secondary rate limit and for "you may not read
+// this", and the two want opposite handling. Waiting out the second is five
+// requests and eleven seconds of backoff before a message that was already
+// correct on the first one — measured against a real repository, which is how
+// this was found.
+func TestAPermissionRefusalIsNotARateLimit(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name string
+		res  *github.Response
+	}{
+		{"nothing said at all", &github.Response{Status: http.StatusForbidden}},
+		{"a body about permission", &github.Response{
+			Status: http.StatusForbidden,
+			Body:   []byte(`{"message":"GitHub access to this repository is not enabled"}`),
+		}},
+		{"budget left over", &github.Response{
+			Status: http.StatusForbidden,
+			Header: http.Header{"X-Ratelimit-Remaining": {"4999"}},
+			Body:   []byte(`{"message":"Resource not accessible by personal access token"}`),
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tape := &transcript{miss: tt.res}
+
+			var waited []time.Duration
+
+			c := client(tape, &waited)
+
+			_, err := c.Issues(t.Context(), "acme/widgets", github.StateAll, false)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "403")
+
+			require.Equal(t, 1, tape.requests(),
+				"a refusal that will never improve is reported on the first request")
+			require.Empty(t, waited)
+			require.Zero(t, c.Waited())
+		})
+	}
 }

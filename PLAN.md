@@ -1930,6 +1930,23 @@ never fetched, because 5,000 issues would be 5,000 requests against a budget of 
 so the copies are one object repeated; a dump somebody assembled by hand may have thinned the
 later ones, and overwriting would lose the description the first one carried.
 
+**A 403 is not a rate limit on its own, and reading it as one was a defect.** This story says rate
+limits are handled rather than hoped for, and 403 is what a secondary rate limit returns — so the
+first version waited one out on every 403 it saw. GitHub answers 403 for "you may not read this"
+as well, and the two want opposite handling: one is worth waiting out and the other will never
+improve. Pointed at a repository the token could not read, that cost five requests and eleven
+seconds of backoff before a message that was already correct on the first one — against the
+budget the waiting exists to protect. A 403 is now throttling only when the response says so: a
+`retry-after`, a spent `x-ratelimit-remaining`, or a body that mentions the limit it is about.
+Eleven seconds became three tenths of one, measured on the same call.
+
+**No part of this milestone has been run against github.com.** M7-S5 asks for a recorded
+transcript and never the live API, and that is what the suite reads; the API path is exercised
+against a server the tests start, which is real HTTP over a real socket and is not real GitHub.
+The two shapes this milestone had wrong were found by reading the documentation rather than by
+running anything, and the 403 above was found by one call that never got past the proxy. **A
+first-contact story in the shape of M4-S8 is what would close this**, and it is not in the plan.
+
 Everything else landed as specified. Pull requests are dropped first and `null` under the
 `pull_request` key is not a pull request — which matters because a dump this importer wrote
 round-trips the key as exactly that. The type falls through the organisation's own type, then the
