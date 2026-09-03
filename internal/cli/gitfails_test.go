@@ -231,6 +231,13 @@ func TestWhatEachCommandSaysWhenGitRefusesOneThing(t *testing.T) {
 			fixture: board, args: []string{"check", "--worktree"}, skip: 1,
 		},
 		{
+			// The importer's evidence scan is the only walk in an import, so
+			// refusing this reaches it and nothing else.
+			name:   "walking history for the commits that resolved these issues",
+			refuse: "--first-parent", fixture: importable,
+			args: []string{"import", "github", "--dump", dumpPath},
+		},
+		{
 			name: "asking who owns this repository's hooks", refuse: "core.hooksPath",
 			fixture: configured, args: []string{"init", "--hooks"},
 		},
