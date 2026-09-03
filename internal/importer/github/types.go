@@ -117,9 +117,17 @@ type Issue struct {
 	// carries them, so it is held raw and decoded only when it is the second.
 	Comments json.RawMessage `json:"comments,omitempty"`
 
+	// ParentIssueURL is the sub-issue link the REST list carries itself, which
+	// is what makes the hierarchy free: no request per issue, and no dump
+	// extension needed to have it.
+	ParentIssueURL string `json:"parent_issue_url,omitempty"`
+
 	// SubIssues, BlockedBy, Fields and ClosedByCommit are what this importer's
-	// own dump adds to the REST row. A repository that uses none of them
-	// imports with none of them.
+	// own dump adds to the REST row. SubIssues is the other direction of the
+	// hierarchy, for a dump assembled from the sub-issues endpoint; the rest
+	// have no place in the list at all — GitHub answers for dependencies and
+	// field values per issue — so a repository that uses none of them imports
+	// with none of them.
 	SubIssues      []int        `json:"sub_issues,omitempty"`
 	BlockedBy      []Dependency `json:"blocked_by,omitempty"`
 	Fields         []FieldValue `json:"issue_field_values,omitempty"`

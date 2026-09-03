@@ -52,17 +52,37 @@ func newIndex(issues []Issue) *index {
 	for _, in := range issues {
 		ix.addMilestone(in)
 
+		// Both directions of the hierarchy, and the first one is why this
+		// costs nothing: the REST list carries `parent_issue_url` on every
+		// issue, so the whole tree is in the pages already read.
+		if parent, ok := issueNumber(in.ParentIssueURL); ok {
+			ix.link(parent, in.Number)
+		}
+
 		for _, child := range in.SubIssues {
-			if ix.present[child] && child != in.Number {
-				ix.parent[child] = in.Number
-				ix.children[in.Number] = append(ix.children[in.Number], child)
-			}
+			ix.link(in.Number, child)
 		}
 	}
 
 	ix.measure()
 
 	return ix
+}
+
+// link records that child hangs under parent, ignoring anything that would not
+// be a tree: an issue outside the import, an issue under itself, and a second
+// parent for a child that already has one.
+func (ix *index) link(parent, child int) {
+	if !ix.present[parent] || !ix.present[child] || parent == child {
+		return
+	}
+
+	if _, taken := ix.parent[child]; taken {
+		return
+	}
+
+	ix.parent[child] = parent
+	ix.children[parent] = append(ix.children[parent], child)
 }
 
 func (ix *index) addMilestone(in Issue) {

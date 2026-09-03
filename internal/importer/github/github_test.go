@@ -265,6 +265,14 @@ func TestASubIssueTreeIsRecordedWholeAndNeverBecomesAParent(t *testing.T) {
 	require.Empty(t, child.Issue.Parent)
 	require.Contains(t, body(t, child, importer.SourceFileName), "sub_issue_of: \"#12\"")
 
+	// #14 arrives by `parent_issue_url`, which the REST list carries itself —
+	// so the hierarchy costs nothing beyond the pages already read. #13 names
+	// a child outside the import and one that is itself, and neither is a tree.
+	require.Contains(t, body(t, folder(t, plan, "ISU-14"), importer.SourceFileName),
+		"sub_issue_of: \"#12\"")
+	require.NotContains(t, body(t, folder(t, plan, "ISU-13"), importer.SourceFileName),
+		"\nsub_issues:")
+
 	require.NotContains(t, body(t, folder(t, plan, "ISU-11"), importer.SourceFileName),
 		"\nsub_issues:", "only the root of a tree carries the whole of it")
 

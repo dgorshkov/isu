@@ -1915,11 +1915,16 @@ is an integer in the REST list and an array in a dump that carries them, so it i
 decoded only when it is the second; a count is not a comment, and refusing the import over one
 would refuse every REST dump.
 
-**Sub-issue trees and dependencies are read where the payload carries them, and never fetched.**
-The REST list carries neither, and asking per issue is exactly the request-per-issue this story
-forbids — 5,000 issues would be 10,000 requests against a budget of 5,000 an hour. They are this
-importer's own extension to the REST row, which `--fetch-only` preserves, so an import that has
-them is reproducible and one that does not says so in the dry run's `found`.
+**The sub-issue hierarchy is free and the dependencies are not, and the difference is which of
+them the list carries.** This was written the other way round first and the documentation
+corrected it: every row of the REST list carries `parent_issue_url`, so the whole tree is in the
+pages already read and costs nothing — no request per issue and no dump extension needed to have
+it. `sub_issues` stays readable as the other direction of the same link, for a dump somebody
+assembled from the sub-issues endpoint, and both go through one `link` that ignores anything that
+would not be a tree: an issue outside the import, an issue under itself, a second parent for a
+child that has one. Dependencies have no such field — GitHub answers them at
+`/issues/{n}/dependencies/blocked_by`, per issue — so they are read where a dump carries them and
+never fetched, because 5,000 issues would be 5,000 requests against a budget of 5,000 an hour.
 
 **A milestone's first copy wins.** The REST list embeds the whole milestone on every issue in it,
 so the copies are one object repeated; a dump somebody assembled by hand may have thinned the

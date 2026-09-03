@@ -246,8 +246,7 @@
         }
       ],
       "sub_issues": [
-        13,
-        14
+        13
       ]
     },
     {
@@ -259,6 +258,11 @@
         {
           "login": "dmitry"
         }
+      ],
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/12",
+      "sub_issues": [
+        13,
+        999
       ]
     },
     {
@@ -270,7 +274,8 @@
         {
           "login": "dmitry"
         }
-      ]
+      ],
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/12"
     }
   ]
 }
