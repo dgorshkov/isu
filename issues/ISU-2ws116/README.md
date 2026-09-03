@@ -3,7 +3,7 @@ schema: 1
 id: ISU-2ws116
 title: M7-S1 · Import framework and dry run
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
