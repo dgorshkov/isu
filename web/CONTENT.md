@@ -3,7 +3,7 @@
 <!-- title: isu — issues that branch, merge and review like code -->
 <!-- tagline: Issues that branch, merge and review like code. -->
 <!-- description: isu keeps issues as folders in your repository, so a bug report arrives as a pull request and the branch that fixes a bug carries that bug's state. Status is derived from git rather than stored anywhere. -->
-<!-- lede: An issue is a folder in your repository. A report arrives as a pull request, the branch that fixes a bug carries that bug's state, and merging is what makes it true. There is no second system to keep in step. -->
+<!-- lede: A command-line issue tracker whose issues are folders in your repository. The branch that fixes a bug carries that bug's state, so there is no second system to keep in step. -->
 <!-- install: go install github.com/dgorshkov/isu/cmd/isu@latest -->
 
 **This file is the site.** The landing page is built from the section sequence below and
@@ -140,9 +140,11 @@ than a rendering.
 **Proof.** `isu ready`, which prints JSON by default.
 
 `isu ready` is the queue: the issues nothing is blocking, most urgent first, one JSON object
-per line so that `isu ready --json | head -1` is the top of the queue and not an opening brace.
-Every object carries the acceptance criteria or the repro, because an agent picking work up
-needs the briefing before it needs anything else.
+per line — so `isu ready | head -1` is the top of the queue and not an opening brace. JSON is
+what it prints by default, because the caller that reads it most often is not a person;
+`--json=false` is how you ask for the list a person reads. Every object carries the acceptance
+criteria or the repro, because an agent picking work up needs the briefing before it needs
+anything else.
 
 Fields are added and never repurposed. What that shape means, field by field, is written down
 and tested against the code that prints it.
@@ -159,10 +161,22 @@ $ isu ready
 those is a decision with a reason written down.
 **Proof.** No terminal output. This section is a paragraph and a link, on purpose.
 
-A tool that lists only what it can do is a tool you find the edges of in production. The
-out-of-scope page is linked from here rather than buried: no `isu serve`, no bidirectional sync
-with anything, no story points, no cross-repo issues, and sub-issue hierarchies recorded
-losslessly rather than flattened into a shape that would misrepresent them.
+A tool that lists only what it can do is a tool you find the edges of in production. So
+[what isu does not do](docs/not-doing.html) is a page of its own, linked from here rather than
+buried: no `isu serve`, no bidirectional sync with anything, no story points, no cross-repo
+issues, and sub-issue hierarchies recorded losslessly rather than flattened into a shape that
+would misrepresent them.
+
+### 6. Start here
+<!-- id: start -->
+**Claim.** Two commands, and the second one is the whole product.
+**Proof.** No terminal output. The page has spent five cards earning this; the closer is a
+place to go, not a sixth demonstration.
+
+`go install github.com/dgorshkov/isu/cmd/isu@latest`, then `isu init --prefix APP` in a
+repository you already have. [Getting started](docs/getting-started.html) takes it from there to
+a merged fix, and every command on it was run against a scratch repository while this page was
+built.
 
 ## The docs
 

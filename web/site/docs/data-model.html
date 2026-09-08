@@ -45,7 +45,7 @@
 </nav>
 <p>An issue is a folder. Everything else follows from that, and everything below is fixed for schema version 1.</p>
 <h2 id="the-folder">The folder</h2>
-<div class="scroller"><pre><code>issues/
+<div class="scroller sketch"><pre><code>issues/
   APP-7f3akq/
     README.md                    the issue
     repro.har                    attachments live with the issue
@@ -54,7 +54,7 @@
 <p><code>README.md</code> so that a forge renders the issue when you browse to the folder. Comment files are <code>&lt;date&gt;-&lt;author&gt;-&lt;nn&gt;.md</code>, and the two-digit sequence is not decoration: without it, a second comment by the same author on the same day silently overwrites the first.</p>
 <p>Resolved issues stay in <code>issues/</code>. There is no <code>fixed/</code> directory and no archive command: state lives in the file, so moving the file would be storing the state twice.</p>
 <h2 id="the-frontmatter">The frontmatter</h2>
-<div class="scroller"><pre><code>---
+<div class="scroller sketch"><pre><code>---
 schema: 1              required, integer, the on-disk format version
 id: APP-7f3akq         required, must equal the folder name
 title: Login retries   required, one line

@@ -79,7 +79,7 @@
 </tbody></table></div>
 <p>Terminal trunk state beats every claim, so a finished issue reads <code>done</code> whether or not the branch that claimed it was ever tidied up. <code>in progress</code> beats <code>reopened</code>, because somebody actively re-fixing an issue needs to show as worked rather than as merely broken again — but <strong><code>reopened</code> survives as an annotation</strong> on whatever status wins, so the fact is never lost.</p>
 <p>Here is all of it on one board:</p>
-<div class="scroller"><pre><code>$ isu board
+<div class="scroller ran"><pre><code>$ isu board
 main · 9 issues · remote refs 3h ago
 
 done (2)
@@ -117,7 +117,7 @@ open (4)
 <li><strong>contended</strong> — two branches claiming the same issue. That is a warning and not a failure:</li>
 </ul>
 <p>two people about to do the same work is worth saying and is not a reason to refuse a pull request.</p>
-<div class="scroller"><pre><code>$ isu show APP-9cx2rt
+<div class="scroller ran"><pre><code>$ isu show APP-9cx2rt
 APP-9cx2rt  Show the sign-up queue on the board
 
   status      in progress
@@ -139,7 +139,7 @@ remote refs 3h ago</code></pre></div>
 <p>A deletion in between does not break the chain. Issues are files, so somebody can <code>git rm</code> a folder and commit it — there is no command for that, but nothing prevents it either — and an id can come back afterwards, whether by reverting that commit or by re-running an import. An id is permanent from creation, so the same id is the same issue, and trunk did resolve it once.</p>
 <h2 id="epics">Epics</h2>
 <p>An issue of <code>type: epic</code> takes its status from a fold over its children: all terminal means resolved, unless all are dropped, which means dropped; anything else is open. An epic with no children is a <a href="checks.html">check failure</a> rather than a status, because a fold over nothing has no honest answer.</p>
-<div class="scroller"><pre><code>$ isu show APP-40b1cc
+<div class="scroller ran"><pre><code>$ isu show APP-40b1cc
 APP-40b1cc  Make sign-up reliable
 
   status    open

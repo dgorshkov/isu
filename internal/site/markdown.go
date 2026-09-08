@@ -208,8 +208,24 @@ func (r *renderer) quote() {
 // code renders a fenced block. Wide output is the reason every one of them
 // sits in its own scrolling box: PLAN.md M8-S3 asks for no horizontal scroll on
 // the page at 360 px, and a board is 90 columns wide.
+//
+// **A block that ran and a block that did not must not look the same.** The
+// dark ground on this site means "these are the bytes the binary wrote" — the
+// whole of M8's governing constraint is that claim — and an illustrative
+// snippet with a placeholder id in it had been borrowing that ground for free.
+// A reader who pastes one and watches it fail has been told something false by
+// a page whose entire argument is that it never does. So a ```console fence,
+// which internal/site executes, keeps the dark ground; every other fence gets a
+// light one it cannot be confused with.
 func (r *renderer) code() {
-	marker := fenceMarker(strings.TrimSpace(r.lines[r.at]))
+	line := strings.TrimSpace(r.lines[r.at])
+	marker := fenceMarker(line)
+
+	kind := "sketch"
+	if isConsole(strings.TrimPrefix(line, marker)) {
+		kind = "ran"
+	}
+
 	r.at++
 
 	var body []string
@@ -221,8 +237,8 @@ func (r *renderer) code() {
 
 	r.at++
 
-	r.out = append(r.out,
-		`<div class="scroller"><pre><code>`+strings.Join(body, "\n")+"</code></pre></div>")
+	r.out = append(r.out, `<div class="scroller `+kind+`"><pre><code>`+
+		strings.Join(body, "\n")+"</code></pre></div>")
 }
 
 // table renders a pipe table. The header row and the `|---|` row beneath it are

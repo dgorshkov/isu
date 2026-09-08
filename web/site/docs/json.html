@@ -57,7 +57,7 @@
 <h2 id="the-line-format">The line format</h2>
 <p>Output is <strong>newline-delimited JSON</strong>: one complete JSON value per line.</p>
 <p>Most commands print exactly one line. <code>isu ready</code> prints one issue per line, in the order an agent should take them, so that</p>
-<div class="scroller"><pre><code>isu ready --json | head -1</code></pre></div>
+<div class="scroller sketch"><pre><code>isu ready --json | head -1</code></pre></div>
 <p>is the top of the queue and not an opening brace. <code>ready</code> prints JSON <strong>by default</strong>; pass <code>--json=false</code> for the list a person reads.</p>
 <p>Errors go to standard error, as one <code>Failure</code> object and nothing else — no usage text, no warnings. Exit status is <code>0</code> for success, <code>1</code> for a command that could not do what it was asked, and <code>2</code> for a command line that does not make sense.</p>
 <h2 id="failure">Failure</h2>

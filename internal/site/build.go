@@ -153,11 +153,47 @@ func documents(r *Renderer, root string, files map[string][]byte) ([]link, error
 			return nil, err
 		}
 
+		gloss, err := summary(doc.Lede)
+		if err != nil {
+			return nil, fmt.Errorf("docs/%s.md: %w", d.Name, err)
+		}
+
 		files["docs/"+d.Name+".html"] = html
-		pages = append(pages, link{Href: d.Name + ".html", Text: doc.Title})
+		pages = append(pages, link{Href: d.Name + ".html", Text: doc.Title, Note: gloss})
 	}
 
 	return pages, nil
+}
+
+// MinGloss is the shortest opening sentence a documentation page may have.
+//
+// The figure is not arbitrary and it is not a style rule: docs/field-notes.md
+// opened with "M4-S8." — a fine first line for a document nobody arrives at
+// cold, and nothing at all to somebody who landed on the index from a search.
+// What this refuses is a reference token wearing a sentence's full stop. It is
+// deliberately low enough to let a short sentence be a short sentence, because
+// "An issue is a folder." is the best summary on this site.
+const MinGloss = 20
+
+// summary is the line the documentation index shows beside a page: the first
+// sentence of the page's own opening paragraph.
+//
+// It is taken from the page rather than written a second time in the index,
+// because a page that says one thing about itself in two places says two
+// different things by the end of the quarter. A first sentence too short to be
+// a summary fails the build instead of shipping as one.
+func summary(lede string) (string, error) {
+	sentence := lede
+	if head, _, found := strings.Cut(lede, ". "); found {
+		sentence = head + "."
+	}
+
+	if len(sentence) < MinGloss {
+		return "", fmt.Errorf(
+			"opens with %q, which is too short to say what the page is for", sentence)
+	}
+
+	return sentence, nil
 }
 
 // assembler collects generated files and keeps the first failure.

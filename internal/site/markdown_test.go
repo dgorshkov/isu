@@ -54,11 +54,27 @@ The lede, with **strong**, *emphasis*, ` + "`code`" + ` and a [link](checks.html
 		"<blockquote><p>a quotation that wraps</p></blockquote>",
 		"<thead><tr>\n<th>head</th>\n<th>other</th>\n</tr></thead>",
 		"<td>a</td>", "<hr>",
-		`<div class="scroller"><pre><code>fmt.Println(&#34;&lt;hi&gt;&#34;)</code></pre></div>`,
+		`<div class="scroller sketch"><pre><code>fmt.Println(&#34;&lt;hi&gt;&#34;)</code></pre></div>`,
 		`<h3 id="deeper">Deeper</h3>`, `<h4 id="deeper-still">Deeper still</h4>`,
 	} {
 		require.Contains(t, got.HTML, want)
 	}
+}
+
+// The dark ground on this site means "these are the bytes the binary wrote".
+// A block nothing ran must not be able to borrow it.
+func TestOnlyABlockThatRanLooksLikeOne(t *testing.T) {
+	t.Parallel()
+
+	got, err := Markdown("# t\n\n" +
+		"```console\n$ isu board\nmain\n```\n\n" +
+		"```sh\nisu claim <id>\n```\n")
+	require.NoError(t, err)
+
+	require.Contains(t, got.HTML, `<div class="scroller ran">`,
+		"a console fence is executed by the build, so it keeps the terminal ground")
+	require.Contains(t, got.HTML, `<div class="scroller sketch">`,
+		"every other fence is illustrative and must be visibly not a transcript")
 }
 
 func TestMarkdownRefusesWhatItCannotRender(t *testing.T) {

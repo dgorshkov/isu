@@ -5,6 +5,7 @@ import (
 	"math"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,7 +41,7 @@ func Gates(files map[string][]byte) error {
 
 	for _, gate := range []func(map[string][]byte, string) error{
 		gateHTML, gateLinks, gateWeight, gateAccessibility, gateMeta,
-		gateThirdParty, gateContrast, gateWidth, gateMotion, gateTokens,
+		gateThirdParty, gateContrast, gateWidth, gateMotion, gateTokens, gateProse,
 	} {
 		if err := gate(files, css); err != nil {
 			return err
@@ -327,6 +328,60 @@ func landmarks(elements []Element) error {
 	return fmt.Errorf("the page has no skip link past its masthead")
 }
 
+// saysLinked is prose promising a link.
+var saysLinked = regexp.MustCompile(`\blinked\b|\blinks to\b`)
+
+// gateProse is the narrowest possible answer to a real failure: the landing
+// page said "the out-of-scope page is linked from here rather than buried" and
+// carried no anchor at all.
+//
+// It is worth being exact about what this does and does not do. The build gates
+// every *sample* on this site against the product, and it gates nothing a
+// sentence claims — prose is not checkable in general and this does not pretend
+// otherwise. What it checks is one bug class that a site whose whole argument is
+// "what this page says is mechanically true" cannot afford twice: a section
+// that tells the reader something is linked, and then is not.
+func gateProse(files map[string][]byte, _ string) error {
+	elements, err := ParseHTML(string(files["index.html"]))
+	if err != nil {
+		return err
+	}
+
+	for i, e := range elements {
+		if e.Name != "section" {
+			continue
+		}
+
+		if !saysLinked.MatchString(e.Text) {
+			continue
+		}
+
+		if !linksSomewhere(elements[i+1:], e.Depth) {
+			return fmt.Errorf(
+				"index.html: section %q says something is linked and carries no link",
+				e.Attribute("id"))
+		}
+	}
+
+	return nil
+}
+
+// linksSomewhere reports whether an anchor appears before the element that
+// opened at depth closes.
+func linksSomewhere(after []Element, depth int) bool {
+	for _, e := range after {
+		if e.Depth <= depth {
+			return false
+		}
+
+		if e.Name == "a" {
+			return true
+		}
+	}
+
+	return false
+}
+
 // gateMeta is what a page needs before anybody has opened it: a title, a
 // description, a canonical URL and a card.
 func gateMeta(files map[string][]byte, _ string) error {
@@ -551,7 +606,8 @@ func scrollable(before []Element, e Element) bool {
 
 		want--
 
-		if class := before[i].Attribute("class"); class == "scroller" || class == "proof" {
+		class := before[i].Attribute("class")
+		if slices.Contains(strings.Fields(class), "scroller") || class == "proof" {
 			return true
 		}
 	}

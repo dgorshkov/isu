@@ -268,3 +268,36 @@ func TestBuildRefusesAPlanThatIsNotAPage(t *testing.T) {
 	_, err := Build(t.Context(), root, t.TempDir())
 	require.ErrorContains(t, err, `has no "## The page" heading`)
 }
+
+func TestASummaryIsThePagesOwnFirstSentence(t *testing.T) {
+	t.Parallel()
+
+	got, err := summary("An issue is a folder. Everything else follows from that.")
+	require.NoError(t, err)
+	require.Equal(t, "An issue is a folder.", got,
+		"the index says what the page says about itself, and says it once")
+
+	got, err = summary("A lede that is one sentence and carries no full stop after it")
+	require.NoError(t, err)
+	require.Equal(t, "A lede that is one sentence and carries no full stop after it", got)
+
+	// The case this gate was written for: a reference token wearing a sentence's
+	// full stop. docs/field-notes.md really did open "M4-S8."
+	_, err = summary("M4-S8. Everything before this ran against fixtures.")
+	require.ErrorContains(t, err, `opens with "M4-S8."`)
+	require.ErrorContains(t, err, "too short to say what the page is for")
+}
+
+func TestBuildRefusesADocumentThatCannotSayWhatItIsFor(t *testing.T) {
+	t.Parallel()
+
+	root := copyWithout(t, "")
+	name := Documents[2].Name
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "docs", name+".md"),
+		[]byte("# A title\n\nM4-S8. Then a paragraph that is long enough on its own.\n"), 0o600))
+
+	_, err := Build(t.Context(), root, t.TempDir())
+	require.ErrorContains(t, err, "docs/"+name+".md")
+	require.ErrorContains(t, err, "too short to say what the page is for")
+}

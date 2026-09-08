@@ -51,11 +51,11 @@
 <section class="section" id="{{.ID}}">
 <h2>{{.Title}}</h2>
 {{if .Claim}}<p class="claim">{{.Claim}}</p>
-{{end}}{{range .Copy}}<p>{{.}}</p>
 {{end}}{{with .Sample}}<div class="proof">
 <p class="command">{{.Command}}</p>
 <pre><code>{{.Output}}</code></pre>
 </div>
+{{end}}{{range .Copy}}<p>{{.}}</p>
 {{end}}</section>
 {{end}}
 {{end}}
@@ -69,6 +69,13 @@
 {{end}}</ul>
 </nav>
 {{end}}{{.Content}}
+{{end}}
+
+{{define "contents" -}}
+<h1>{{.Heading}}</h1>
+<ul class="pages">
+{{range .Links}}<li><a href="{{.Href}}">{{.Text}}</a><span class="note">{{.Note}}</span></li>
+{{end}}</ul>
 {{end}}
 
 {{define "notfound" -}}

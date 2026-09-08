@@ -53,6 +53,10 @@ func NewRenderer(root string) (*Renderer, error) {
 type link struct {
 	Href string
 	Text string
+	// Note is the one line saying what a page is for. It is empty everywhere
+	// but the documentation index, where a bare list of eight titles tells a
+	// reader arriving cold nothing about which two to read.
+	Note string
 }
 
 // shell is what every page has in common.
@@ -97,6 +101,11 @@ type docBody struct {
 	Heading  string
 	Headings []Heading
 	Content  template.HTML
+}
+
+type contentsBody struct {
+	Heading string
+	Links   []link
 }
 
 type notFoundBody struct {
@@ -222,25 +231,16 @@ func (r *Renderer) Page(name string, doc Doc) ([]byte, error) {
 }
 
 // Contents renders the documentation index from the pages beside it.
+//
+// It goes through a template rather than a strings.Builder, like every other
+// page here. Assembling markup in Go was one page's worth of shortcut and it
+// was the page that then could not carry a second line per entry.
 func (r *Renderer) Contents(pages []link) ([]byte, error) {
-	var b strings.Builder
-
-	b.WriteString("<ul>\n")
-
-	for _, p := range pages {
-		fmt.Fprintf(&b, "<li><a href=\"%s\">%s</a></li>\n",
-			template.HTMLEscapeString(p.Href), template.HTMLEscapeString(p.Text))
-	}
-
-	b.WriteString("</ul>\n")
-
 	s := newShell("Documentation — isu",
-		"Every page of isu's documentation, in reading order.", "/docs/index.html", "../")
+		"Every page of isu's documentation, in reading order, and what each one is for.",
+		"/docs/index.html", "../")
 
-	return r.page(s, "doc", docBody{
-		Heading: "Documentation",
-		Content: template.HTML(b.String()), //nolint:gosec // escaped above
-	})
+	return r.page(s, "contents", contentsBody{Heading: "Documentation", Links: pages})
 }
 
 // NotFound renders the 404 page.

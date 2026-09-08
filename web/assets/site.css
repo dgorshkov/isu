@@ -26,16 +26,26 @@
 	--terminal-ink: #fbf9f5;
 	--glow: #f0ac7a;
 
-	/* The type scale: 1rem, up and down by a factor of 1.25. */
+	/* The type scale, hand-tuned rather than geometric — and said plainly here
+	 * because the comment used to claim "up and down by a factor of 1.25" and
+	 * only one of its six steps was. The real ratios are 1.125, 1.111, 1.25,
+	 * 1.4, 1.371 and 1.333: tight at reading sizes where a reader needs two
+	 * sizes to look deliberately different, loose at display sizes where they
+	 * need to look unrelated. A file that fails the build over a stray hex
+	 * literal should not carry a comment its own numbers contradict. */
 	--text-xs: 0.8rem;
 	--text-s: 0.9rem;
 	--text-m: 1rem;
 	--text-l: 1.25rem;
 	--text-xl: 1.75rem;
 	--text-2xl: 2.4rem;
-	--text-3xl: 3.2rem;
 
-	--measure: 34rem;
+	/* The one fluid size on the site. Fixed at 3.2rem this broke to five lines
+	 * on a phone and pushed the first terminal card — the only thing on the
+	 * page that proves anything — below the fold on every mobile device. */
+	--text-3xl: clamp(2.1rem, 1.4rem + 3.2vw, 3.2rem);
+
+	--measure: 38rem;
 	--gap: 1.5rem;
 	--radius: 0.35rem;
 
@@ -203,7 +213,7 @@ blockquote {
 /* ---- the hero ---- */
 
 .hero {
-	padding: 3.5rem 0 1rem;
+	padding: 2rem 0 1rem;
 }
 
 .hero h1 {
@@ -219,7 +229,7 @@ blockquote {
 
 .install {
 	font-family: var(--mono);
-	font-size: var(--text-s);
+	font-size: var(--text-m);
 	border: 1px solid var(--rule);
 	border-radius: var(--radius);
 	padding: 0.6rem 0.8rem;
@@ -286,8 +296,6 @@ blockquote {
 .scroller pre {
 	margin: 0;
 	padding: 0.9rem;
-	background: var(--terminal);
-	color: var(--terminal-ink);
 	border-radius: var(--radius);
 	font-family: var(--mono);
 	font-size: var(--text-s);
@@ -298,6 +306,21 @@ blockquote {
 	background: none;
 	padding: 0;
 	font-size: inherit;
+}
+
+/* A block that ran. The dark ground is this site's word for "these are the
+ * bytes the binary wrote", and it is spent nowhere else. */
+.scroller.ran pre {
+	background: var(--terminal);
+	color: var(--terminal-ink);
+}
+
+/* A block that did not. Illustrative, placeholders in it, never executed —
+ * so it gets a ground it cannot be mistaken for the other one on. */
+.scroller.sketch pre {
+	background: none;
+	color: var(--ink);
+	border: 1px solid var(--rule);
 }
 
 table {
@@ -344,17 +367,65 @@ th {
 	font-size: var(--text-xs);
 }
 
+/* ---- the documentation index ----
+ *
+ * A link and the line its page opens with. Eight bare titles told a reader who
+ * arrived here from search nothing about which two of them they wanted.
+ */
+
+.pages {
+	list-style: none;
+	margin: 1.5rem 0;
+	padding: 0;
+	max-width: var(--measure);
+}
+
+.pages li {
+	border-top: 1px solid var(--rule);
+	padding: 0.7rem 0;
+	max-width: none;
+}
+
+.pages a {
+	font-weight: 600;
+}
+
+.pages .note {
+	display: block;
+	color: var(--slate);
+	font-size: var(--text-s);
+	line-height: 1.5;
+}
+
 /* ---- section headings on the landing page ---- */
 
+/* The one sentence in a section that is worth reading if nothing else is.
+ *
+ * It was one step up the scale from body copy and identical in every other
+ * respect, which meant the sentence built to be skimmed did not look like one.
+ * Three things separate it now — size, weight, and a rule in the accent — and
+ * the rule is also the only steady job --signal does on this page. */
 .claim {
 	font-size: var(--text-l);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: -0.01em;
+	border-left: 2px solid var(--signal);
+	padding-left: 0.9rem;
 	max-width: var(--measure);
 }
 
 .section {
 	border-top: 1px solid var(--rule);
-	padding-top: 2rem;
+	padding-top: 2.25rem;
 	margin-top: 2.5rem;
+}
+
+/* Padding blocks margin collapse, so a section's opening heading added its own
+ * 2rem to the section's — 6.5rem of gap that was arithmetic rather than a
+ * decision. The gap is the section's to choose. */
+.section > h2:first-child {
+	margin-top: 0;
 }
 
 /* ---- foot ---- */
@@ -369,6 +440,29 @@ th {
 
 .foot a {
 	color: var(--slate);
+}
+
+/* ---- narrow screens ----
+ *
+ * The one width breakpoint on the site, and it exists for one reason: the
+ * first terminal card is the only thing on this page that proves anything, and
+ * a hero set at desktop proportions pushed it most of a screen further down on
+ * a phone than it needed to be. Type, not layout — there is nothing here to
+ * reflow.
+ */
+
+@media (max-width: 30rem) {
+	.hero {
+		padding: 1.25rem 0 0.75rem;
+	}
+
+	.tagline {
+		font-size: var(--text-m);
+	}
+
+	.claim {
+		font-size: var(--text-m);
+	}
 }
 
 /* ---- motion ----

@@ -406,3 +406,28 @@ func TestAPreloadIsFetchedAndAnAnchorIsNot(t *testing.T) {
 		Element{Name: "link", Attr: map[string]string{"rel": "preload"}}, "href"))
 	require.False(t, fetched(Element{Name: "a", Attr: map[string]string{}}, "href"))
 }
+
+// The landing page said "the out-of-scope page is linked from here rather than
+// buried" and carried no anchor at all. The samples on this site are gated
+// against the product and a sentence is gated against nothing, so this covers
+// the one bug class a site arguing "what this page says is true" cannot afford
+// twice.
+func TestASectionThatSaysSomethingIsLinkedHasToLinkIt(t *testing.T) {
+	t.Parallel()
+
+	files := smallSite(t)
+	files["index.html"] = []byte(smallPage(
+		`<section id="limits"><h2>Limits</h2><p>The page is linked from here.</p></section>`))
+
+	require.ErrorContains(t, Gates(files),
+		`section "limits" says something is linked and carries no link`)
+
+	files["index.html"] = []byte(smallPage(
+		`<section id="limits"><h2>Limits</h2>` +
+			`<p>The page is <a href="index.html">linked</a> from here.</p></section>`))
+	require.NoError(t, Gates(files), "a section that links what it says it links is fine")
+
+	files["index.html"] = []byte(smallPage(
+		`<section id="quiet"><h2>Quiet</h2><p>This section promises nothing.</p></section>`))
+	require.NoError(t, Gates(files), "prose that claims no link needs none")
+}
