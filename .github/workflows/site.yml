@@ -1,15 +1,16 @@
-# The website, published on merge to trunk.
+# The website, verified on every pull request.
 #
-# It is a workflow of its own rather than a job in ci.yml because publishing
-# needs a write permission the gates must not have: a pull request build from a
-# fork would otherwise be asked for it. The build half runs on every pull
-# request too, so a site that no longer builds fails the review rather than the
-# deploy.
+# This workflow publishes nothing. Netlify publishes the site, from
+# netlify.toml, which is why this holds no write permission at all: nothing it
+# runs — on a pull request from anywhere — can reach the address people read.
 #
-# As everywhere else in this project, the work is a Makefile target rather than
-# logic in YAML. That target regenerates web/site from web/CONTENT.md, docs/ and
-# the binary in this repository, and `git diff --exit-code` is what holds the
-# committed site to it: the site is a golden file, and its review is a diff.
+# What it does is the gate that makes the site reviewable as a diff. As
+# everywhere else in this project the work is a Makefile target rather than
+# logic in YAML: that target regenerates web/site from web/CONTENT.md, docs/
+# and the binary in this repository, and `git diff --exit-code` holds the
+# committed site to it. It also runs every console block in web/CONTENT.md and
+# docs/, so a documented command that no longer does what the page says fails
+# the review rather than the reader.
 name: site
 
 on:
@@ -26,8 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: build
+  verify:
+    name: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,24 +46,3 @@ jobs:
 
       - name: the committed site is the one the build produces
         run: git diff --exit-code -- web/site
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web/site
-
-  deploy:
-    name: deploy
-    needs: build
-    # Trunk and nothing else. A pull request builds the site and never
-    # publishes it.
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
-    steps:
-      - id: pages
-        uses: actions/deploy-pages@v4

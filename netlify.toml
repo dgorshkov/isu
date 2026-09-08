@@ -1,0 +1,18 @@
+# How the website is published.
+#
+# This is a file rather than a form in a dashboard so that what publishes the
+# site is reviewable in the same diff as the site — and so that a fresh Netlify
+# project needs no setup beyond pointing it at this repository.
+#
+# There is no build command. web/site is committed, `make site` is what writes
+# it, and .github/workflows/site.yml regenerates it on every pull request and
+# fails when the committed bytes and the built ones differ. Building here
+# instead would put the deploy behind a Go toolchain in somebody else's image
+# for no guarantee CI does not already give.
+#
+# Netlify serves web/site/404.html for a path that is not there, and
+# web/site/sitemap.xml and robots.txt from the root, because they are in the
+# published directory. Nothing else needs saying.
+
+[build]
+	publish = "web/site"

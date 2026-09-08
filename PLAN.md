@@ -1952,12 +1952,13 @@ they are neighbours here, they belong to one milestone, and they share one subje
 would have been `isu/M8-S1-S3-website`, and this work was done on `claude/milestone-8-fafh5y`,
 which the session that produced it was told to use. The story ids are in every commit subject.
 
-**This milestone was taken before M7, which is not started.** That was the instruction and it is
-recorded here rather than smoothed over: `issues/ISU-he1wf1` is `blocked_by` the M7 epic and was
-resolved with that blocker open. Nothing on the site depends on the importer existing —
-`docs/importing.md` opens by saying the command is not in this build and shows no output, because
-there is none to show — but the ordering is a deviation from the queue this file describes and
-the next session should know it happened. Nothing else in M8 needed M7.
+**This milestone was taken before M7, and M7 is written rather than absent.** That was the
+instruction and it is recorded here rather than smoothed over: `issues/ISU-he1wf1` is
+`blocked_by` the M7 epic and was resolved with that blocker open. M7 exists as #15, open against
+the same base as this milestone and not merged, so trunk has no importer while this lands and
+`docs/importing.md` says so in its first paragraph. Nothing on the site depended on the importer
+existing. What the ordering costs is written under M8-S3: one page of documentation that goes
+stale the moment #15 merges, and a conflict in this file when it does.
 
 The site is designed and built from scratch in this milestone. There is no approved comp to
 port — treat M8-S1 as real design work with a written brief, not as implementation.
@@ -2058,6 +2059,15 @@ down rather than discovering:
   because an id is thirty bits of hash over eight random bytes; those blocks run and their output
   is not compared, and the page says so where it quotes one.
 
+**`docs/importing.md` is a debt this milestone hands to M7, and the next session should collect
+it.** M7 is written and open as #15 against the same base as this pull request; the two were
+merged in the order the reviewer chose, this one first, so the moment #15 lands that page's
+first paragraph is false and its mapping is documentation of something that ships. What it owes
+is small and specific: drop the "not in this build" note, and give the page ```console blocks
+running `isu import github` against a recorded dump, so the importer's documentation executes
+like every other page here. Merging #15 will also conflict in this file — both pull requests
+mark a milestone done in the same table and add `**Done**` paragraphs a few lines apart.
+
 **The gates are hand-written over the built site, and what they can and cannot see is stated in
 `internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at
 360 px" is enforced as the two things that cause it — a fixed width wider than the viewport, and
@@ -2072,11 +2082,25 @@ HTML through — a `<script>` in a source document is escaped and rendered as te
 handed an issue body. There is nothing for a sanitiser to do and no configuration in which
 there would be.
 
-**Publishing is `.github/workflows/site.yml` and not a job in `ci.yml`**, because the deploy
-needs a write permission the gates must not have. The build half runs on every pull request and
-regenerates the site; `git diff --exit-code -- web/site` is what holds the committed site to it.
-`scripts/site_test.go` asserts the deploy job is fenced to trunk twice over and that the
-permission lives on that job alone.
+**Netlify publishes the site, and `.github/workflows/site.yml` publishes nothing.** The story
+asks for publishing on merge to trunk from CI and for a workflow lint asserting the deploy job
+triggers only on trunk; the site was already wired to Netlify while this milestone was being
+built, so the deploy job would have been a second publisher racing the first. What the workflow
+does instead is the half that makes the site reviewable: it regenerates web/site on every pull
+request and `git diff --exit-code -- web/site` holds the committed bytes to the built ones, and
+it runs every console block in the docs while it is there.
+
+The lint changed subject with it, and the replacement is stronger in one direction and weaker in
+another — both are worth stating. Stronger: the workflow now holds no write permission at all,
+which `scripts/site_test.go` asserts line by line, so nothing it runs on a pull request from
+anywhere can reach the address people read. **Weaker: the guarantee that production comes from
+trunk left this repository with the deploy job.** It is Netlify's production-branch setting now,
+and no test here can see it. `netlify.toml` pins everything that can be pinned in a file — the
+publish directory, asserted against the directory `make site` writes, and the absence of a build
+command — and the branch is not one of them. A reviewer who wants that guarantee back wants the
+Pages job back, and this paragraph is where the trade was made.
+
+`SiteURL` is `https://isu-website.netlify.app`, the one absolute URL on the site.
 
 **One statement in this package is uncovered and is argued for**, in the shape the definition of
 done asks for: `documents` propagating a failure from `Renderer.Page`. Every other error return

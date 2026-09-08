@@ -9,10 +9,13 @@ import (
 )
 
 // SiteURL is where the site is published, and the only absolute URL in it.
-// Everything else is relative, so the site works from a file:// checkout, from
-// a project path on GitHub Pages and from a domain of its own without being
-// rebuilt.
-const SiteURL = "https://dgorshkov.github.io/isu"
+//
+// Everything else on the site is relative, so the page works from a file://
+// checkout, from a deploy preview at a URL nobody chose, and from a domain of
+// its own — without being rebuilt. Only the canonical link, og:url, og:image
+// and sitemap.xml need to know the host, and moving it is this constant and a
+// `make site`.
+const SiteURL = "https://isu-website.netlify.app"
 
 // Source is the repository, linked from the masthead.
 const Source = "https://github.com/dgorshkov/isu"

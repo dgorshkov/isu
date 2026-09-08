@@ -183,8 +183,9 @@ and `TestTheDocumentsAndTheDocumentationAgree` fails when a file in `docs/` is n
   internal links, HTML validity, a 300 KB per-page budget, an accessibility pass, WCAG contrast
   computed from the CSS tokens, a width the page survives at, reduced motion, and no colour or
   pixel type size outside `:root`.
-- **`.github/workflows/site.yml` publishes on merge to trunk** and is separate from `ci.yml`
-  because the deploy needs a permission the gates must not have.
+- **Netlify publishes the site**, from `netlify.toml` — `.github/workflows/site.yml` holds no
+  write permission and publishes nothing. What it does is regenerate `web/site` on every pull
+  request and fail when the committed bytes differ from the built ones.
 
 ## Dependencies
 
