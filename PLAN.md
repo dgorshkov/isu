@@ -1957,7 +1957,22 @@ product changes and the site doesn't, the build fails.
 Three stories, not seven. The site sells v1.0.0; it does not gate it, and every week spent here
 is a week the thing it advertises is not shipping.
 
-### M8-S1 · Content plan and information architecture
+### M8-S1 · Content plan and information architecture ✅
+**Done** #15, 2026-09-08. `web/CONTENT.md` is not a brief the page was built *from* — it is the
+page. `internal/site/content.go` parses the section sequence, the claim, the copy and the sample
+out of it, and the template carries structure and not one word, because a template with a
+sentence in it is a second place the site's copy lives.
+
+**The executable-documentation harness is this story's, and M8-S3 reuses it.** A ```console
+fence is run; a `$ ` prompt anywhere else — loose in the prose, or in an `sh` fence — fails the
+extraction, because a transcript nothing runs is exactly the thing that rots. A command must
+begin with `isu`, so a document cannot ask the harness to run something else.
+
+**The build found one defect in `isu init`, and it is not fixed here.** `reportWrite` falls back
+to the path list for its headline when there is no issue id, and then prints the same list
+underneath — so `isu init` names its three files twice. It is on the site, in
+`docs/getting-started.md`, exactly as the command prints it. Fixing it changes M4's output and
+its golden files, which is M9-S3's business or a story of its own, not a website's.
 **Branch** `isu/M8-S1-content-plan`
 **Why** The page has one job: an engineer decides in thirty seconds whether this is a toy.
 Decide what must be proved, and in what order, before anything is designed.
