@@ -1,0 +1,404 @@
+/* isu.dev — the whole stylesheet.
+ *
+ * Every colour and every type size is declared once, in the two token blocks
+ * below, and referenced through a custom property everywhere else. M8-S2 makes
+ * that a test rather than a convention: a hex literal or a pixel font size
+ * outside those blocks fails the build.
+ *
+ * There is no webfont. PLAN.md M8-S2 asks for fonts "self-hosted and subset,
+ * no third-party font CDN"; the strongest form of that is not to ship a font at
+ * all, so the prose is set in the reader's own UI face and the terminal in
+ * their own monospace. Nothing is fetched, nothing is subset, nothing is a
+ * third-party request, and the page renders at first paint with no swap.
+ */
+
+:root {
+	color-scheme: light dark;
+
+	/* Colours. Six, named for their job rather than their hue. Every pair the
+	 * page actually puts together is asserted against WCAG AA in gates.go. */
+	--paper: #fbf9f5;
+	--ink: #12100e;
+	--slate: #5b5750;
+	--rule: #e2dcd1;
+	--signal: #b4451f;
+	--terminal: #1b1917;
+	--terminal-ink: #fbf9f5;
+	--glow: #f0ac7a;
+
+	/* The type scale: 1rem, up and down by a factor of 1.25. */
+	--text-xs: 0.8rem;
+	--text-s: 0.9rem;
+	--text-m: 1rem;
+	--text-l: 1.25rem;
+	--text-xl: 1.75rem;
+	--text-2xl: 2.4rem;
+	--text-3xl: 3.2rem;
+
+	--measure: 34rem;
+	--gap: 1.5rem;
+	--radius: 0.35rem;
+
+	--sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+		Arial, sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+		"Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--paper: #141312;
+		--ink: #f2eee7;
+		--slate: #a9a199;
+		--rule: #332f2a;
+		--signal: #f0894f;
+		--terminal: #0c0b0a;
+		--terminal-ink: #f2eee7;
+		--glow: #f0ac7a;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: var(--text-m);
+	line-height: 1.6;
+}
+
+.wrap {
+	max-width: 46rem;
+	margin: 0 auto;
+	padding: 0 var(--gap);
+}
+
+/* ---- the skip link, first in the document and visible when focused ---- */
+
+.skip {
+	position: absolute;
+	left: -100vw;
+	top: 0;
+	background: var(--signal);
+	color: var(--paper);
+	padding: 0.5rem 1rem;
+	z-index: 2;
+}
+
+.skip:focus {
+	left: 0;
+}
+
+/* ---- masthead ---- */
+
+.masthead {
+	border-bottom: 1px solid var(--rule);
+	padding: 1rem 0;
+}
+
+.masthead .wrap {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--gap);
+}
+
+.wordmark {
+	font-family: var(--mono);
+	font-size: var(--text-l);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.wordmark::before {
+	content: "> ";
+	color: var(--signal);
+}
+
+.masthead nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap);
+	font-size: var(--text-s);
+}
+
+/* ---- links ---- */
+
+a {
+	color: var(--signal);
+	text-underline-offset: 0.15em;
+}
+
+a:focus-visible,
+button:focus-visible {
+	outline: 2px solid var(--signal);
+	outline-offset: 2px;
+}
+
+/* ---- headings and prose ---- */
+
+h1,
+h2,
+h3,
+h4 {
+	line-height: 1.15;
+	letter-spacing: -0.015em;
+	margin: 2rem 0 0.75rem;
+}
+
+h1 {
+	font-size: var(--text-2xl);
+}
+
+h2 {
+	font-size: var(--text-xl);
+}
+
+h3 {
+	font-size: var(--text-l);
+}
+
+h4 {
+	font-size: var(--text-m);
+}
+
+p,
+li {
+	max-width: var(--measure);
+}
+
+code {
+	font-family: var(--mono);
+	font-size: 0.92em;
+	background: color-mix(in srgb, var(--rule) 55%, transparent);
+	border-radius: 0.2rem;
+	padding: 0.05em 0.3em;
+}
+
+hr {
+	border: 0;
+	border-top: 1px solid var(--rule);
+	margin: 2.5rem 0;
+}
+
+blockquote {
+	margin: 1.5rem 0;
+	padding-left: 1rem;
+	border-left: 3px solid var(--signal);
+	color: var(--slate);
+}
+
+/* ---- the hero ---- */
+
+.hero {
+	padding: 3.5rem 0 1rem;
+}
+
+.hero h1 {
+	font-size: var(--text-3xl);
+	margin-top: 0;
+}
+
+.tagline {
+	font-size: var(--text-l);
+	color: var(--slate);
+	max-width: var(--measure);
+}
+
+.install {
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	padding: 0.6rem 0.8rem;
+	display: inline-block;
+	overflow-x: auto;
+	max-width: 100%;
+}
+
+/* ---- the proof card: the site's signature element ----
+ *
+ * Every claim the site makes sits directly above one of these, and everything
+ * inside it came out of the binary in this repository. The header bar carries
+ * the command; the body carries exactly the bytes isu wrote.
+ */
+
+.proof {
+	margin: 1.25rem 0 2.5rem;
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	overflow: hidden;
+	background: var(--terminal);
+}
+
+.proof .command {
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	color: var(--glow);
+	padding: 0.6rem 0.9rem;
+	border-bottom: 1px solid color-mix(in srgb, var(--glow) 25%, transparent);
+	margin: 0;
+	max-width: none;
+}
+
+.proof .command::before {
+	content: "$ ";
+	opacity: 0.65;
+}
+
+.proof pre {
+	margin: 0;
+	padding: 0.9rem;
+	overflow-x: auto;
+	color: var(--terminal-ink);
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	line-height: 1.5;
+	tab-size: 4;
+}
+
+.proof code {
+	background: none;
+	padding: 0;
+	font-size: inherit;
+}
+
+/* ---- documents ---- */
+
+.scroller {
+	overflow-x: auto;
+	max-width: 100%;
+	margin: 1.25rem 0;
+}
+
+.scroller pre {
+	margin: 0;
+	padding: 0.9rem;
+	background: var(--terminal);
+	color: var(--terminal-ink);
+	border-radius: var(--radius);
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	line-height: 1.5;
+}
+
+.scroller code {
+	background: none;
+	padding: 0;
+	font-size: inherit;
+}
+
+table {
+	border-collapse: collapse;
+	font-size: var(--text-s);
+}
+
+th,
+td {
+	border-bottom: 1px solid var(--rule);
+	padding: 0.4rem 0.8rem 0.4rem 0;
+	text-align: left;
+	vertical-align: top;
+}
+
+th {
+	white-space: nowrap;
+}
+
+/* ---- contents list beside a document ---- */
+
+.contents {
+	border-left: 2px solid var(--rule);
+	padding-left: 1rem;
+	margin: 1.5rem 0 2.5rem;
+	font-size: var(--text-s);
+}
+
+.contents ul {
+	list-style: none;
+	margin: 0.4rem 0 0;
+	padding: 0;
+}
+
+.contents li {
+	margin: 0.2rem 0;
+}
+
+.contents strong {
+	color: var(--slate);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: var(--text-xs);
+}
+
+/* ---- section headings on the landing page ---- */
+
+.claim {
+	font-size: var(--text-l);
+	max-width: var(--measure);
+}
+
+.section {
+	border-top: 1px solid var(--rule);
+	padding-top: 2rem;
+	margin-top: 2.5rem;
+}
+
+/* ---- foot ---- */
+
+.foot {
+	border-top: 1px solid var(--rule);
+	margin-top: 3.5rem;
+	padding: 1.5rem 0 3rem;
+	color: var(--slate);
+	font-size: var(--text-s);
+}
+
+.foot a {
+	color: var(--slate);
+}
+
+/* ---- motion ----
+ *
+ * The page animates one thing: the caret on the hero's proof card. Anybody who
+ * has asked their system for less motion gets none.
+ */
+
+.caret {
+	animation: blink 1.2s steps(1) infinite;
+}
+
+@keyframes blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.caret {
+		animation: none;
+		opacity: 1;
+	}
+}

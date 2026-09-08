@@ -3,7 +3,7 @@ schema: 1
 id: ISU-m1bcq5
 title: M8-S2 · Landing page
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2

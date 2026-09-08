@@ -1986,7 +1986,26 @@ and produces the output the document claims.
 **Done when** someone who has never seen the project can read `CONTENT.md` and say in one
 sentence what isu does and who it is for.
 
-### M8-S2 · Landing page
+### M8-S2 · Landing page ✅
+**Done** #15, 2026-09-08. Five sections, four of them a claim above a card containing bytes isu
+wrote. The card is the signature element: a header bar with the command and a body with the
+output, and nothing in between for a designer to embellish.
+
+**"Fonts self-hosted and subset" was answered by shipping no font at all**, and that is the one
+place this story's brief was met differently from how it was written. The strongest available
+form of "no third-party font CDN" is to have nothing to fetch: prose is set in the reader's own
+UI face and terminal output in their own monospace, so there is no subsetting step, no swap on
+first paint, and the third-party-request gate passes because there is nothing that could fail
+it. If a brand face is wanted later it is a stylesheet change and a file, not a redesign.
+
+**The contrast gate earned its place on the day it was written.** `--signal` on `--terminal` is
+3.18:1 and looks perfectly fine; the terminal card's command line uses `--glow` at 9.09:1
+because a computed number said so and an eye did not.
+
+`SiteURL` is the only absolute URL the site contains, and it is `https://dgorshkov.github.io/isu`
+pending a decision about where this is actually published. Everything else is relative, so the
+site works from a `file://` checkout, from a project path on Pages and from a domain of its own
+without being rebuilt — changing the host is one constant and a `make site`.
 **Branch** `isu/M8-S2-landing`
 **Build** the page from `CONTENT.md`. Colours and type sizes come from CSS custom properties
 declared once; fonts are self-hosted and subset, no third-party font CDN. Terminal output, board
