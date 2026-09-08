@@ -1,9 +1,9 @@
 # isu — content plan and information architecture
 
-<!-- title: isu — an issue tracker with no database -->
-<!-- tagline: An issue tracker with no database. -->
-<!-- description: isu keeps issues as folders in your repository. Status is derived from what git already knows, so the pull request that fixes a bug also closes it. -->
-<!-- lede: Issues are folders in your repository. Status is derived from what trunk and every branch say, so the pull request that fixes a bug also closes it — in the same diff, in the same review. -->
+<!-- title: isu — issues that branch, merge and review like code -->
+<!-- tagline: Issues that branch, merge and review like code. -->
+<!-- description: isu keeps issues as folders in your repository, so a bug report arrives as a pull request and the branch that fixes a bug carries that bug's state. Status is derived from git rather than stored anywhere. -->
+<!-- lede: An issue is a folder in your repository. A report arrives as a pull request, the branch that fixes a bug carries that bug's state, and merging is what makes it true. There is no second system to keep in step. -->
 <!-- install: go install github.com/dgorshkov/isu/cmd/isu@latest -->
 
 **This file is the site.** The landing page is built from the section sequence below and
