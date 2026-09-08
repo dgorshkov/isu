@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The data model — isu</title>
+<meta name="description" content="An issue is a folder. Everything else follows from that, and everything below is fixed for schema version 1.">
+<link rel="canonical" href="https://dgorshkov.github.io/isu/docs/data-model.html">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The data model — isu">
+<meta property="og:description" content="An issue is a folder. Everything else follows from that, and everything below is fixed for schema version 1.">
+<meta property="og:url" content="https://dgorshkov.github.io/isu/docs/data-model.html">
+<meta property="og:image" content="https://dgorshkov.github.io/isu/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The data model — isu">
+<meta name="twitter:description" content="An issue is a folder. Everything else follows from that, and everything below is fixed for schema version 1.">
+<meta name="twitter:image" content="https://dgorshkov.github.io/isu/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="../index.html">isu</a>
+<nav aria-label="Sections">
+<a href="../docs/getting-started.html">Getting started</a>
+<a href="../docs/index.html">Docs</a>
+<a href="https://github.com/dgorshkov/isu">Source</a>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>The data model</h1>
+<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+<li><a href="#the-folder">The folder</a></li>
+<li><a href="#the-frontmatter">The frontmatter</a></li>
+<li><a href="#what-each-type-requires">What each type requires</a></li>
+<li><a href="#ids">Ids</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#trunk-is-where-state-is-true">Trunk is where state is true</a></li>
+</ul>
+</nav>
+<p>An issue is a folder. Everything else follows from that, and everything below is fixed for schema version 1.</p>
+<h2 id="the-folder">The folder</h2>
+<div class="scroller"><pre><code>issues/
+  APP-7f3akq/
+    README.md                    the issue
+    repro.har                    attachments live with the issue
+    comments/
+      2026-08-24-support-01.md   append-only, one file per comment</code></pre></div>
+<p><code>README.md</code> so that a forge renders the issue when you browse to the folder. Comment files are <code>&lt;date&gt;-&lt;author&gt;-&lt;nn&gt;.md</code>, and the two-digit sequence is not decoration: without it, a second comment by the same author on the same day silently overwrites the first.</p>
+<p>Resolved issues stay in <code>issues/</code>. There is no <code>fixed/</code> directory and no archive command: state lives in the file, so moving the file would be storing the state twice.</p>
+<h2 id="the-frontmatter">The frontmatter</h2>
+<div class="scroller"><pre><code>---
+schema: 1              required, integer, the on-disk format version
+id: APP-7f3akq         required, must equal the folder name
+title: Login retries   required, one line
+type: bug              required: bug | story | chore | spike | epic
+state: open            required except on epics: open | resolved | dropped
+owner: dana            required: the human answerable for it
+created: 2026-02-21    required, RFC 3339 date
+priority: p1           optional: p0 | p1 | p2 | p3, default p2
+parent: APP-40b1cc     optional, an id; must name an epic
+blocked_by: APP-39ka2p optional, comma-separated
+repro: ...             required when type: bug
+acceptance: ...        required when type: story
+question: ...          required when type: spike
+reason: ...            required when state: dropped
+resolution: ...        required when state: dropped
+---
+
+Free-form markdown body.</code></pre></div>
+<p>Frontmatter is parsed by hand rather than by a YAML library, because writing an issue back has to round-trip unknown keys, spacing and line endings byte for byte. A field you did not touch is not rewritten, so an unmodified issue is a zero-length diff.</p>
+<p><code>schema</code> exists so that version 1 is not a format prison. A reader refuses a version it does not know, naming the version it needs, rather than misparsing it. Adding optional keys does not bump it; changing the meaning of an existing key does.</p>
+<p><code>title</code> is what the board, the list and every filter render. <code>created</code> is what issue age is computed from — deriving it by walking history would cost a git process per issue. <code>priority</code> is what <code>isu ready</code> orders by.</p>
+<p><code>owner</code> is the accountable human. It is set at triage and an agent must never change it; a commit by a configured agent that reassigns an owner is a check failure. Who is <em>working</em> on an issue right now is a different question, answered by the claiming branch and not by this field.</p>
+<p><code>resolution</code> is one of <code>wontfix</code>, <code>duplicate</code>, <code>works-as-intended</code> or <code>fixed-elsewhere</code>, and sits alongside the free-text <code>reason</code>. <code>dropped</code> alone cannot distinguish a duplicate from a won&#39;t-fix, and the difference is the first thing anyone asks.</p>
+<h2 id="what-each-type-requires">What each type requires</h2>
+<div class="scroller"><table>
+<thead><tr>
+<th>type</th>
+<th>required field</th>
+<th>resolving it requires</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>bug</code></td>
+<td><code>repro</code></td>
+<td>a change outside <code>issues/</code></td>
+</tr>
+<tr>
+<td><code>story</code></td>
+<td><code>acceptance</code></td>
+<td>a change outside <code>issues/</code></td>
+</tr>
+<tr>
+<td><code>chore</code></td>
+<td>—</td>
+<td>a change outside <code>issues/</code></td>
+</tr>
+<tr>
+<td><code>spike</code></td>
+<td><code>question</code></td>
+<td>a file in the issue&#39;s own folder that isn&#39;t <code>README.md</code></td>
+</tr>
+<tr>
+<td><code>epic</code></td>
+<td>—</td>
+<td>nothing — an epic has no <code>state:</code>, and its status is the fold over its children</td>
+</tr>
+<tr>
+<td>any</td>
+<td>—</td>
+<td><code>state: dropped</code> requires <code>reason</code> and <code>resolution</code></td>
+</tr>
+</tbody></table></div>
+<p>An epic <strong>must not</strong> declare <code>state:</code>, and everything else <strong>must</strong>. Epic-ness is declared in the file rather than inferred from who points at it, so validating one issue never requires loading another — and no pull request of yours can invalidate a file somebody else owns by adding a <code>parent:</code> line to a third file.</p>
+<p><code>parent</code> must name an issue of <code>type: epic</code>, and that is a repository-level rule rather than a field-level one. Validating one issue checks that <code>parent</code> is <em>shaped</em> like an id and stops there; whether it resolves, and whether what it resolves to is an epic, is a <a href="checks.html">check</a> with the whole set loaded.</p>
+<h2 id="ids">Ids</h2>
+<p><code>&lt;PREFIX&gt;-&lt;token&gt;</code>, with the prefix from <code>.isu.yml</code>. The token is the first thirty bits of <code>sha256(title ‖ owner ‖ created ‖ 8 bytes from crypto/rand)</code>, rendered as six characters of Crockford base32 — lowercase, with <code>i</code>, <code>l</code>, <code>o</code> and <code>u</code> excluded so nothing is ambiguous read aloud or typed from a screenshot.</p>
+<p>The separator is a NUL byte and not concatenation. Running the fields together would make the boundary between two of them imaginary, so a title ending in the owner&#39;s name would hash the same as a shorter title and a longer owner.</p>
+<p>Allocation needs no coordination, no counter and no network round trip, which is the whole point: sequential <code>max + 1</code> cannot see issues sitting on unmerged <code>report/*</code> branches, so under any real load it hands out the same number twice. <code>isu new</code> regenerates on a collision with any id it can see — trunk plus every local ref.</p>
+<p><strong>Ids are permanent and are never rewritten.</strong> There is no <code>isu renumber</code>. That is what lets <code>blocked_by</code> on one branch keep pointing at the right issue while a hundred other branches are in flight, and it is why an imported issue keeps its source key verbatim: <code>PROJ-1234</code> is a perfectly legal id, and the format above governs generation rather than validation.</p>
+<h2 id="configuration">Configuration</h2>
+<p><code>.isu.yml</code> sits at the repository root. This is the whole schema, and an unknown key is a validation error rather than a silent no-op.</p>
+<div class="scroller"><table>
+<thead><tr>
+<th>key</th>
+<th>type</th>
+<th>default</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>prefix</code></td>
+<td>string</td>
+<td>—</td>
+<td>required; the issue id prefix, and a legal folder name</td>
+</tr>
+<tr>
+<td><code>agents</code></td>
+<td>list of strings</td>
+<td>empty</td>
+<td>commit authors treated as agents by the owner rule</td>
+</tr>
+<tr>
+<td><code>direct_triage</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>allow <code>isu triage --push</code> to write straight to trunk</td>
+</tr>
+<tr>
+<td><code>stale_days</code></td>
+<td>int</td>
+<td><code>7</code></td>
+<td>a claim older than this is stale</td>
+</tr>
+<tr>
+<td><code>fetch_warn_hours</code></td>
+<td>int</td>
+<td><code>24</code></td>
+<td>warn when the newest remote ref is older than this</td>
+</tr>
+<tr>
+<td><code>attachment_max_bytes</code></td>
+<td>int</td>
+<td><code>524288</code></td>
+<td>per-attachment cap enforced by the attachments rule</td>
+</tr>
+</tbody></table></div>
+<p><code>isu init</code> writes <code>prefix</code> and nothing else.</p>
+<h2 id="trunk-is-where-state-is-true">Trunk is where state is true</h2>
+<p>A branch saying <code>state: resolved</code> is a <em>proposal</em>. It becomes a fact about the repository when the branch merges, and until then the only thing that reads it is a board that renders it as <code>in progress</code>. This is not a special case for claims — it is the whole of what a claim is.</p>
+<p><code>--ref</code> chooses what isu treats as trunk, and defaults to <code>origin/HEAD</code>, then <code>main</code>, then <code>master</code>, then <code>HEAD</code>. Never <code>HEAD</code> first: half of what isu says is how a branch differs from trunk, and a repository read from its own checkout has nothing to differ from.</p>
+<p>Post-merge questions are answered from <strong>file content at trunk commits</strong>, never from commit metadata, because a squash merge collapses authorship and does not touch the file. The one exception is linking a trunk commit back to the issue it resolved, which file content cannot answer: <code>isu resolve</code> writes an <code>Isu-Resolves: &lt;id&gt;</code> commit trailer for exactly that.</p>
+
+
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>Every sample on this site was produced by running isu against a repository the site&#39;s build creates from scratch. Apache-2.0.</p>
+</div>
+</footer>
+</body>
+</html>

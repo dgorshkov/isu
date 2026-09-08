@@ -44,6 +44,7 @@ make test      # go test ./...
 make perf      # M2-S5's wall-clock budgets, measured with the machine to itself
 make cover     # the coverage floors: 99% overall, 100% internal/model
 make dogfood   # ./isu check over this repository, with the isu just built
+make site      # rebuild web/site from web/CONTENT.md, docs/ and the binary
 make stress    # the //go:build stress races, out of the default suite
 make tools     # install the pinned golangci-lint
 ```
@@ -55,6 +56,7 @@ go test ./internal/check/ -run TestARingIsReportedOnce   # one test
 go test ./internal/cli/ -run TestGoldenCheck -update     # rewrite golden files
 go test ./internal/repo/ -run 'Fast|ProcessCount'        # the read-path gates
 go test ./internal/repo/ -bench BenchmarkBoard -run '^$' # the read-path benchmarks
+go test ./internal/site/ -run TestEveryCommandInTheDocs      # the docs, executed
 ```
 
 **Coverage is a hard gate with about eight statements of headroom.** `scripts/coverage.sh`
@@ -75,6 +77,7 @@ cmd/isu -> internal/cli -> internal/check   (rules, pure)
                         -> internal/gitx    (the only place that builds a git command)
            internal/issue  (the file format)   internal/config (.isu.yml)
            internal/gittest (real repositories, for tests)
+           internal/site   (the website; calls internal/cli for its samples)
 ```
 
 - **`internal/gitx` is the one door to git**, and `TestNothingOutsideGitxExecutesGit` enforces it
@@ -159,6 +162,29 @@ trailer), and M5-S3 turns a pull request that contains nothing else into a faili
 `internal/cli/dogfood_test.go` holds PLAN.md and `issues/` to each other in both directions — a
 story heading with no issue, or an issue with no heading, fails the suite. `make dogfood` runs the
 rules over this repository with the binary just built.
+
+## The website is a golden file
+
+`web/CONTENT.md` **is** the landing page — `internal/site` parses the section sequence, the
+claim, the copy and the sample out of it, and `web/templates/pages.html.tmpl` carries structure
+and not one word. `docs/*.md` are the documentation pages; `internal/site/build.go` names them,
+and `TestTheDocumentsAndTheDocumentationAgree` fails when a file in `docs/` is not on that list.
+
+- **Every sample is produced by running isu**, in process through `cli.Run` against a repository
+  `internal/site/fixture.go` builds with plumbing and a fixed clock. No `exec.Command`, no
+  built binary, nothing taken from the machine the build runs on.
+- **A ```console fence is executed.** Its `$ ` lines are run and the lines beneath each one are
+  compared with what isu printed. A `$ ` prompt outside such a fence fails the extraction.
+  ```console exit=1 is how a document quotes a command that is meant to fail.
+- **`make site` is `go test ./internal/site/ -update`.** It rewrites `web/site/`, which is
+  committed; `make test` fails when the committed site and the regenerated one differ. Change a
+  renderer and the failure hands you both versions.
+- **The gates run inside `Build`**, so `make site` refuses to write a site that fails one:
+  internal links, HTML validity, a 300 KB per-page budget, an accessibility pass, WCAG contrast
+  computed from the CSS tokens, a width the page survives at, reduced motion, and no colour or
+  pixel type size outside `:root`.
+- **`.github/workflows/site.yml` publishes on merge to trunk** and is separate from `ci.yml`
+  because the deploy needs a permission the gates must not have.
 
 ## Dependencies
 

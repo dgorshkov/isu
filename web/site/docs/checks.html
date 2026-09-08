@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The check catalogue — isu</title>
+<meta name="description" content="isu check runs isu&#39;s rules over the repository and over what your branch proposes. A failure exits 1 and a warning does not: two people about to do the same work is worth saying and is not a reason to refuse a pull request.">
+<link rel="canonical" href="https://dgorshkov.github.io/isu/docs/checks.html">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The check catalogue — isu">
+<meta property="og:description" content="isu check runs isu&#39;s rules over the repository and over what your branch proposes. A failure exits 1 and a warning does not: two people about to do the same work is worth saying and is not a reason to refuse a pull request.">
+<meta property="og:url" content="https://dgorshkov.github.io/isu/docs/checks.html">
+<meta property="og:image" content="https://dgorshkov.github.io/isu/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The check catalogue — isu">
+<meta name="twitter:description" content="isu check runs isu&#39;s rules over the repository and over what your branch proposes. A failure exits 1 and a warning does not: two people about to do the same work is worth saying and is not a reason to refuse a pull request.">
+<meta name="twitter:image" content="https://dgorshkov.github.io/isu/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="../index.html">isu</a>
+<nav aria-label="Sections">
+<a href="../docs/getting-started.html">Getting started</a>
+<a href="../docs/index.html">Docs</a>
+<a href="https://github.com/dgorshkov/isu">Source</a>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>The check catalogue</h1>
+<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+<li><a href="#two-kinds-of-rule">Two kinds of rule</a></li>
+<li><a href="#the-nine-rules">The nine rules</a></li>
+<li><a href="#evidence-is-the-rule-that-makes-a-claim-a-claim">Evidence is the rule that makes a claim a claim</a></li>
+<li><a href="#owner-is-expensive-to-change-on-purpose">Owner is expensive to change on purpose</a></li>
+<li><a href="#running-them">Running them</a></li>
+<li><a href="#adding-one">Adding one</a></li>
+</ul>
+</nav>
+<p><code>isu check</code> runs isu&#39;s rules over the repository and over what your branch proposes. A failure exits 1 and a warning does not: two people about to do the same work is worth saying and is not a reason to refuse a pull request.</p>
+<h2 id="two-kinds-of-rule">Two kinds of rule</h2>
+<p>A <strong>tree</strong> rule is about the repository as it stands — a parent that names nothing, an epic with no children — and needs no branch. A <strong>branch</strong> rule is about what this branch proposes: a resolution with no code beside it, an owner an agent reassigned. <code>--scope</code> picks one kind.</p>
+<p>The pre-commit hook <code>isu init --hooks</code> writes runs the tree rules only, because at pre-commit time the change being committed is not a commit yet and the branch rules would be answering from the commits already there. It also passes <code>--worktree</code>, which reads the issues on disk rather than at a ref: a check that read a ref before a commit would be answering about the commit <em>before</em> the one being made, and would refuse the very commit that fixed what it was complaining about.</p>
+<h2 id="the-nine-rules">The nine rules</h2>
+<div class="scroller"><table>
+<thead><tr>
+<th>rule</th>
+<th>scope</th>
+<th>what it refuses</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>attachments</code></td>
+<td>tree</td>
+<td>an attachment bigger than <code>attachment_max_bytes</code></td>
+</tr>
+<tr>
+<td><code>claims</code></td>
+<td>tree</td>
+<td>two branches claiming one issue, and a claim that has gone quiet</td>
+</tr>
+<tr>
+<td><code>cycles</code></td>
+<td>tree</td>
+<td>an epic that is its own ancestor, and anything waiting on itself in a ring</td>
+</tr>
+<tr>
+<td><code>duplicates</code></td>
+<td>tree</td>
+<td>two branches reporting different issues under one id</td>
+</tr>
+<tr>
+<td><code>epics</code></td>
+<td>tree</td>
+<td>an epic with no children</td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td>branch</td>
+<td>resolving something with no work beside it, and a drop with no reason</td>
+</tr>
+<tr>
+<td><code>links</code></td>
+<td>tree</td>
+<td>a <code>parent</code> or <code>blocked_by</code> naming an issue that does not exist, or a parent that is not an epic</td>
+</tr>
+<tr>
+<td><code>owner</code></td>
+<td>branch</td>
+<td>a commit by a configured agent reassigning an issue&#39;s owner</td>
+</tr>
+<tr>
+<td><code>schema</code></td>
+<td>tree</td>
+<td>an issue file that will not parse, fails the schema, or sits in a folder not named after its id</td>
+</tr>
+</tbody></table></div>
+<p>A clean repository says so and exits 0:</p>
+<div class="scroller"><pre><code>$ isu check --scope tree
+main ← isu/APP-9cx2rt · 7 checks · nothing to report · remote refs 3h ago</code></pre></div>
+<h2 id="evidence-is-the-rule-that-makes-a-claim-a-claim">Evidence is the rule that makes a claim a claim</h2>
+<p><code>isu claim</code> writes <code>state: resolved</code> on the claiming branch <em>before</em> any work starts — that is the whole compare-and-swap, and it is why a claimed issue reads <code>in progress</code>. So a branch that claimed something and did nothing looks, in the file, exactly like a branch that resolved it. What separates them is not the field, which is identical, but the diff beside it.</p>
+<div class="scroller"><pre><code>$ isu check
+main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
+
+fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution</code></pre></div>
+<p>What counts as work depends on the type. A bug, a story or a chore needs a change outside <code>issues/</code>. A spike needs a file in the issue&#39;s own folder that is not <code>README.md</code>, because a spike is answered rather than fixed and the artifact is the answer. A drop needs a <code>reason</code> and a <code>resolution</code> from the enum.</p>
+<p>The rule reads the branch and not the board, so an issue no commit on the branch touched is not its business. A pull request is answerable for what it changed.</p>
+<h2 id="owner-is-expensive-to-change-on-purpose">Owner is expensive to change on purpose</h2>
+<p><code>owner</code> is the accountable human, set at triage. A commit whose author is listed under <code>agents</code> in <code>.isu.yml</code> and which changes an issue&#39;s <code>owner</code> is a failure — an agent may do the work, but it may not decide who answers for it.</p>
+<h2 id="running-them">Running them</h2>
+<div class="scroller"><pre><code>isu check                      # everything, against the current branch
+isu check --scope tree         # the repository only, no branch
+isu check --worktree           # the issues on disk, uncommitted edits included
+isu check --json               # one finding per line
+isu check --ref origin/main    # say what trunk is, which CI has to</code></pre></div>
+<p>That last one matters in a pipeline. A pull request build checks out a merge commit and no branch, so without <code>--ref</code> isu compares the repository against itself and every rule about the branch passes silently. The workflow <code>isu init --actions</code> writes already does this.</p>
+<h2 id="adding-one">Adding one</h2>
+<p>A check is one file and one registry line. It implements <code>Name</code>, <code>Scope</code>, <code>Describe</code> and <code>Run</code> over an input the CLI assembled, it runs no git of its own, and it never fails — a check that cannot answer has found nothing. <code>isu check --help</code> is generated from the registry, so a rule that exists is a rule that is documented.</p>
+
+
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>Every sample on this site was produced by running isu against a repository the site&#39;s build creates from scratch. Apache-2.0.</p>
+</div>
+</footer>
+</body>
+</html>

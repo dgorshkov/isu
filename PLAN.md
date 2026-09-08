@@ -2017,7 +2017,47 @@ hex value or a pixel font size; a test asserting the built HTML makes zero third
 requests.
 **Done when** every artifact on the page came out of the binary in this repo.
 
-### M8-S3 · Docs, gates and deploy
+### M8-S3 · Docs, gates and deploy ✅
+**Done** #15, 2026-09-08. Eight pages under `docs/`, every console block in them run against a
+scratch repository during `make test` and `make site`. Two facts about them are worth writing
+down rather than discovering:
+
+- **`docs/importing.md` documents a milestone that does not exist yet.** M7 has not been built,
+  so the page opens by saying the command is not in this build, publishes the mapping the plan
+  specifies, and contains no `$ isu` line at all — there is nothing to run and it does not
+  pretend there is. It is the honest version of a page M8-S3 asks for and M7 has not earned.
+- **`docs/getting-started.md` runs against a repository it is allowed to write to**, so `isu
+  init` and `isu new` actually run. What it cannot assert is anything containing a generated id,
+  because an id is thirty bits of hash over eight random bytes; those blocks run and their output
+  is not compared, and the page says so where it quotes one.
+
+**The gates are hand-written over the built site, and what they can and cannot see is stated in
+`internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at
+360 px" is enforced as the two things that cause it — a fixed width wider than the viewport, and
+wide content outside a box that scrolls — rather than measured. That claim was checked once
+against a real Chromium at 360 px while the story was being built, and the page's `scrollWidth`
+equalled its `clientWidth`; the gate that runs on every build is the proxy, and it is a proxy on
+purpose rather than a browser dependency in the allowlist.
+
+The markdown renderer is `internal/site/markdown.go` and it is not the thing the out-of-scope
+list drops. It renders a fixed subset, refuses a line it does not understand, never passes raw
+HTML through — a `<script>` in a source document is escaped and rendered as text — and is never
+handed an issue body. There is nothing for a sanitiser to do and no configuration in which
+there would be.
+
+**Publishing is `.github/workflows/site.yml` and not a job in `ci.yml`**, because the deploy
+needs a write permission the gates must not have. The build half runs on every pull request and
+regenerates the site; `git diff --exit-code -- web/site` is what holds the committed site to it.
+`scripts/site_test.go` asserts the deploy job is fenced to trunk twice over and that the
+permission lives on that job alone.
+
+**One statement in this package is uncovered and is argued for**, in the shape the definition of
+done asks for: `documents` propagating a failure from `Renderer.Page`. Every other error return
+here is reached — by a source file that is not there, by a stylesheet with no tokens in it, by a
+directory something else is sitting on, and by a git on `PATH` that refuses one invocation — but
+that one needs `html/template` to fail on a `docBody` this package built out of its own types,
+which it cannot. The renderer's own execution failure *is* reached, directly, in
+`render_test.go`.
 **Branch** `isu/M8-S3-docs-deploy`
 **Build** `docs/`: getting started, the data model, every derived status with its rule, the
 check catalogue, the JSON contract, importing from GitHub Issues, and a page on what isu

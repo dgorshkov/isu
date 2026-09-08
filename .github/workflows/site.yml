@@ -1,0 +1,68 @@
+# The website, published on merge to trunk.
+#
+# It is a workflow of its own rather than a job in ci.yml because publishing
+# needs a write permission the gates must not have: a pull request build from a
+# fork would otherwise be asked for it. The build half runs on every pull
+# request too, so a site that no longer builds fails the review rather than the
+# deploy.
+#
+# As everywhere else in this project, the work is a Makefile target rather than
+# logic in YAML. That target regenerates web/site from web/CONTENT.md, docs/ and
+# the binary in this repository, and `git diff --exit-code` is what holds the
+# committed site to it: the site is a golden file, and its review is a diff.
+name: site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The samples come from a repository the build creates, but isu still
+          # reads this one to run its own tests.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - run: make site
+
+      - name: the committed site is the one the build produces
+        run: git diff --exit-code -- web/site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/site
+
+  deploy:
+    name: deploy
+    needs: build
+    # Trunk and nothing else. A pull request builds the site and never
+    # publishes it.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - id: pages
+        uses: actions/deploy-pages@v4

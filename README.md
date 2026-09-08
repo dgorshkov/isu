@@ -16,3 +16,10 @@ go install github.com/dgorshkov/isu/cmd/isu@latest
 ```
 
 `git` is a runtime requirement.
+
+## Documentation
+
+`docs/` holds getting started, the data model, every derived status with its rule, the check
+catalogue, the JSON contract, the GitHub Issues mapping and what isu deliberately does not do.
+`web/CONTENT.md` is the landing page. Every command in either runs during the build, against a
+repository the build creates, and the site is regenerated with `make site`.
