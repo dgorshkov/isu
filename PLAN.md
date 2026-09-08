@@ -480,7 +480,7 @@ Ten milestones. Stop for review at the end of each.
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | done |
 | M6 | TUI | `isu ui` | done |
 | M7 | Importers | safe writes, GitHub Issues | not started |
-| M8 | Public website | content, landing page, docs, deploy | not started |
+| M8 | Public website | content, landing page, docs, deploy | done |
 | M9 | Release | goreleaser, brew, docs, v1.0.0 | not started |
 
 ### Sizing
@@ -1945,7 +1945,19 @@ produces a zero-length diff.
 
 ---
 
-# M8 · Public website
+# M8 · Public website ✅
+
+**Status** done — all three stories landed in one pull request. §0's grouping rule allows it:
+they are neighbours here, they belong to one milestone, and they share one subject — the branch
+would have been `isu/M8-S1-S3-website`, and this work was done on `claude/milestone-8-fafh5y`,
+which the session that produced it was told to use. The story ids are in every commit subject.
+
+**This milestone was taken before M7, which is not started.** That was the instruction and it is
+recorded here rather than smoothed over: `issues/ISU-he1wf1` is `blocked_by` the M7 epic and was
+resolved with that blocker open. Nothing on the site depends on the importer existing —
+`docs/importing.md` opens by saying the command is not in this build and shows no output, because
+there is none to show — but the ordering is a deviation from the queue this file describes and
+the next session should know it happened. Nothing else in M8 needed M7.
 
 The site is designed and built from scratch in this milestone. There is no approved comp to
 port — treat M8-S1 as real design work with a written brief, not as implementation.
@@ -1956,6 +1968,21 @@ product changes and the site doesn't, the build fails.
 
 Three stories, not seven. The site sells v1.0.0; it does not gate it, and every week spent here
 is a week the thing it advertises is not shipping.
+
+**The samples run in process rather than through the built binary, and that is the same
+decision M2-S1 made.** A generator that shelled out to `./isu` would be a second place in
+`internal/` that constructs a command, which `TestNothingOutsideGitxExecutesGit` exists to
+prevent, and it would be a generator that could be pointed at a stale binary. `cli.Run` takes
+its streams, its directory, its clock and its environment as arguments — M4-S1 built it that
+way so the tests would be end to end through the product — so `internal/site` calls the same
+function `cmd/isu` calls, with a fixed clock. "This repo's binary" and "this repo's code" are
+the same thing said twice, and only one of them can go stale.
+
+**`make site` is `go test -update`, not a generator of its own.** The site is a golden file like
+every other artifact here: `make site` writes `web/site/` and `make test` fails when the
+committed site and the regenerated one differ. A separate `cmd/` would have added a `main`
+nobody covers against a floor with nine statements of headroom, and running the package's tests
+is what executes the docs' console blocks before anything is published rather than after.
 
 ### M8-S1 · Content plan and information architecture ✅
 **Done** #15, 2026-09-08. `web/CONTENT.md` is not a brief the page was built *from* — it is the
