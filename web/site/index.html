@@ -23,6 +23,7 @@
 <header class="masthead">
 <div class="wrap">
 <a class="wordmark" href="index.html">isu</a>
+<span class="version">0.1.0-dev</span>
 <nav aria-label="Sections">
 <a href="docs/getting-started.html">Getting started</a>
 <a href="docs/index.html">Docs</a>
@@ -34,15 +35,9 @@
 <div class="hero">
 <h1>Issues that branch, merge and review like code.</h1>
 <p class="tagline">A command-line issue tracker whose issues are folders in your repository. The branch that fixes a bug carries that bug&#39;s state, so there is no second system to keep in step.</p>
-<p class="install"><span aria-hidden="true">$ </span>go install github.com/dgorshkov/isu/cmd/isu@latest<span class="caret" aria-hidden="true">_</span></p>
-</div>
-
-<section class="section" id="derived">
-<h2>Status is derived, never stored</h2>
-<p class="claim">Every status on this board was computed, just now, from what trunk and the branches say — there is no status field anywhere in the repository.</p>
 <div class="proof">
 <p class="command">isu board</p>
-<pre><code>main · 9 issues · remote refs 3h ago
+<pre tabindex="0" role="region" aria-label="output of isu board"><code>main · 9 issues · remote refs 3h ago
 
 done (2)
   APP-x4h7vb  p2  spike  What does a failed payment cost us?  dana
@@ -63,6 +58,12 @@ open (4)
   APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
   APP-5wq7dn  p3  chore  Publish a status page                   sam</code></pre>
 </div>
+<p class="install" tabindex="0" role="region" aria-label="install command"><span aria-hidden="true">$ </span>go install github.com/dgorshkov/isu/cmd/isu@latest<span class="caret" aria-hidden="true">_</span></p>
+</div>
+
+<section class="section" id="derived">
+<h2>Status is derived, never stored</h2>
+<p class="claim">Every status on this board was computed, just now, from what trunk and the branches say — there is no status field anywhere in the repository.</p>
 <p>An issue is a folder with a <code>README.md</code> in it. The file says <code>state: open</code>, <code>resolved</code> or <code>dropped</code>, and nothing else about where the work has got to. Everything the board groups by is derived: <code>done</code> because trunk says resolved, <code>in progress</code> because a branch says resolved where trunk says open, <code>awaiting triage</code> because the folder exists on a branch and has never reached trunk at all.</p>
 <p>That last one is worth stopping on. <code>awaiting triage</code> is not a column somebody has to remember to move a card out of. It is a fact about the repository — this issue has been reported and nobody has merged it — and it stops being true the moment the report merges.</p>
 </section>
@@ -72,7 +73,7 @@ open (4)
 <p class="claim">Two people cannot both take the same issue, and nothing had to be locked to make that true.</p>
 <div class="proof">
 <p class="command">isu show APP-9cx2rt</p>
-<pre><code>APP-9cx2rt  Show the sign-up queue on the board
+<pre tabindex="0" role="region" aria-label="output of isu show APP-9cx2rt"><code>APP-9cx2rt  Show the sign-up queue on the board
 
   status      in progress
   type        story
@@ -98,7 +99,7 @@ remote refs 3h ago</code></pre>
 <p class="claim"><code>isu check</code> fails a branch that says it fixed something and changed nothing else.</p>
 <div class="proof">
 <p class="command">isu check</p>
-<pre><code>main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
+<pre tabindex="0" role="region" aria-label="output of isu check"><code>main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
 
 fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution</code></pre>
 </div>
@@ -111,7 +112,7 @@ fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outsi
 <p class="claim">Every command speaks newline-delimited JSON, and the shape is a contract rather than a rendering.</p>
 <div class="proof">
 <p class="command">isu ready</p>
-<pre><code>{&#34;id&#34;:&#34;APP-7f3akq&#34;,&#34;title&#34;:&#34;Login retries drop the second attempt&#34;,&#34;type&#34;:&#34;bug&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;open&#34;,&#34;owner&#34;:&#34;dana&#34;,&#34;created&#34;:&#34;2026-02-21&#34;,&#34;priority&#34;:&#34;p1&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;sign in, fail once, retry within 5s&#34;,&#34;acceptance&#34;:&#34;&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[],&#34;elsewhere&#34;:[],&#34;epic&#34;:null,&#34;broken&#34;:null}
+<pre tabindex="0" role="region" aria-label="output of isu ready"><code>{&#34;id&#34;:&#34;APP-7f3akq&#34;,&#34;title&#34;:&#34;Login retries drop the second attempt&#34;,&#34;type&#34;:&#34;bug&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;open&#34;,&#34;owner&#34;:&#34;dana&#34;,&#34;created&#34;:&#34;2026-02-21&#34;,&#34;priority&#34;:&#34;p1&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;sign in, fail once, retry within 5s&#34;,&#34;acceptance&#34;:&#34;&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[],&#34;elsewhere&#34;:[],&#34;epic&#34;:null,&#34;broken&#34;:null}
 {&#34;id&#34;:&#34;APP-b5n3kt&#34;,&#34;title&#34;:&#34;Send a receipt after the first invoice&#34;,&#34;type&#34;:&#34;story&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;open&#34;,&#34;owner&#34;:&#34;priya&#34;,&#34;created&#34;:&#34;2026-03-05&#34;,&#34;priority&#34;:&#34;p2&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;&#34;,&#34;acceptance&#34;:&#34;a paid invoice sends one receipt, and only one&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[],&#34;elsewhere&#34;:[],&#34;epic&#34;:null,&#34;broken&#34;:null}</code></pre>
 </div>
 <p><code>isu ready</code> is the queue: the issues nothing is blocking, most urgent first, one JSON object per line — so <code>isu ready | head -1</code> is the top of the queue and not an opening brace. JSON is what it prints by default, because the caller that reads it most often is not a person; <code>--json=false</code> is how you ask for the list a person reads. Every object carries the acceptance criteria or the repro, because an agent picking work up needs the briefing before it needs anything else.</p>

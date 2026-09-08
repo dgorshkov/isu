@@ -24,6 +24,7 @@
 <header class="masthead">
 <div class="wrap">
 <a class="wordmark" href="{{.Home}}">isu</a>
+<span class="version">{{.Version}}</span>
 <nav aria-label="Sections">
 {{range .Nav}}<a href="{{.Href}}">{{.Text}}</a>
 {{end}}</nav>
@@ -45,7 +46,11 @@
 <div class="hero">
 <h1>{{.Tagline}}</h1>
 <p class="tagline">{{.Lede}}</p>
-<p class="install"><span aria-hidden="true">$ </span>{{.Install}}<span class="caret" aria-hidden="true">_</span></p>
+{{with .HeroSample}}<div class="proof">
+<p class="command">{{.Command}}</p>
+<pre tabindex="0" role="region" aria-label="output of {{.Command}}"><code>{{.Output}}</code></pre>
+</div>
+{{end}}<p class="install" tabindex="0" role="region" aria-label="install command"><span aria-hidden="true">$ </span>{{.Install}}<span class="caret" aria-hidden="true">_</span></p>
 </div>
 {{range .Sections}}
 <section class="section" id="{{.ID}}">
@@ -53,7 +58,7 @@
 {{if .Claim}}<p class="claim">{{.Claim}}</p>
 {{end}}{{with .Sample}}<div class="proof">
 <p class="command">{{.Command}}</p>
-<pre><code>{{.Output}}</code></pre>
+<pre tabindex="0" role="region" aria-label="output of {{.Command}}"><code>{{.Output}}</code></pre>
 </div>
 {{end}}{{range .Copy}}<p>{{.}}</p>
 {{end}}</section>

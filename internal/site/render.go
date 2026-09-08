@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"path/filepath"
 	"strings"
+
+	"github.com/dgorshkov/isu/internal/cli"
 )
 
 // SiteURL is where the site is published, and the only absolute URL in it.
@@ -71,8 +73,10 @@ type shell struct {
 	Rel    string
 	Home   string
 	Footer string
-	Nav    []link
-	Body   template.HTML
+	// Version is the build of isu that produced every sample on the site.
+	Version string
+	Nav     []link
+	Body    template.HTML
 }
 
 // proofView is one terminal card: a command, and the bytes isu wrote.
@@ -91,10 +95,14 @@ type sectionView struct {
 }
 
 type indexBody struct {
-	Tagline  string
-	Lede     string
-	Install  string
-	Sections []sectionView
+	Tagline string
+	Lede    string
+	Install string
+	// HeroSample is the first section's proof, shown in the hero rather than
+	// after two paragraphs of prose. A page whose whole argument is that the
+	// output is real opened with no output on it.
+	HeroSample *proofView
+	Sections   []sectionView
 }
 
 type docBody struct {
@@ -167,6 +175,7 @@ func newShell(title, description, path, rel string) shell {
 		Rel:         rel,
 		Home:        rel + "index.html",
 		Footer:      footer,
+		Version:     cli.Version,
 		Nav:         nav(rel),
 	}
 }
@@ -189,8 +198,18 @@ func (r *Renderer) Index(plan Plan) ([]byte, error) {
 		Lede:    fields["lede"],
 		Install: fields["install"],
 	}
-	for _, section := range plan.Sections {
-		body.Sections = append(body.Sections, view(section))
+	for i, section := range plan.Sections {
+		v := view(section)
+
+		// The first section's proof is the hero's. Nothing about a page that
+		// argues from real output should put four paragraphs in front of the
+		// first of it.
+		if i == 0 && v.Sample != nil {
+			body.HeroSample = v.Sample
+			v.Sample = nil
+		}
+
+		body.Sections = append(body.Sections, v)
 	}
 
 	return r.page(newShell(fields["title"], fields["description"], "/index.html", ""),

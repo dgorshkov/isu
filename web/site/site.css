@@ -36,7 +36,7 @@
 	--text-xs: 0.8rem;
 	--text-s: 0.9rem;
 	--text-m: 1rem;
-	--text-l: 1.25rem;
+	--text-l: clamp(1.1rem, 1rem + 0.5vw, 1.25rem);
 	--text-xl: 1.75rem;
 	--text-2xl: 2.4rem;
 
@@ -45,7 +45,7 @@
 	 * page that proves anything — below the fold on every mobile device. */
 	--text-3xl: clamp(2.1rem, 1.4rem + 3.2vw, 3.2rem);
 
-	--measure: 38rem;
+	--measure: 34rem;
 	--gap: 1.5rem;
 	--radius: 0.35rem;
 
@@ -110,6 +110,15 @@ body {
 }
 
 /* ---- masthead ---- */
+
+/* The version of the binary that produced every sample below. A page for a
+ * pre-1.0 tool that declines to say which pre-1.0 it is asks to be trusted
+ * about the one thing it could simply state. */
+.version {
+	font-family: var(--mono);
+	font-size: var(--text-xs);
+	color: var(--slate);
+}
 
 .masthead {
 	border-bottom: 1px solid var(--rule);
@@ -460,9 +469,6 @@ th {
 		font-size: var(--text-m);
 	}
 
-	.claim {
-		font-size: var(--text-m);
-	}
 }
 
 /* ---- motion ----

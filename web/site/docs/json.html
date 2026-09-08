@@ -23,6 +23,7 @@
 <header class="masthead">
 <div class="wrap">
 <a class="wordmark" href="../index.html">isu</a>
+<span class="version">0.1.0-dev</span>
 <nav aria-label="Sections">
 <a href="../docs/getting-started.html">Getting started</a>
 <a href="../docs/index.html">Docs</a>
@@ -57,12 +58,13 @@
 <h2 id="the-line-format">The line format</h2>
 <p>Output is <strong>newline-delimited JSON</strong>: one complete JSON value per line.</p>
 <p>Most commands print exactly one line. <code>isu ready</code> prints one issue per line, in the order an agent should take them, so that</p>
-<div class="scroller sketch"><pre><code>isu ready --json | head -1</code></pre></div>
+<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>isu ready --json | head -1</code></pre></div>
 <p>is the top of the queue and not an opening brace. <code>ready</code> prints JSON <strong>by default</strong>; pass <code>--json=false</code> for the list a person reads.</p>
 <p>Errors go to standard error, as one <code>Failure</code> object and nothing else — no usage text, no warnings. Exit status is <code>0</code> for success, <code>1</code> for a command that could not do what it was asked, and <code>2</code> for a command line that does not make sense.</p>
 <h2 id="failure">Failure</h2>
 <p>Printed on standard error by any command that fails while <code>--json</code> is set.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -77,7 +79,8 @@
 </tbody></table></div>
 <h2 id="issue">Issue</h2>
 <p>One issue: the fields its file carries, and what the repository derives about them. Every field is always present — a list that is sometimes <code>null</code> makes every consumer write the same defensive branch.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -204,7 +207,8 @@
 <p><code>status</code> is one of <code>done</code>, <code>dropped</code>, <code>awaiting triage</code>, <code>in progress</code>, <code>reopened</code> or <code>open</code>. The rows are ordered and the first match wins, so a merged issue whose claiming branch was never deleted reads <code>done</code>. <code>reopened</code> survives as the annotation above whatever status wins, so the fact is never lost.</p>
 <h2 id="claim">Claim</h2>
 <p>One branch claiming one issue. A claim is a branch whose copy of the issue says <code>resolved</code> where trunk says <code>open</code>; there is no other source.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -248,7 +252,8 @@
 </tr>
 </tbody></table></div>
 <h2 id="epic">Epic</h2>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -267,7 +272,8 @@
 </tr>
 </tbody></table></div>
 <h2 id="broken">Broken</h2>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -288,7 +294,8 @@
 <p>An issue is never dropped from the board for having one. A half-written issue must not blind the whole board, least of all for the one issue somebody most needs to hear about.</p>
 <h2 id="freshness">Freshness</h2>
 <p>How old the newest remote-tracking ref is. Every derived status is a statement about refs, so a board computed from a week-old fetch is a board about last week — and two engineers with different fetch ages see different contention.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -318,7 +325,8 @@
 </tbody></table></div>
 <h2 id="boardpayload">BoardPayload</h2>
 <p><code>isu board</code>, one object. <code>isu ui --json</code> prints the same object: an interface is not a thing an agent can read, so what it answers with is the board it would have opened on.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -347,7 +355,8 @@
 </tr>
 </tbody></table></div>
 <h2 id="group">Group</h2>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -367,7 +376,8 @@
 </tbody></table></div>
 <h2 id="showpayload">ShowPayload</h2>
 <p><code>isu show &lt;id&gt;</code>, one object.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -417,7 +427,8 @@
 </tbody></table></div>
 <h2 id="text">Text</h2>
 <p>One comment file.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -437,7 +448,8 @@
 </tbody></table></div>
 <h2 id="link">Link</h2>
 <p>Another issue this one names, with enough of it to render.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -469,7 +481,8 @@
 <h2 id="write">Write</h2>
 <p>What every command that changes the repository prints: <code>new</code>, <code>claim</code>, <code>unclaim</code>, <code>resolve</code>, <code>drop</code>, <code>comment</code>, <code>triage</code> and <code>init</code>.</p>
 <p>One shape rather than eight. Somebody who has run <code>isu claim</code> and <code>isu resolve</code> should not have to learn two answers to &#34;what did you just do&#34;.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -503,7 +516,8 @@
 </tr>
 </tbody></table></div>
 <p>Which commands fill which:</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>command</th>
 <th><code>branch</code></th>
@@ -574,7 +588,8 @@
 </tbody></table></div>
 <h2 id="checkpayload">CheckPayload</h2>
 <p><code>isu check</code>: which rules ran, and what they found.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>
@@ -630,7 +645,8 @@
 <p>Exit status is <code>1</code> when <code>ok</code> is false and <code>0</code> when it is true. <strong>A warning does not fail a run</strong>: two people about to do the same work is worth saying and is not a reason to refuse a pull request.</p>
 <h2 id="finding">Finding</h2>
 <p>One thing a check found.</p>
-<div class="scroller"><table>
+<div class="scroller" tabindex="0" role="region" aria-label="table">
+<table>
 <thead><tr>
 <th>field</th>
 <th>type</th>

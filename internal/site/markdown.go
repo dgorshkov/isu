@@ -237,7 +237,11 @@ func (r *renderer) code() {
 
 	r.at++
 
-	r.out = append(r.out, `<div class="scroller `+kind+`"><pre><code>`+
+	// tabindex, because a box that scrolls is a box a keyboard has to be able
+	// to reach — WCAG 2.1.1, and the defect the accessibility gate here missed
+	// in the element this whole site is built around.
+	r.out = append(r.out, `<div class="scroller `+kind+
+		`" tabindex="0" role="region" aria-label="terminal output"><pre><code>`+
 		strings.Join(body, "\n")+"</code></pre></div>")
 }
 
@@ -253,7 +257,10 @@ func (r *renderer) table() error {
 
 	r.at += 2
 
-	out := []string{`<div class="scroller"><table>`, "<thead><tr>"}
+	out := []string{
+		`<div class="scroller" tabindex="0" role="region" aria-label="table">`,
+		"<table>", "<thead><tr>",
+	}
 	for _, cell := range head {
 		out = append(out, "<th>"+Inline(cell)+"</th>")
 	}

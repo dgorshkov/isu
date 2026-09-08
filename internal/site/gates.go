@@ -42,6 +42,7 @@ func Gates(files map[string][]byte) error {
 	for _, gate := range []func(map[string][]byte, string) error{
 		gateHTML, gateLinks, gateWeight, gateAccessibility, gateMeta,
 		gateThirdParty, gateContrast, gateWidth, gateMotion, gateTokens, gateProse,
+		gateFocus,
 	} {
 		if err := gate(files, css); err != nil {
 			return err
@@ -326,6 +327,134 @@ func landmarks(elements []Element) error {
 	}
 
 	return fmt.Errorf("the page has no skip link past its masthead")
+}
+
+// scrollingSelectors are the selectors gateFocus knows how to evaluate. It is
+// a fixed list on purpose: a stylesheet that makes something else scroll fails
+// the build until this list and the markup that satisfies it both grow.
+var scrollingSelectors = map[string]bool{".install": true, ".proof pre": true, ".scroller": true}
+
+// gateFocus is the accessibility rule this build shipped without and should
+// not have.
+//
+// A box with overflow-x is a box a keyboard user has to be able to reach and
+// scroll — WCAG 2.1.1, and axe's scrollable-region-focusable. Every terminal
+// card on this site is one, which made it the most-repeated element here and
+// the one the accessibility pass walked straight past: gateAccessibility was
+// written to check what a document *says* (alt text, link text, headings) and
+// nothing about what the stylesheet then does to it.
+//
+// So this reads the stylesheet rather than a list of element names. Whatever
+// the CSS gives an overflow-x of its own has to carry a tabindex in the markup,
+// and a scrolling selector this gate cannot evaluate is a failure rather than a
+// silence — which is the half of the original bug that mattered.
+func gateFocus(files map[string][]byte, css string) error {
+	scrolls, err := scrollingRules(css)
+	if err != nil {
+		return err
+	}
+
+	for _, page := range pages(files) {
+		elements, _ := ParseHTML(string(files[page]))
+
+		for i, e := range elements {
+			if !scrolls[matching(elements[:i], e)] || e.Attribute("tabindex") != "" {
+				continue
+			}
+
+			return fmt.Errorf(
+				"%s: a <%s> the stylesheet scrolls carries no tabindex, so a keyboard "+
+					"cannot reach it", page, e.Name)
+		}
+	}
+
+	return nil
+}
+
+// matching is the selector in scrollingSelectors that an element answers to, or
+// the empty string.
+func matching(before []Element, e Element) string {
+	switch {
+	case slices.Contains(strings.Fields(e.Attribute("class")), "scroller"):
+		return ".scroller"
+	case slices.Contains(strings.Fields(e.Attribute("class")), "install"):
+		return ".install"
+	case e.Name == "pre" && ancestorHasClass(before, e, "proof"):
+		return ".proof pre"
+	}
+
+	return ""
+}
+
+// ancestorHasClass walks out of an element through the elements that enclose it.
+func ancestorHasClass(before []Element, e Element, class string) bool {
+	want := e.Depth - 1
+
+	for i := len(before) - 1; i >= 0 && want >= 0; i-- {
+		if before[i].Depth != want {
+			continue
+		}
+
+		want--
+
+		if slices.Contains(strings.Fields(before[i].Attribute("class")), class) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// scrollingRules is every selector the stylesheet gives an overflow-x of its
+// own, checked against the ones gateFocus can evaluate.
+func scrollingRules(css string) (map[string]bool, error) {
+	out := map[string]bool{}
+
+	for _, block := range strings.Split(stripComments(css), "}") {
+		selector, body, found := strings.Cut(block, "{")
+		if !found || !strings.Contains(body, "overflow-x: auto") {
+			continue
+		}
+
+		name := strings.TrimSpace(selector)
+		if i := strings.LastIndex(name, "{"); i >= 0 {
+			name = strings.TrimSpace(name[i+1:])
+		}
+
+		if !scrollingSelectors[name] {
+			return nil, fmt.Errorf(
+				"the stylesheet scrolls %q and gateFocus does not know how to check it", name)
+		}
+
+		out[name] = true
+	}
+
+	if len(out) == 0 {
+		return nil, fmt.Errorf("nothing in the stylesheet scrolls sideways")
+	}
+
+	return out, nil
+}
+
+// stripComments removes /* … */ so a selector is never read out of prose.
+func stripComments(css string) string {
+	var b strings.Builder
+
+	rest := css
+
+	for {
+		before, after, found := strings.Cut(rest, "/*")
+		b.WriteString(before)
+
+		if !found {
+			return b.String()
+		}
+
+		_, rest, found = strings.Cut(after, "*/")
+		if !found {
+			return b.String()
+		}
+	}
 }
 
 // saysLinked is prose promising a link.

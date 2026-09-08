@@ -173,7 +173,8 @@ func TestAWideMainCloseTagIsStillMatched(t *testing.T) {
 	t.Parallel()
 
 	files := smallSite(t)
-	files["index.html"] = []byte(smallPage(`<div class="scroller"><pre>wide</pre></div>` + "\n"))
+	files["index.html"] = []byte(smallPage(
+		`<div class="scroller" tabindex="0"><pre>wide</pre></div>` + "\n"))
 
 	require.NoError(t, Gates(files), "a pre inside a scroller is allowed to be wide")
 }
@@ -430,4 +431,59 @@ func TestASectionThatSaysSomethingIsLinkedHasToLinkIt(t *testing.T) {
 	files["index.html"] = []byte(smallPage(
 		`<section id="quiet"><h2>Quiet</h2><p>This section promises nothing.</p></section>`))
 	require.NoError(t, Gates(files), "prose that claims no link needs none")
+}
+
+// The accessibility pass shipped without this and should not have. A box the
+// stylesheet scrolls is a box a keyboard has to be able to reach, and every
+// terminal card on this site is one — which made it the most repeated element
+// here and the one nothing checked.
+func TestABoxThatScrollsHasToBeReachable(t *testing.T) {
+	t.Parallel()
+
+	files := smallSite(t)
+	files["index.html"] = []byte(smallPage(
+		`<div class="scroller"><pre>wide output nothing can focus</pre></div>` + "\n"))
+
+	require.ErrorContains(t, Gates(files), "carries no tabindex")
+	require.ErrorContains(t, Gates(files), "a keyboard cannot reach it")
+
+	files["index.html"] = []byte(smallPage(
+		`<div class="scroller" tabindex="0"><pre>reachable</pre></div>` + "\n"))
+	require.NoError(t, Gates(files))
+}
+
+// The half of the original bug that mattered: the gate did not know what it was
+// not checking. A stylesheet that scrolls something new fails until this gate
+// and the markup satisfying it both grow.
+func TestAScrollingSelectorTheFocusGateCannotEvaluateIsAFailure(t *testing.T) {
+	t.Parallel()
+
+	files := smallSite(t)
+	files["site.css"] = []byte(stylesheet(t) + "\n.brand-new { overflow-x: auto; }\n")
+
+	require.ErrorContains(t, Gates(files),
+		`the stylesheet scrolls ".brand-new" and gateFocus does not know how to check it`)
+}
+
+func TestScrollingRulesReadsTheStylesheetAndNotItsProse(t *testing.T) {
+	t.Parallel()
+
+	got, err := scrollingRules(stylesheet(t))
+	require.NoError(t, err)
+	require.Equal(t, map[string]bool{".install": true, ".proof pre": true, ".scroller": true}, got)
+
+	_, err = scrollingRules("body { color: red }")
+	require.ErrorContains(t, err, "nothing in the stylesheet scrolls sideways")
+
+	// A selector named inside a comment is prose, not a rule.
+	_, err = scrollingRules("/* .ghost { overflow-x: auto; } */\n.scroller { overflow-x: auto; }")
+	require.NoError(t, err)
+}
+
+func TestStripCommentsSurvivesAnUnclosedOne(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "a b", stripComments("a /* gone */b"))
+	require.Equal(t, "a ", stripComments("a /* never closed"))
+	require.Equal(t, "plain", stripComments("plain"))
 }

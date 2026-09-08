@@ -54,7 +54,8 @@ The lede, with **strong**, *emphasis*, ` + "`code`" + ` and a [link](checks.html
 		"<blockquote><p>a quotation that wraps</p></blockquote>",
 		"<thead><tr>\n<th>head</th>\n<th>other</th>\n</tr></thead>",
 		"<td>a</td>", "<hr>",
-		`<div class="scroller sketch"><pre><code>fmt.Println(&#34;&lt;hi&gt;&#34;)</code></pre></div>`,
+		`<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output">` +
+			`<pre><code>fmt.Println(&#34;&lt;hi&gt;&#34;)</code></pre></div>`,
 		`<h3 id="deeper">Deeper</h3>`, `<h4 id="deeper-still">Deeper still</h4>`,
 	} {
 		require.Contains(t, got.HTML, want)
@@ -71,9 +72,9 @@ func TestOnlyABlockThatRanLooksLikeOne(t *testing.T) {
 		"```sh\nisu claim <id>\n```\n")
 	require.NoError(t, err)
 
-	require.Contains(t, got.HTML, `<div class="scroller ran">`,
+	require.Contains(t, got.HTML, `<div class="scroller ran" tabindex="0"`,
 		"a console fence is executed by the build, so it keeps the terminal ground")
-	require.Contains(t, got.HTML, `<div class="scroller sketch">`,
+	require.Contains(t, got.HTML, `<div class="scroller sketch" tabindex="0"`,
 		"every other fence is illustrative and must be visibly not a transcript")
 }
 

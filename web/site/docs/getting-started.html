@@ -23,6 +23,7 @@
 <header class="masthead">
 <div class="wrap">
 <a class="wordmark" href="../index.html">isu</a>
+<span class="version">0.1.0-dev</span>
 <nav aria-label="Sections">
 <a href="../docs/getting-started.html">Getting started</a>
 <a href="../docs/index.html">Docs</a>
@@ -45,36 +46,36 @@
 </nav>
 <p>From an empty repository to a merged fix, with nothing installed but <code>isu</code> and the <code>git</code> it shells out to. Every <code>$ </code> command on this page is run against a repository the site&#39;s build creates from scratch, and the lines under it are what it printed.</p>
 <h2 id="install">Install</h2>
-<div class="scroller sketch"><pre><code>go install github.com/dgorshkov/isu/cmd/isu@latest</code></pre></div>
+<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>go install github.com/dgorshkov/isu/cmd/isu@latest</code></pre></div>
 <p><code>git</code> is a hard runtime requirement. isu never reimplements it: your git configuration, your hooks, your credential helper and your LFS filters all apply, because every read and every write goes through the binary you already have.</p>
 <h2 id="set-the-repository-up">Set the repository up</h2>
 <p><code>isu init</code> writes <code>.isu.yml</code> at the top of the repository. <code>prefix</code> is the first half of every issue id — <code>APP-7f3akq</code> — and there is no default, because the half of an id that says which project this is has no sensible guess. Nothing else is written, since a configuration file full of the defaults is a file nobody can tell they have changed.</p>
 <p><code>--hooks</code> writes a pre-commit hook that runs the tree rules before every commit, and <code>--actions</code> writes a workflow that runs all of them on every pull request. Both are optional and both are the point: a rule nobody runs is a comment.</p>
-<div class="scroller ran"><pre><code>$ isu init --prefix APP --hooks --actions
+<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu init --prefix APP --hooks --actions
 .isu.yml, .git/hooks/pre-commit, .github/workflows/isu.yml
   .isu.yml
   .git/hooks/pre-commit
   .github/workflows/isu.yml</code></pre></div>
 <p>Running it twice changes nothing. A file that is already what isu would write is left alone, and a file that is something else is refused rather than overwritten — pass <code>--force</code> when replacing it is what you meant.</p>
 <p>An empty repository has an empty board, and says so rather than printing a blank line:</p>
-<div class="scroller ran"><pre><code>$ isu board
+<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu board
 main · 0 issues · remote refs just now
 
 nothing to show: no issues on any ref isu can see</code></pre></div>
 <p>The rules have nothing to complain about yet, which is also worth seeing once:</p>
-<div class="scroller ran"><pre><code>$ isu check
+<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu check
 main · 9 checks · nothing to report · remote refs just now</code></pre></div>
 <h2 id="file-something">File something</h2>
 <p><code>isu new</code> writes the issue folder, generates an id nothing else in the repository is using, and puts it on a <code>report/&lt;id&gt;</code> branch ready for a pull request.</p>
-<div class="scroller ran"><pre><code>$ isu new --type bug --title &#34;Login retries drop the second attempt&#34; --repro &#34;sign in, fail once, retry within 5s&#34; --owner dana --priority p1</code></pre></div>
+<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu new --type bug --title &#34;Login retries drop the second attempt&#34; --repro &#34;sign in, fail once, retry within 5s&#34; --owner dana --priority p1</code></pre></div>
 <p>It prints the id it allocated, the branch it wrote onto and the commit — <code>APP-yynajh · on report/APP-yynajh · commit 7a221455</code> on the run that built this page, and something else on yours. The id is a hash of the issue&#39;s own fields and eight bytes of randomness, so allocating one needs no counter, no lock and nobody&#39;s agreement. That is the only thing that works when half the issues in flight are on branches nobody has pushed yet, and it is why this page cannot print the id and mean it.</p>
 <p>The report is on a branch and not on trunk, so the board calls it <strong>awaiting triage</strong> until the branch merges. That is not a column somebody has to move a card out of; it is a fact about the repository, and it stops being true when the report lands. A board with all six derived statuses on it is <a href="../index.html#derived">on the front page</a>.</p>
 <p>Nothing is ready to pick up yet, because the only issue there is has not been triaged:</p>
-<div class="scroller ran"><pre><code>$ isu ready --json=false
+<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu ready --json=false
 nothing is ready: everything open is blocked, claimed or untriaged</code></pre></div>
 <h2 id="take-it-do-it-close-it">Take it, do it, close it</h2>
 <p>Four commands carry an issue from the queue to trunk. Replace <code>&lt;id&gt;</code> with the id <code>isu new</code> printed.</p>
-<div class="scroller sketch"><pre><code>isu triage &lt;id&gt; --owner dana --priority p1   # who is answerable, and how urgent
+<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>isu triage &lt;id&gt; --owner dana --priority p1   # who is answerable, and how urgent
 isu ready --json=false                       # the queue, most urgent first
 isu claim &lt;id&gt;                               # branch, flip the state, push
 # ... write the fix, and the test that proves it ...
