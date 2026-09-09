@@ -2178,12 +2178,24 @@ internal href rewritten from `docs/json.html` to `/docs/json`, every attribute r
 to `'`. `site.css` and `og.png` came through untouched; only HTML was changed. The third
 consequence is the one that matters: twelve gates run inside `Build` over the bytes in
 `web/site`, and not one of them had ever seen a byte a reader was served — `gateLinks` proved
-`docs/json.html` resolves, and the reader got `/docs/json`. `netlify.toml` says
-`skip_processing = true` now, with the reasoning in the file, and `scripts/site_test.go` asserts
-that block is there. That assertion is as far as a test in this repository can follow the bytes:
-**nothing here gates the delivery**, and the honest way to close that would be a check that
-fetches the deployed page and diffs it against `web/site` — which needs a deploy to exist and is
-a story of its own.
+`docs/json.html` resolves, and the reader got `/docs/json`.
+
+**`skip_processing = true` did not fix it, and finding that out took a deploy.** With that key in
+`netlify.toml`, the preview for `32cbc65` still served 13,233 bytes against 13,283 committed and
+every href still rewritten — so the file now carries `[build.processing.html] pretty_urls = false`
+as well, and says in as many words what follows if that fails too: the behaviour is a dashboard
+setting, `netlify.toml`'s opening claim is not true of it, and the next reader should reach for
+the dashboard rather than for that block. `scripts/site_test.go` asserts both keys are present
+and nothing more, because **nothing in this repository gates the delivery**: a test here cannot
+fetch a deploy. The only thing that establishes what a reader gets is fetching a deployed page
+and diffing it against `web/site`, which is how this was found and how it will have to be
+confirmed. A check that does it automatically needs production to exist and is a story of its
+own.
+
+That is the second time this milestone that a gate was believed rather than measured — the first
+was the accessibility pass that had never looked at what the stylesheet did to the document it
+read. The pattern is worth naming: a gate over an artifact says nothing about the artifact
+somebody actually receives.
 
 **The gates are hand-written over the built site, and what they can and cannot see is stated in
 `internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at

@@ -20,7 +20,7 @@
 # Publish the bytes in web/site and not a rewriting of them.
 #
 # This file used to end "nothing else needs saying", and something did. Netlify's
-# Pretty URLs post-processing was on by default, and every deploy preview served
+# Pretty URLs post-processing is on by default, and every deploy preview served
 # an index.html 46 bytes shorter than the committed one: every internal href
 # rewritten from `docs/json.html` to `/docs/json`, and every attribute requoted
 # from " to '. site.css and og.png came through untouched; only HTML was changed.
@@ -32,15 +32,29 @@
 #   - internal/site/render.go claims every URL but the canonical one is relative,
 #     so the site works from a file:// checkout, a preview at a URL nobody chose,
 #     and a domain of its own without being rebuilt. The committed artifact has
-#     that property. What was being served did not.
+#     that property. What is being served does not.
 #   - Twelve gates run inside Build, over the bytes in web/site — links, HTML
-#     validity, weight, contrast, focus, the lot. Not one of them had ever seen a
-#     byte a reader was served. gateLinks proved `docs/json.html` resolves; the
-#     reader got `/docs/json`.
+#     validity, weight, contrast, focus, the lot. Not one of them has ever seen a
+#     byte a reader was served. gateLinks proves `docs/json.html` resolves; the
+#     reader gets `/docs/json`.
 #
-# skip_processing turns off all of it — pretty URLs, minification, bundling,
-# image compression — so what is deployed is what `make site` wrote and what CI
-# diffed. scripts/site_test.go asserts this block is here, which is as far as a
-# test in this repository can follow the bytes.
+# What is settled, and what is not:
+#
+# `skip_processing` is meant to turn all of it off and **did not**. Measured on
+# the preview for 32cbc65, with that key already in this file: 13,233 bytes
+# served against 13,283 committed, and every href still rewritten. So the
+# targeted switch is here as well. If a deploy carrying `pretty_urls = false`
+# still rewrites the pages, then this behaviour is not controllable from this
+# file at all — it is a site setting in Netlify's dashboard, and the honest
+# consequence is that the first sentence of this file is not true of it and the
+# next reader should reach for the dashboard rather than for this block.
+#
+# scripts/site_test.go asserts these keys are here. That is the whole of what a
+# test in this repository can do: it cannot see a deploy, so **nothing here gates
+# the delivery**, and the only thing that establishes what a reader gets is
+# fetching a deployed page and diffing it against web/site by hand.
 [build.processing]
 	skip_processing = true
+
+[build.processing.html]
+	pretty_urls = false

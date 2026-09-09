@@ -105,11 +105,21 @@ func TestNetlifyPublishesTheDirectoryTheBuildProduces(t *testing.T) {
 		"%s runs a build; the site is committed and CI is what verifies it", netlifyConfig)
 
 	// And nothing may rewrite the bytes on the way out. Netlify's Pretty URLs
-	// post-processing was on by default and served every page with its internal
+	// post-processing is on by default and serves every page with its internal
 	// links rewritten — `docs/json.html` to `/docs/json`, double quotes to
-	// single — so the twelve gates that run over web/site had never seen a byte
-	// a reader was served. This assertion is as far as a test in this repository
-	// can follow them.
-	require.Regexp(t, regexp.MustCompile(`(?m)^\[build\.processing\]\n\s*skip_processing = true$`),
-		text, "%s lets the publisher rewrite the pages CI just verified", netlifyConfig)
+	// single — so the twelve gates that run over web/site have never seen a byte
+	// a reader was served.
+	//
+	// Both keys, because `skip_processing` alone did not stop it: measured on the
+	// preview for 32cbc65, 13,233 bytes served against 13,283 committed. This
+	// asserts the file says what it means to say, and no more than that — a test
+	// here cannot fetch a deploy, so nothing in this repository gates the
+	// delivery. netlify.toml carries what to do if the targeted key fails too.
+	for _, want := range []string{
+		`(?m)^\[build\.processing\]\n\s*skip_processing = true$`,
+		`(?m)^\[build\.processing\.html\]\n\s*pretty_urls = false$`,
+	} {
+		require.Regexp(t, regexp.MustCompile(want), text,
+			"%s lets the publisher rewrite the pages CI just verified", netlifyConfig)
+	}
 }
