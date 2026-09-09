@@ -217,7 +217,7 @@ func (a *app) source(
 
 	if opts.dump == "" {
 		gh.Client = a.client(opts)
-	} else if gh.Dump, err = os.ReadFile(opts.dump); err != nil {
+	} else if gh.Dump, err = os.ReadFile(a.at(opts.dump)); err != nil {
 		return nil, fmt.Errorf("reading the dump: %w", err)
 	}
 
@@ -227,6 +227,19 @@ func (a *app) source(
 	}
 
 	return source, nil
+}
+
+// at resolves a path a flag names against the directory isu was run in, which
+// is where every other path in this product resolves. cli.Env carries that
+// directory rather than reading the process's own, so an import driven in
+// process — a test, or the site build running this documentation's own
+// commands — reads the dump beside the repository it is importing into.
+func (a *app) at(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+
+	return filepath.Join(a.env.dir(), path)
 }
 
 func (a *app) client(opts *importOptions) *github.Client {
@@ -254,7 +267,7 @@ func (a *app) fetchOnly(
 		return err
 	}
 
-	if err := os.WriteFile(opts.fetchOnly, body, 0o644); err != nil { //nolint:gosec // a dump of somebody's issue list is not a secret
+	if err := os.WriteFile(a.at(opts.fetchOnly), body, 0o644); err != nil { //nolint:gosec // a dump of somebody's issue list is not a secret
 		return fmt.Errorf("writing the dump: %w", err)
 	}
 
