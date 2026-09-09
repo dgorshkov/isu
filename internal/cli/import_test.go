@@ -20,9 +20,20 @@ import (
 // for a recorded transcript and never the live API, and an import that only
 // works when a service is up is one nobody can review.
 
-// dumpPath is the fixture every test here reads, from the directory the tests
-// run in.
-const dumpPath = "testdata/import/acme.json"
+// dumpPath is the fixture every test here reads. It is absolute because
+// --dump resolves against the directory isu was run in, and these tests run
+// isu in a repository somewhere else entirely.
+var dumpPath = absolute("testdata/import/acme.json")
+
+// absolute names a fixture from the directory the tests run in.
+func absolute(path string) string {
+	out, err := filepath.Abs(path)
+	if err != nil {
+		panic(err)
+	}
+
+	return out
+}
 
 // importable is a repository ready to be imported into: the configuration, and
 // history carrying the conventions M7-S3's scan recovers links from.
@@ -39,6 +50,26 @@ func importable(t *testing.T) *gittest.Repo {
 	r.File("drop.go", "package main\n").Commit("Nothing to do with any issue")
 
 	return r
+}
+
+// TestTheDumpIsReadFromTheDirectoryIsuWasRunIn holds --dump to the rule every
+// other path in this product already follows. isu reads its repository from
+// the directory it was run in, cli.Env carries that directory so nothing leaks
+// in from the process, and a flag naming a file is not an exception: the site
+// build runs the documentation's own commands in process, and a page that says
+// `--dump issues.json` means the reader's repository and not the build's
+// working directory.
+func TestTheDumpIsReadFromTheDirectoryIsuWasRunIn(t *testing.T) {
+	t.Parallel()
+
+	r := importable(t)
+
+	body, err := os.ReadFile(dumpPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(r.Dir(), "acme.json"), body, 0o600))
+
+	got := isu(t, r.Dir(), "import", "github", "--dump", "acme.json").ok(t)
+	require.Contains(t, got.stdout, "would write")
 }
 
 func TestADryRunIsTheDefaultAndWritesNothing(t *testing.T) {

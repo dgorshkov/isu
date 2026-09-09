@@ -54,7 +54,7 @@ var jsonCases = map[string]jsonCase{
 	"ui": {args: []string{"ui"}},
 	// A dry run against a recorded dump: reproducible without a network, and
 	// the row that proves `isu import` speaks the contract like everything else.
-	"import": {args: []string{"import", "github", "--dump", "testdata/import/acme.json"}},
+	"import": {args: []string{"import", "github", "--dump", dumpPath}},
 	"check": {
 		args: []string{"check"},
 		// The fixture board has an epic with a child and nothing wrong with it,
