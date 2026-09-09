@@ -308,7 +308,7 @@ func branches(t *testing.T, dir string) []string {
 func TestAClaimCommitIsNeverTheSameCommitTwice(t *testing.T) {
 	t.Parallel()
 
-	// The regression test for the hole the stress run found. PLAN.md §1 argued
+	// The regression test for the hole the stress run found. The data model argued
 	// that the push is a compare-and-swap because two claimants write two
 	// different commits — "different author, different timestamp, therefore
 	// different object ids". Two claimants under one identity in the same

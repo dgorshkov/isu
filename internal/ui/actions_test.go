@@ -135,7 +135,7 @@ func TestClaimingSaysWhatHappenedAndReReadsTheBoard(t *testing.T) {
 	require.Positive(t, reloads, "a claim changes the board, so the board is read again")
 }
 
-// PLAN.md M6-S5: "claiming an already-claimed issue shows the holder". The
+// M6-S5: "claiming an already-claimed issue shows the holder". The
 // sentence is `isu claim`'s own, because it is `isu claim` that produced it.
 func TestClaimingSomethingSomebodyElseHasShowsWhoHasIt(t *testing.T) {
 	t.Parallel()
@@ -147,7 +147,7 @@ func TestClaimingSomethingSomebodyElseHasShowsWhoHasIt(t *testing.T) {
 	require.Contains(t, press(t, acting(w), 140, 24, []string{"c"}, "alice"), "alice")
 }
 
-// PLAN.md M6-S5: "`g` on an unclaimed issue is a no-op with a message".
+// M6-S5: "`g` on an unclaimed issue is a no-op with a message".
 func TestGoingToTheBranchOfAnUnclaimedIssueSaysSo(t *testing.T) {
 	t.Parallel()
 
@@ -171,7 +171,7 @@ func TestGoingToTheBranchOfAClaimedIssueChecksItOut(t *testing.T) {
 	require.Equal(t, []string{"ISU-donede"}, w.wentTo)
 }
 
-// PLAN.md M6-S5: "the editor is injected and tested with a fake". The terminal
+// M6-S5: "the editor is injected and tested with a fake". The terminal
 // goes with it: an editor that cannot read the keyboard is an editor nobody can
 // type into, so the interface releases the screen for as long as it runs.
 func TestFilingAnIssueHandsTheEditorTheTerminal(t *testing.T) {
@@ -276,7 +276,7 @@ func TestAReloadKeepsWhereSomebodyWas(t *testing.T) {
 		"the cursor is where it was, on the board that was read again")
 }
 
-// PLAN.md M6-S5: "proven by a test that fails if the TUI package calls git
+// M6-S5: "proven by a test that fails if the TUI package calls git
 // directly."
 //
 // internal/gitx's own suite greps internal/ for the call that starts a process,

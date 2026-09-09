@@ -74,7 +74,7 @@ type IssueChange struct {
 
 // Branch is what one ref proposes over trunk.
 //
-// This is the "diff against trunk" PLAN.md M5-S1 hands to every check, and it
+// This is the "diff against trunk" M5-S1 hands to every check, and it
 // is loaded here for the same reason everything else is: a check that could
 // spawn a git process would spawn one per issue the first time somebody was in
 // a hurry.
@@ -128,7 +128,7 @@ func (b *Branch) Change(id string) (IssueChange, bool) {
 //
 // Three processes: one merge-base, one diff, and one log — plus a single
 // `cat-file --batch` for every issue file the branch's commits touched, on
-// either side of each. That is the read path in PLAN.md §0 applied to a branch:
+// either side of each. That is the read path in the plan applied to a branch:
 // the log names the blobs, so nothing here walks a tree per lookup.
 func (r *Repo) LoadBranch(ctx context.Context, trunk, head string) (*Branch, error) {
 	base, err := r.git.MergeBase(ctx, trunk, head)

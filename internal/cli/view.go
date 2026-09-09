@@ -119,10 +119,10 @@ type itemGroup struct {
 }
 
 // itemGroups buckets every issue by its derived status, in the precedence order
-// of PLAN.md's table, and drops the statuses nothing matched.
+// of the plan's table, and drops the statuses nothing matched.
 //
 // It is one function rather than one per renderer on purpose. `isu board` and
-// `isu ui` show the same repository, and PLAN.md M6-S2 asks that their grouping
+// `isu ui` show the same repository, and M6-S2 asks that their grouping
 // match exactly — which is a promise two orderings that happen to agree cannot
 // keep, and one ordering used twice cannot break.
 func (v *view) itemGroups() []itemGroup {

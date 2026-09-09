@@ -10,7 +10,7 @@ import (
 // actions is what `isu ui` can do to a repository, and it is this package's
 // commands rather than a second implementation of them.
 //
-// PLAN.md M6-S5 asks that the interface share command implementations with the
+// M6-S5 asks that the interface share command implementations with the
 // CLI, and internal/ui is built so that it has no choice: it holds one
 // derivation and nothing that could load another, so every read that is not on
 // the board and every write at all comes back through here. `c` is the function

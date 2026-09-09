@@ -199,7 +199,7 @@ func TestAnEpicOnlyOnABranchIsAwaitingTriage(t *testing.T) {
 	require.Equal(t, model.StatusAwaitingTriage, statusOf(t, derive(t, r), "ISU-40b1cc"))
 }
 
-// The gate PLAN.md M3-S2 sets. Every fifth issue is an epic owning the four
+// The gate M3-S2 sets. Every fifth issue is an epic owning the four
 // before it, so 5,000 issues is a thousand epics — ten times what the story
 // asks for, against the same budget.
 //

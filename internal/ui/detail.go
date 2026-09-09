@@ -13,7 +13,7 @@ import (
 // Actions are the things the interface cannot do itself.
 //
 // Everything on this interface is implemented by internal/cli with the code its
-// commands run, which is PLAN.md M6-S5's whole requirement: the interface
+// commands run, which is M6-S5's whole requirement: the interface
 // shares command implementations with the CLI rather than reimplementing them,
 // and it is a package that cannot load anything, so it could not reimplement
 // them if it wanted to.
@@ -76,7 +76,7 @@ func (m *Model) fetch(id string) tea.Cmd {
 }
 
 // The detail pane answers "can I start this?" without leaving the interface,
-// which is PLAN.md M6-S4's whole sentence for it. Everything it needs about
+// which is M6-S4's whole sentence for it. Everything it needs about
 // the issue itself is on the item; everything it needs about another issue —
 // what a blocker is called and whether it has finished — comes from the board
 // the caller derived, because a pane that resolved ids itself would be a pane
@@ -147,7 +147,7 @@ func (m Model) children(item *model.Item, width int) []string {
 // body is the markdown below the frontmatter, rendered for a terminal.
 //
 // `isu show` prints it verbatim and says so; this is the pane that does not
-// have to, and glamour is in PLAN.md's allowlist for exactly this.
+// have to, and glamour is in the plan's allowlist for exactly this.
 func (m Model) body(item *model.Item) []string {
 	if item.Issue == nil || strings.TrimSpace(item.Issue.Body) == "" {
 		return nil

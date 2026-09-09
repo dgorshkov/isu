@@ -180,7 +180,7 @@ func TestAClaimingBranchDeletedAfterTheMergeLeavesTheIssueDone(t *testing.T) {
 	require.False(t, got.Stale(), "a finished issue is not a stale claim for ever after")
 }
 
-// PLAN.md M3-S3: contention and staleness come out of what M2 already loaded
+// M3-S3: contention and staleness come out of what M2 already loaded
 // plus one log per claiming branch, and nothing in internal/model runs git.
 func TestClaimsCostOneLogPerClaimingBranchAndDerivationCostsNothing(t *testing.T) {
 	r := gittest.New(t).

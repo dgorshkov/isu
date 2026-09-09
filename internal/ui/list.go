@@ -65,7 +65,7 @@ func (m *Model) rebuild() {
 // The order inside a group is the board's, with one thing done to it: a child
 // whose epic is in the same group is drawn immediately after that epic, one
 // level in. Which group an issue is in is not touched — that is the board's
-// answer and PLAN.md M6-S2 asks that the two agree exactly — so a child whose
+// answer and M6-S2 asks that the two agree exactly — so a child whose
 // epic has finished stands at the top of its own group rather than being drawn
 // under an epic three groups away.
 //

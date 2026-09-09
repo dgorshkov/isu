@@ -17,7 +17,7 @@ const unbornHEAD = "HEAD"
 
 // LoadRef reads every issue at a ref.
 //
-// This is the read path PLAN.md §0 mandates, and it is not an optimisation to
+// This is the read path the plan mandates, and it is not an optimisation to
 // do later. Measured on 5,000 issues: a `git show` per file takes 13.7 s,
 // `cat-file --batch` fed `ref:path` takes 4.9 s because a path costs a tree
 // walk per lookup, and `cat-file --batch` fed object ids takes 0.6 s. So:

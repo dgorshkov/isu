@@ -19,7 +19,7 @@ import (
 // does not touch the file.
 //
 // `dropped` at an earlier commit is deliberately not a reopen. The table in
-// PLAN.md section 1 names `resolved`, and the two are not the same event:
+// the data model names `resolved`, and the two are not the same event:
 // undropping is a triage decision somebody made on purpose, where a reopen is
 // the repository reporting that a fix did not hold.
 func Reopened(states []repo.StateAt) bool {

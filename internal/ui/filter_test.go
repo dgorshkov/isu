@@ -184,7 +184,7 @@ func TestTheCursorStaysOnIssuesAndInsideTheList(t *testing.T) {
 	require.Equal(t, "ISU-donede", selectedIn(m.View()), "the first")
 }
 
-// PLAN.md M6-S3 asks for navigating across a collapsed epic, which is the one
+// M6-S3 asks for navigating across a collapsed epic, which is the one
 // case where the row under the cursor is not the row under it on the board.
 func TestNavigatingAcrossACollapsedEpic(t *testing.T) {
 	t.Parallel()
@@ -231,7 +231,7 @@ func TestGoldenFilteredFrame(t *testing.T) {
 	golden(t, "filter/narrowed.txt", typed(t, sized(t, board(), 100, 24), "ali").View())
 }
 
-// PLAN.md M6-S3: "filtering a 5,000-issue fixture stays inside one frame
+// M6-S3: "filtering a 5,000-issue fixture stays inside one frame
 // budget." A filter is applied on a keystroke and the frame it produces is the
 // only feedback that the keystroke arrived, so a filter that costs more than a
 // frame is a filter that feels broken however fast it finishes.

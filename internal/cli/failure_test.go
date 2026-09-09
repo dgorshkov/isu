@@ -16,7 +16,7 @@ import (
 
 // The failure paths, gathered.
 //
-// PLAN.md's definition of done puts the coverage floor at 99% of the whole
+// The plan's definition of done puts the coverage floor at 99% of the whole
 // module and says out loud what that is for: "a story that adds an error path
 // it cannot reach should expect to argue for it". These are the arguments — an
 // error return nobody has ever taken is a message nobody has ever read, and
@@ -372,7 +372,7 @@ func TestTheProcessEnvironmentAndClockAreTheDefaults(t *testing.T) {
 
 	require.Equalf(t, 0, code, "isu board on the isu repository itself: %s", stderr.String())
 	require.Contains(t, stdout.String(), "issue",
-		"PLAN.md M4-S2 is done when isu board renders this repository")
+		"M4-S2 is done when isu board renders this repository")
 }
 
 func TestAClosedFileIsNotATerminal(t *testing.T) {

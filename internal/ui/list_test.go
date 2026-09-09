@@ -126,7 +126,7 @@ func fortyChildren() ui.Input {
 	return input(items...)
 }
 
-// PLAN.md M6-S2 asks for the empty state as a golden frame, because a blank
+// M6-S2 asks for the empty state as a golden frame, because a blank
 // pane is the one output nobody can tell from a crash.
 func TestAListOfZeroIssuesRendersTheEmptyState(t *testing.T) {
 	t.Parallel()

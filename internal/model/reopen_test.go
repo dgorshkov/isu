@@ -82,7 +82,7 @@ func TestReopenAcrossTheLifecycle(t *testing.T) {
 }
 
 // Dropping an issue and later reopening it is not a reopen. The table in
-// PLAN.md names `resolved`, and the two are not the same event: undropping is a
+// the plan names `resolved`, and the two are not the same event: undropping is a
 // triage decision somebody made on purpose, where a reopen is the repository
 // reporting that a fix did not hold.
 func TestDroppedAndOpenedAgainIsNotAReopen(t *testing.T) {

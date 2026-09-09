@@ -9,14 +9,14 @@ import (
 	"github.com/dgorshkov/isu/internal/gittest"
 )
 
-// The claim is the first commit on the branch, and PLAN.md's spelling of that
+// The claim is the first commit on the branch, and the plan's spelling of that
 // lookup returns the last one.
 //
 // `git log <trunk>..<branch> --reverse --max-count=1` is in section 1 and in
 // M3-S3, and it does not answer the question either of them asks: git applies
 // the limit during the walk, which starts at the tip, and reverses what
 // survived it. One commit reversed is that same commit — the tip, which
-// PLAN.md's own Claims section calls the wrong answer, because it moves every
+// the plan's own Claims section calls the wrong answer, because it moves every
 // time the claimant pushes and a claim that moves never ages.
 //
 // Measured, on the fixture below, before this was written:
@@ -54,7 +54,7 @@ func TestLoadFirstCommitsTakesTheFirstCommitAndNotTheTip(t *testing.T) {
 	require.Equal(t, "alice@example.invalid", got.Author.Email)
 	require.WithinDuration(t, time.Now().Add(-72*time.Hour), got.Author.When, time.Minute)
 
-	// The assertion the pair in PLAN.md fails.
+	// The assertion the pair in the plan fails.
 	require.NotEqual(t, r.Git("rev-parse", "isu/ISU-7f3akq"), got.OID)
 }
 

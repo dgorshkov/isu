@@ -15,7 +15,7 @@ import (
 	"github.com/dgorshkov/isu/internal/gittest"
 )
 
-// This is the end-to-end harness PLAN.md M4-S1 asks for, and it ships with the
+// This is the end-to-end harness M4-S1 asks for, and it ships with the
 // first command rather than after the last one. Everything through M3 is tested
 // end to end through the stack — a real git repository, no mocks anywhere — but
 // nothing was tested end to end through the *product*, because there was no
@@ -140,7 +140,7 @@ func configured(t *testing.T) *gittest.Repo {
 		Commit("set isu up")
 }
 
-// board is a repository holding an issue in every status the table in PLAN.md
+// board is a repository holding an issue in every status the table in the plan
 // §1 names, which is what a renderer has to be correct about.
 //
 //	ISU-donede  done            resolved at trunk

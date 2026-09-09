@@ -16,14 +16,14 @@ import (
 	"github.com/dgorshkov/isu/internal/repo"
 )
 
-// PLAN.md M3-S1: "Pure function over loaded inputs — no git calls inside, and
+// M3-S1: "Pure function over loaded inputs — no git calls inside, and
 // no exceptions to that rule later." M3-S4 asks for that as a test in the style
 // of the M2-S1 grep, and this is it, in three parts: what this package may
 // import, what it may name, and what it costs at runtime.
 //
 // The rule is not fussiness. A derivation that could run git would run one
 // process per issue the first time somebody needed a field the loader had not
-// fetched — which is exactly the 13.7 s read path PLAN.md section 0 measured
+// fetched — which is exactly the 13.7 s read path the plan measured
 // and threw away.
 
 // deriveDeps are the packages internal/model may import. internal/repo is on

@@ -13,7 +13,7 @@ import (
 	"github.com/dgorshkov/isu/internal/gitx"
 )
 
-// PLAN.md §1 left one question open and asked for it to be answered before
+// The data model left one question open and asked for it to be answered before
 // M4-S1, "which is where the command surface stops being cheap to change":
 // every story reads .isu.yml and no story writes one, so adopting isu meant
 // hand-writing a file before any command worked at all. The three answers it

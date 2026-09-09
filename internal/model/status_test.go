@@ -262,7 +262,7 @@ func TestNowDefaultsToTheClock(t *testing.T) {
 func TestStatusTerminalIsTheTwoAnIssueDoesNotComeBackFrom(t *testing.T) {
 	terminal := map[model.Status]bool{model.StatusDone: true, model.StatusDropped: true}
 
-	require.Len(t, model.Statuses, 6, "the table in PLAN.md section 1 has six rows")
+	require.Len(t, model.Statuses, 6, "the table in the data model has six rows")
 
 	for _, status := range model.Statuses {
 		require.Equal(t, terminal[status], status.Terminal(),

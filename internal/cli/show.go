@@ -124,7 +124,7 @@ func (s *session) showPayload(
 // while `--ref` still shows what that ref actually holds and an issue reported
 // on a branch nobody has checked out is readable at all.
 //
-// Neither path is on the read path PLAN.md §0 measures. That path exists
+// Neither path is on the read path the plan measures. That path exists
 // because five thousand issues cost five thousand lookups; one issue's folder
 // costs one listing.
 func (s *session) folder(ctx context.Context, item *model.Item) ([]string, []Text, error) {

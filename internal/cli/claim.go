@@ -15,7 +15,7 @@ import (
 
 // claimTrailer carries the one thing that makes a claim commit unique.
 //
-// **PLAN.md's claim design has a hole, and the stress test in this milestone
+// **the plan's claim design has a hole, and the stress test in this milestone
 // found it.** §1 argues that the push is the compare-and-swap because "two
 // claimants produce two different commits — different author, different
 // timestamp, therefore different object ids". Two claimants under one identity,
@@ -27,7 +27,7 @@ import (
 // Two agents sharing a bot identity is not an exotic case for a tracker built
 // for agents, and neither is one person in two clones.
 //
-// `--force-with-lease=refs/heads/isu/<ID>:` — PLAN.md's own third mechanism —
+// `--force-with-lease=refs/heads/isu/<ID>:` — the plan's own third mechanism —
 // does not close it, because git short-circuits on "up to date" before the
 // lease is ever evaluated; that was measured too. What does close it is making
 // the sentence §1 already relies on true: atomicity comes from committing
@@ -88,7 +88,7 @@ func (a *app) claim(cmd *cobra.Command, id string) error {
 // claimIssue is the claim itself, without the command around it.
 //
 // It is separate so that `isu ui` can claim through this and not through
-// something that looks like it: PLAN.md M6-S5 asks that the interface share
+// something that looks like it: M6-S5 asks that the interface share
 // command implementations with the CLI, and sharing means one function, not two
 // that agree.
 func (s *session) claimIssue(ctx context.Context, v *view, id string) (Write, error) {

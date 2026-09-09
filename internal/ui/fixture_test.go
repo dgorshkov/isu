@@ -121,7 +121,7 @@ func reopened() func(*model.Item) {
 	return func(it *model.Item) { it.Reopened = true }
 }
 
-// board is a repository holding an issue in every status the table in PLAN.md
+// board is a repository holding an issue in every status the table in the plan
 // §1 names, which is what a renderer has to be correct about. It is the same
 // seven issues the CLI harness scripts, so that a frame and a board can be read
 // against each other.
@@ -156,7 +156,7 @@ func board() ui.Input {
 }
 
 // input groups items the way `isu board` groups them: by status, in the
-// precedence order of PLAN.md's table, dropping the statuses nothing matched.
+// precedence order of the plan's table, dropping the statuses nothing matched.
 // The CLI hands the real thing over; this is the same shape, built by hand.
 func input(items ...*model.Item) ui.Input {
 	byStatus := map[model.Status][]*model.Item{}

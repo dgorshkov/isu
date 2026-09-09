@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The design record — isu</title>
+<meta name="description" content="This is why isu is built the way it is: the decisions that were argued about, the measurements that settled them, and the ones that were reversed after a test proved them wrong.">
+<link rel="canonical" href="https://isu-website.netlify.app/docs/design.html">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The design record — isu">
+<meta property="og:description" content="This is why isu is built the way it is: the decisions that were argued about, the measurements that settled them, and the ones that were reversed after a test proved them wrong.">
+<meta property="og:url" content="https://isu-website.netlify.app/docs/design.html">
+<meta property="og:image" content="https://isu-website.netlify.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The design record — isu">
+<meta name="twitter:description" content="This is why isu is built the way it is: the decisions that were argued about, the measurements that settled them, and the ones that were reversed after a test proved them wrong.">
+<meta name="twitter:image" content="https://isu-website.netlify.app/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="../index.html">isu</a>
+<span class="version">0.1.0-dev</span>
+<nav aria-label="Sections">
+<a href="../docs/getting-started.html">Getting started</a>
+<a href="../docs/index.html">Docs</a>
+<a href="https://github.com/dgorshkov/isu">Source</a>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>The design record</h1>
+<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+<li><a href="#where-the-plan-went">Where the plan went</a></li>
+<li><a href="#the-stack">The stack</a></li>
+<li><a href="#git-access">Git access</a></li>
+<li><a href="#the-read-path">The read path</a></li>
+<li><a href="#claims">Claims</a></li>
+<li><a href="#squash-merge-safety">Squash-merge safety</a></li>
+<li><a href="#the-build">The build</a></li>
+<li><a href="#the-wall-clock-budgets">The wall-clock budgets</a></li>
+</ul>
+</nav>
+<p>This is why isu is built the way it is: the decisions that were argued about, the measurements that settled them, and the ones that were reversed after a test proved them wrong.</p>
+<p>The <a href="data-model.html">data model</a> and the <a href="statuses.html">status table</a> say <em>what</em> the rules are. This page says why, and it keeps the workings — including the drafts that turned out to be wrong, because a design record that only lists the winning answer is a record you cannot argue with.</p>
+<h2 id="where-the-plan-went">Where the plan went</h2>
+<p>isu was built from a single document, <code>PLAN.md</code>, that carried three different things at once: a working agreement, a design record, and fifty-one stories in build order. Those have been split to where each belongs, and <code>PLAN.md</code> is gone:</p>
+<ul>
+<li><strong>The stories</strong> are issue folders under <code>issues/</code>, one per story, with the milestones as</li>
+</ul>
+<p>epics above them. Every story&#39;s brief, its <code>**Done**</code> record and the corrections it produced are in the issue&#39;s own body, which is where <code>isu show</code> reads them. That is the whole point of this tracker, and a build plan kept in a file beside it was the one thing this repository was not dogfooding.</p>
+<ul>
+<li><strong>The working agreement</strong> — TDD, the commit format, one story per pull request, the milestone</li>
+</ul>
+<p>boundaries, the coverage floors and the definition of done — is in <code>CLAUDE.md</code>, which is read at the start of every session.</p>
+<ul>
+<li><strong>The design record</strong> is this page.</li>
+</ul>
+<p>Where a milestone note or a story body written before the split says <em>the working agreement</em>, it means <code>CLAUDE.md</code>; where it says <em>the data model</em>, it means <a href="data-model.html">that page</a> and this one.</p>
+<h2 id="the-stack">The stack</h2>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>concern</th>
+<th>choice</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Language</td>
+<td>Go 1.24+</td>
+</tr>
+<tr>
+<td>CLI</td>
+<td><code>spf13/cobra</code></td>
+</tr>
+<tr>
+<td>TUI</td>
+<td><code>charmbracelet/bubbletea</code>, <code>bubbles</code>, <code>lipgloss</code>, <code>glamour</code></td>
+</tr>
+<tr>
+<td>TUI tests</td>
+<td><code>charmbracelet/x/exp/teatest</code></td>
+</tr>
+<tr>
+<td>YAML</td>
+<td><code>goccy/go-yaml</code> — for <code>.isu.yml</code> and <code>source.yml</code>, not for frontmatter</td>
+</tr>
+<tr>
+<td>Assertions</td>
+<td><code>stretchr/testify/require</code></td>
+</tr>
+<tr>
+<td>Release</td>
+<td><code>goreleaser</code></td>
+</tr>
+</tbody></table></div>
+<p>That is the entire dependency allowlist. Adding anything else requires asking first.</p>
+<p><strong>The minimum was 1.23 until M1, and 1.24.0 until M6.</strong> <code>golangci-lint</code> v2.5.0 needs 1.24 or newer to build, so with a 1.23 directive <code>go install</code> switched toolchains — to whatever Go had released most recently, resolved fresh on every CI run — and the lint gate went red the day one of those releases arrived incomplete. A gate that fails on a schedule nobody controls is a pipeline people learn to ignore, so the directive moved to 1.24 rather than the symptom being pinned around. It moved again to <strong>1.24.2</strong> in M6, because three of the modules bubbletea and lipgloss bring declare that and a module&#39;s directive must be at least its dependencies&#39;. Still no <code>toolchain</code> line: the directive is a minimum, and pinning a toolchain is the thing that went wrong in the first place.</p>
+<p>Frontmatter is parsed by hand because it is a flat key/value block, and the byte-for-byte round-trip guarantee is easier to hold without a YAML serialiser reformatting it. <code>.isu.yml</code> and <code>source.yml</code> are real YAML and get a real parser.</p>
+<p>Markdown is rendered for the terminal only, by <code>glamour</code>. <strong>v1.0.0 ships no HTML</strong>, so there is no markdown-to-HTML pipeline and no sanitiser in the allowlist — see <a href="not-doing.html">what isu does not do</a>.</p>
+<h2 id="git-access">Git access</h2>
+<p><strong>Shell out to the <code>git</code> binary. Do not use go-git.</strong> Reasons, in order: the user&#39;s git config, hooks, credential helpers and LFS all apply for free; plumbing commands give exact control over the read path; and the fast load path below is only available through plumbing. <code>git</code> is a hard runtime requirement and that is fine for a developer tool.</p>
+<p>All git invocation goes through <code>internal/gitx</code>. Nothing outside that package may construct a <code>git</code> command — <strong>the test harness included</strong>, which is where M2-S1 found the one exception that would otherwise have been written into the rule on its first day.</p>
+<h2 id="the-read-path">The read path</h2>
+<p>Loading every issue from a ref <strong>must</strong> be done as:</p>
+<ol>
+<li><code>git ls-tree -r &lt;ref&gt;</code> — take the object id and path of every <code>issues/*/README.md</code></li>
+<li>one <code>git cat-file --batch</code> process, fed <strong>object ids, not <code>ref:path</code></strong></li>
+<li>parse blobs out of the single output stream</li>
+</ol>
+<p>This is not an optimisation to do later. Measured on 5,000 issues:</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>approach</th>
+<th>time</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>git show</code> per file</td>
+<td>13.7 s</td>
+</tr>
+<tr>
+<td><code>cat-file --batch</code> on <code>ref:path</code></td>
+<td>4.9 s</td>
+</tr>
+<tr>
+<td><code>cat-file --batch</code> on object ids</td>
+<td><strong>0.6 s</strong></td>
+</tr>
+</tbody></table></div>
+<p><code>ref:path</code> costs a tree walk per lookup. Object ids skip it. <code>internal/repo/perf_test.go</code> enforces this with a benchmark that fails the build if it regresses, and it asserts process <em>counts</em> and not only times.</p>
+<p><strong>The board is a different question and gets a different answer.</strong> The figures above are one ref; <code>isu board</code> reads trunk and every branch, and listing each ref&#39;s whole tree is a million entries over 200 branches — measured at 11.4 s, against a 6 s budget. So trunk is listed once, each other ref is <em>diffed</em> against it, and one <code>cat-file --batch</code> reads the union of the blobs they name. Git compares trees by object id and skips the subtrees that match, so a branch costs its own difference and not the repository. Measured: <strong>1.42 s</strong> for 5,000 issues over 200 branches.</p>
+<h2 id="claims">Claims</h2>
+<p><strong>This section was rewritten after the design it described was tested and found to be paying for something it did not need.</strong> The previous version claimed through a parentless commit at <code>refs/claims/&lt;ID&gt;</code>; what follows is the same guarantee, obtained from a branch, and the paragraphs below say why each of the old version&#39;s supporting arguments does not hold.</p>
+<p><code>isu claim AR-7f3akq</code> does, in this order:</p>
+<ol>
+<li>create branch <code>isu/AR-7f3akq</code> from trunk;</li>
+<li>write <code>state: resolved</code> into <code>issues/AR-7f3akq/README.md</code> and commit it, subject</li>
+</ol>
+<p><code>claim AR-7f3akq</code>;</p>
+<ol>
+<li><code>git push origin isu/AR-7f3akq</code>. <strong>Do this before any work</strong>, so the loser wastes nothing.</li>
+</ol>
+<p><strong>The push is the compare-and-swap, and the state flip is not enough to make it one — the claim commit carries a nonce as well. Corrected in M4-S4, which measured the hole.</strong> The paragraph below argued that two claimants produce two different commits because their author and timestamp differ. Two claimants under one identity, in the same second, produce the <em>same</em> commit: same tree, same parent, same author, same second, same message. Git answers the second push <code>Everything up-to-date</code>, exit 0, and both of them believe they won. A hundred clones racing for one issue produced <strong>thirty winners</strong>. Two agents sharing a bot identity is not an exotic case for a tracker built for agents, and neither is one person in two clones.</p>
+<p><code>--force-with-lease=refs/heads/isu/&lt;ID&gt;:</code> — the third mechanism named at the end of this section — does not close it either: git short-circuits on &#34;up to date&#34; before the lease is evaluated. Measured, both of them.</p>
+<p>What closes it is making this section&#39;s own sentence true. Atomicity comes from committing something nobody else can have committed, so <code>isu claim</code> writes an <strong><code>Isu-Claim:</code> trailer holding a fresh random value</strong> on the claim commit. The second push is then rejected as a non-fast-forward, which is exactly the mechanism described below; it needed the premise to hold. With the nonce, a hundred racing clones produce one winner.</p>
+<p>The measurement below stands, and is what the design looks like when the two claimants happen to differ — which is most of the time, and was never the problem:</p>
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>alice&#39;s claim commit: 677b54d  (author: alice)
+bob&#39;s claim commit:   f7478e5  (author: bob)
+
+alice:  * [new branch]      isu/AR-7f3akq -&gt; isu/AR-7f3akq
+bob:    ! [rejected]        isu/AR-7f3akq -&gt; isu/AR-7f3akq (fetch first)</code></pre></div>
+<p><strong>Pushing a bare branch at the trunk tip would not work</strong>, and that is the trap the earlier draft was written to avoid: git accepts it as a no-op fast-forward and tells both claimants they succeeded, measured as <code>[new branch]</code> for the first and <code>Everything up-to-date</code> for the second, both exit 0. Atomicity comes from committing something nobody else can have committed, not from the ref namespace — a claim ref was one way to get that, and a commit that flips the state is another. (<code>--force-with-lease=refs/heads/isu/&lt;ID&gt;:</code> with an empty expected value is a third, rejecting the second push with <code>stale info</code>. It is not needed here and is not used.)</p>
+<p><strong>The claim writes <code>resolved</code> before the work is done, and that is deliberate.</strong> A branch is a proposal, not a fact: <code>state: resolved</code> on <code>isu/&lt;ID&gt;</code> says <em>this branch intends to resolve this issue</em>, and it becomes a fact about the repository when the branch merges. Trunk is where state is true. Until then the only thing that reads it is a board that renders it as <code>in progress</code>.</p>
+<p><strong>Claiming does not get you past the evidence check.</strong> Resolving a bug, a story or a chore requires a change outside <code>issues/</code>, and resolving a spike requires an artifact in the issue&#39;s own folder. A claim changes one line of one README and nothing else, so a branch that claimed an issue and did no work fails that check exactly as it should — the check reads the diff, not the field. The earlier draft&#39;s objection to writing <code>resolved</code> early, that every claim would then look like a resolution, is not true for this reason.</p>
+<p><strong>Claimant and claim time are the first commit on the claiming branch.</strong> <code>git log &lt;trunk&gt;..isu/&lt;ID&gt; --reverse</code> is the commit that flipped the state — the <strong>first</strong> record of that walk; its author is the claimant and its author date is the claim time. That is one git process per claiming branch — linear in refs, which is what the board already costs — where a dedicated claim ref would have made it free. It is the one thing this design pays more for. The branch <em>tip</em> is free from <code>for-each-ref</code> and is the <strong>wrong</strong> answer: it moves every time the claimant pushes more work, so a claim would never age and <code>stale_days</code> would never fire.</p>
+<p><strong>This paragraph said <code>--reverse --max-count=1</code> until M3-S3, and that pair returns the tip.</strong> Git applies the limit during the walk, which starts at the tip, and reverses what survived it; one commit reversed is that same commit. Measured on a branch of three commits over trunk:</p>
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>git log --reverse --max-count=1 main..topic  -&gt;  third on branch
+git log --reverse             main..topic  -&gt;  first on branch, second on branch, third on branch</code></pre></div>
+<p>So the spelling above walks the range and takes the first record, which costs a claiming branch&#39;s own commits rather than a constant. That is affordable — a claiming branch is a few commits, not a repository — and it is correct, which the pair is not at any price. <code>TestLoadFirstCommitsTakesTheFirstCommitAndNotTheTip</code> asserts the commit id rather than only the date, so a lookup that is accidentally right on a one-commit branch cannot pass it.</p>
+<p><code>isu unclaim</code> flips the state back to <code>open</code> on the claiming branch and pushes. <strong>It does not delete the branch</strong> — a one-word command must not throw away work. What it releases is the claim; what it leaves is an ordinary branch the board says nothing about. Claims are advisory for humans and binding for agents.</p>
+<p><strong>A claim is released when the work lands, and there is no sweep.</strong> Terminal trunk state wins the <a href="statuses.html">precedence table</a>, so a merged issue reads <code>done</code> whatever its branch still says, and the branch is the forge&#39;s to delete on merge. Nothing outside <code>refs/heads/*</code> accumulates, so nothing has to remember to tidy it — where the earlier draft needed a CI job to delete <code>refs/claims/&lt;ID&gt;</code>, without which contention reporting would flag a stale claim on every finished issue for the life of the repository.</p>
+<p><strong>Nothing here pushes outside <code>refs/heads/*</code>.</strong> The remotes that refuse other namespaces are not a special case, there is no <code>--no-claim</code> degraded mode to build, and a rejected push is unambiguous: on a branch it is a lost race and never a policy refusal. The earlier draft paid for all three — it needed a mode nobody would exercise, and it needed <code>isu claim</code> to tell two identical-looking git failures apart and explain which one had happened.</p>
+<h2 id="squash-merge-safety">Squash-merge safety</h2>
+<p>Post-merge questions are answered from <strong>file content at trunk commits</strong>, never from commit metadata. Squash collapses authorship; it does not touch the file. Every derivation that reads history must read blob content, not <code>%an</code>. M3-S5 tests a squash-only lifecycle.</p>
+<p>Linking a trunk commit back to the issue it resolved is the one thing file content cannot answer, so <code>isu resolve</code> writes an <code>Isu-Resolves: &lt;ID&gt;</code> <strong>commit trailer</strong>. Recovery reads three sources in order: the trailer, the <strong>branch name</strong> recorded by the merge, then the commit subject.</p>
+<p>The middle tier is not redundant, and it does not depend on a second forge. GitHub&#39;s squash commit message is a repository setting: set it to <em>pull request title</em>, or let a merge queue compose the message, and the source commits&#39; trailers never reach trunk. The subject is then the pull request&#39;s title rather than anything <code>isu resolve</code> wrote, so the trailer and the subject can both be useless on the same commit. Branch names are <code>isu/&lt;ID&gt;</code>, are recorded by the merge whatever that setting says, and the importer&#39;s recovery pass scans for exactly that.</p>
+<h2 id="the-build">The build</h2>
+<p>Ten milestones, fifty-one stories. Each is an epic under <code>issues/</code>, and the stories beneath it carry their own briefs and their <code>**Done**</code> records — so the state of the build is <code>isu board</code>, not a table somebody has to remember to edit.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>id</th>
+<th>milestone</th>
+<th>ships</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>M0</td>
+<td>Foundations</td>
+<td>repo, CI, lint, test harness</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>Issue files</td>
+<td>parse, serialise, validate, version</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Git layer</td>
+<td>fast load from any ref, from the working tree, and from trunk history</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Derivation</td>
+<td>statuses, epics, claims, contention</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>CLI</td>
+<td>board, show, ready, new, claim, resolve, drop, comment, triage, field notes</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>Checks</td>
+<td><code>isu check</code>, hooks, GitHub Actions, dogfooding</td>
+</tr>
+<tr>
+<td>M6</td>
+<td>TUI</td>
+<td><code>isu ui</code></td>
+</tr>
+<tr>
+<td>M7</td>
+<td>Importers</td>
+<td>safe writes, GitHub Issues</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>Public website</td>
+<td>content, landing page, docs, deploy</td>
+</tr>
+<tr>
+<td>M9</td>
+<td>Release</td>
+<td>goreleaser, brew, docs, v1.0.0</td>
+</tr>
+</tbody></table></div>
+<p>Sizing was estimated in pull requests, because the reviewer is the constraint and the compiler is not:</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>milestone</th>
+<th>stories</th>
+<th>shape</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>M0 Foundations</td>
+<td>4</td>
+<td>small, mostly config; M0-S4 is the one that matters</td>
+</tr>
+<tr>
+<td>M1 Issue files</td>
+<td>5</td>
+<td>small, pure functions, heavy table tests</td>
+</tr>
+<tr>
+<td>M2 Git layer</td>
+<td>5</td>
+<td>medium; M2-S2 is the trickiest parsing in the project</td>
+</tr>
+<tr>
+<td>M3 Derivation</td>
+<td>5</td>
+<td>medium; this is the product, expect the most review time here</td>
+</tr>
+<tr>
+<td>M4 CLI</td>
+<td>8</td>
+<td>medium; M4-S8 has no code and may generate several follow-ups</td>
+</tr>
+<tr>
+<td>M5 Checks</td>
+<td>7</td>
+<td>small each, and highly parallel in principle</td>
+</tr>
+<tr>
+<td>M6 TUI</td>
+<td>5</td>
+<td>medium; golden-frame tests are fiddly to stabilise</td>
+</tr>
+<tr>
+<td>M7 Importers</td>
+<td>5</td>
+<td>large; M7-S4 is the biggest single PR in the plan</td>
+</tr>
+<tr>
+<td>M8 Website</td>
+<td>3</td>
+<td>medium</td>
+</tr>
+<tr>
+<td>M9 Release</td>
+<td>4</td>
+<td>small, except M9-S3 which is open-ended by design</td>
+</tr>
+</tbody></table></div>
+<p><strong>Fifty-one stories, and at most fifty-one pull requests</strong> — an upper bound rather than a forecast, since related stories may travel together and M1 through M4 each arrived as a single pull request. Grouping moves that number, not the work underneath it. The agent is not the bottleneck.</p>
+<p>Two stories were flagged as able to generate unplanned work and not to be scheduled tightly: <strong>M4-S8</strong>, where real repositories got their say, and <strong>M9-S3</strong>, where hardening turns every defect into a regression test first.</p>
+<h2 id="the-wall-clock-budgets">The wall-clock budgets</h2>
+<p><code>make perf</code> asserts them, and nothing else does. A budget on elapsed time is a claim about the whole machine, and <code>go test ./...</code> runs <code>internal/cli</code>&#39;s seventy seconds of git beside the package being timed — which put this gate red on macOS three times before the measurement was moved somewhere quiet. <code>make perf</code> runs the one package in one process and sets <code>ISU_PERF</code> to say so, with <code>-v</code> so the number it measured is on the record of every run; the default suite still runs those tests and logs the same figure, and the <strong>process-count</strong> assertions beside them — the ones that actually prevent the regression — hold in every pass.</p>
+<p>macOS carries a further factor-of-two allowance, because <code>macos-latest</code> is measured at 2.58× the runner the budgets were taken on — 707 ms for <code>LoadRef</code> there against 274 ms here, and 3.66 s for the board against 1.41 s. Those left the original numbers 2.12× and 1.64× of headroom on an idle macOS runner, which is why both budgets carry it and not just the one that went red.</p>
+
+
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>Every sample on this site was produced by running isu against a repository the site&#39;s build creates from scratch. Apache-2.0.</p>
+</div>
+</footer>
+</body>
+</html>

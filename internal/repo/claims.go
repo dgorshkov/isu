@@ -36,13 +36,13 @@ type FirstCommit struct {
 // every time the claimant pushes more work, so a claim would never age and
 // stale_days would never fire.
 //
-// PLAN.md spells this `--reverse --max-count=1`, and that pair returns the tip.
+// The plan spells this `--reverse --max-count=1`, and that pair returns the tip.
 // Git applies the limit during the walk, which starts at the tip, and reverses
 // what survived it; one commit reversed is that same commit. So the range is
 // walked and the first record taken, which costs the branch's own commits
 // rather than a constant — affordable, because a claiming branch is a few
 // commits, and correct, which the pair is not at any price. The tests in
-// claims_test.go hold this, and PLAN.md is corrected to match.
+// claims_test.go hold this, and the plan is corrected to match.
 func (r *Repo) LoadFirstCommits(
 	ctx context.Context, trunk string, refs []string,
 ) (map[string]FirstCommit, error) {

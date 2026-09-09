@@ -1,4 +1,4 @@
-# Configuration for isu itself. See PLAN.md section 1.
+# Configuration for isu itself. See docs/data-model.md.
 #
 # prefix is the issue id prefix: isu's own issues are ISU-7f3akq, ISU-40b1cc, ...
 # The token after the prefix is generated at creation time and never rewritten (M1-S4).

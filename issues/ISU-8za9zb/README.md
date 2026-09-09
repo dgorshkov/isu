@@ -11,4 +11,8 @@ parent: ISU-thyf24
 blocked_by: ISU-j49hvk
 acceptance: `brew install isu` works from a clean machine.
 ---
-The brief for this story is in PLAN.md, under `### M9-S2 · Distribution`.
+**Branch** `isu/M9-S2-distribution`
+**Build** homebrew tap formula, `go install` path verified, checksums and signatures.
+**Tests first** a test installing from the built tarball into a temp prefix and running
+`isu --version`.
+**Done when** `brew install isu` works from a clean machine.

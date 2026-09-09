@@ -8,7 +8,7 @@ import (
 
 // Documentation in this project is executable, and this is what executes it.
 //
-// PLAN.md M8-S1 asks that every command in the content plan run and produce the
+// M8-S1 asks that every command in the content plan run and produce the
 // output the document claims, and M8-S3 asks the same of every fenced shell
 // block in docs/ — "documentation that does not execute is documentation that
 // rots, and these docs will be read by agents". One extractor answers both.

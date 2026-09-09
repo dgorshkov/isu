@@ -76,7 +76,7 @@ func (b *Board) Names() []string {
 // LoadBoard reads trunk and every ref matching the spec.
 //
 // `isu board` never loads one ref, so this is the budget that matters and not
-// the single-ref number in PLAN.md §0. It is a different shape from LoadRef for
+// the single-ref number in the plan. It is a different shape from LoadRef for
 // a reason worth stating, because the obvious shape does not work.
 //
 // Listing every ref's whole tree is correct and far too slow: two hundred

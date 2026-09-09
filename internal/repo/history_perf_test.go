@@ -40,13 +40,13 @@ import (
 // commits — an ordinary three-year-old repository — it is nine tenths of the
 // whole read, on a fixture holding a fifth as many issues as M2-S5's.
 //
-// Nothing is broken. The budgets in PLAN.md are met, and no product decision
+// Nothing is broken. The budgets in the plan are met, and no product decision
 // rests on these numbers today. What they say is where the next one will come
 // from: every other cost here is bounded by what a team is working on, and this
 // one is bounded by how long they have been working.
 //
 // **These are benchmarks and not gates, deliberately.** There is no budget in
-// PLAN.md to hold trunk depth to, and inventing one from a first measurement is
+// the plan to hold trunk depth to, and inventing one from a first measurement is
 // how a gate ends up meaning nothing. They are also not cheap — a 20,000-commit
 // fixture costs tens of seconds to build — and paying that on every CI run for
 // numbers nobody reads is how a pipeline becomes something people learn to
