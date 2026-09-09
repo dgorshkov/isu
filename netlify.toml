@@ -33,7 +33,7 @@
 #     so the site works from a file:// checkout, a preview at a URL nobody chose,
 #     and a domain of its own without being rebuilt. The committed artifact has
 #     that property. What is being served does not.
-#   - Twelve gates run inside Build, over the bytes in web/site — links, HTML
+#   - Every gate runs inside Build, over the bytes in web/site — links, HTML
 #     validity, weight, contrast, focus, the lot. Not one of them has ever seen a
 #     byte a reader was served. gateLinks proves `docs/json.html` resolves; the
 #     reader gets `/docs/json`.

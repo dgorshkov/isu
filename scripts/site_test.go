@@ -107,8 +107,8 @@ func TestNetlifyPublishesTheDirectoryTheBuildProduces(t *testing.T) {
 	// And nothing may rewrite the bytes on the way out. Netlify's Pretty URLs
 	// post-processing is on by default and serves every page with its internal
 	// links rewritten — `docs/json.html` to `/docs/json`, double quotes to
-	// single — so the twelve gates that run over web/site have never seen a byte
-	// a reader was served.
+	// single — so the gates that run over web/site had never seen a byte a
+	// reader was served.
 	//
 	// Both keys, because `skip_processing` alone did not stop it — 13,233 bytes
 	// served against 13,283 committed on the preview for 32cbc65 — and

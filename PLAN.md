@@ -2176,7 +2176,7 @@ have told anybody.** Pretty URLs post-processing is on by default and is a dashb
 every deploy preview served an `index.html` 46 bytes shorter than the committed one — every
 internal href rewritten from `docs/json.html` to `/docs/json`, every attribute requoted from `"`
 to `'`. `site.css` and `og.png` came through untouched; only HTML was changed. The third
-consequence is the one that matters: twelve gates run inside `Build` over the bytes in
+consequence is the one that matters: every gate runs inside `Build` over the bytes in
 `web/site`, and not one of them had ever seen a byte a reader was served — `gateLinks` proved
 `docs/json.html` resolves, and the reader got `/docs/json`.
 
