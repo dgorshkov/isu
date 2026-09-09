@@ -1,9 +1,9 @@
 # Importing from GitHub Issues
 
-> **In this build.** This page described a mapping before the code existed; milestone 7 has
-> since implemented it, and what follows is what `isu import` does. No page on this site yet
-> shows it running against a live repository, because the samples are generated from a fixture
-> and a live import needs a network.
+> **In this build.** Milestone 7 implemented the mapping this page describes, and every
+> `isu import` below is run against a recorded issue list while this page is built. Nothing
+> here has been near github.com: a page that needs a network to build is a page that stops
+> building.
 
 GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than
 an omission. Whoever is adopting isu is already in a git repository, that repository is almost
@@ -86,10 +86,103 @@ and samples without touching the repository: how many issues, how many types it 
 place, how many owners it could not find, how many provenance lines it had to write, how many
 attachment links it recorded, and what the API budget cost.
 
+The runs below read `acme.json`, a recorded issue list. `--fetch-only` is what writes one, and
+it is the only step that wants a network; after that the same command gives the same answer on
+a train, and a reviewer can see what the numbers were computed from.
+
+```console
+$ isu import github --dump acme.json --owner dana --samples 1
+import github → acme/acme-app, as APP-*
+  would write 6 folders from 6 issues, 1 of them epics
+  types: bug 2, chore 2, epic 1, story 1
+  states: (fold over its children) 1, dropped 2, open 2, resolved 1
+  2 comment files
+  1 attachment link, recorded and not fetched
+  24 values with nowhere in the schema, kept in source.yml
+  3 required fields written as a provenance line, not as content
+  1 link pointing outside the import, recorded and not written
+  resolving commits: closing pull request 1
+  found: comments, dependencies, issue fields, issue types, milestones
+  attachment links are recorded, not fetched: resolving one still needs github.com, because on a private repository the asset wants a browser session
+
+skipped
+  #7  a pull request, which the REST list returns beside the issues
+
+APP-1 (#1)
+  README.md  source.yml  comments/2026-01-13-priya-01.md  comments/2026-01-13-priya-02.md
+  ---
+  schema: 1
+  id: APP-1
+  title: Login retries drop the second attempt
+  type: bug
+  state: resolved
+  owner: dana
+  created: 2026-01-12
+  parent: APP-M1
+  repro: imported from acme/acme-app#1; see the body
+  ---
+  The retry reuses the first request's nonce, so the second POST is rejected before it reaches the handler.
+  
+  ![trace](https://github.com/user-attachments/assets/8b17c0d4)
+
+
+nothing was written: pass --write when this says what you expected
+```
+
+`--owner` names who gets an issue GitHub left unassigned. `--samples` is how many issues are
+shown in full, and it exists so that `would write 6 folders` is not the only thing anybody sees
+before several thousand files arrive. `APP-M1` is the milestone: an epic, and what `parent` is
+spent on.
+
+`--state` asks for a subset, and what it declines stays on the record beside what it took:
+
+```console
+$ isu import github --dump acme.json --owner dana --state open --samples 1
+import github → acme/acme-app, as APP-*
+  would write 3 folders from 3 issues, 1 of them epics
+  types: chore 1, epic 1, story 1
+  states: (fold over its children) 1, open 2
+  9 values with nowhere in the schema, kept in source.yml
+  1 required field written as a provenance line, not as content
+  2 links pointing outside the import, recorded and not written
+  found: dependencies, issue fields, issue types, milestones
+  attachment links are recorded, not fetched: resolving one still needs github.com, because on a private repository the asset wants a browser session
+
+skipped
+  #1  --state open does not ask for it
+  #4  --state open does not ask for it
+  #5  --state open does not ask for it
+  #7  a pull request, which the REST list returns beside the issues
+
+APP-2 (#2)
+  README.md  source.yml
+  ---
+  schema: 1
+  id: APP-2
+  title: Show the sign-up queue on the board
+  type: story
+  state: open
+  owner: priya
+  created: 2026-01-19
+  parent: APP-M1
+  acceptance: imported from acme/acme-app#2; see the body
+  ---
+  Support cannot tell how many accounts are waiting.
+
+
+nothing was written: pass --write when this says what you expected
+```
+
+The second run records two links pointing outside the import where the first recorded one. `#1`
+is a blocker `--state open` did not bring, so it goes to `source.yml` rather than becoming an id
+that resolves to nothing — which is the same rule that put `#41` there in both runs.
+
 Two things are also recovered from history for issues that predate isu: which commit resolved
 each one, at three tiers of evidence — a key in a commit message, a key in a merge commit's
 branch name, a key in a squash subject — and, better than all three,
 `closedByPullRequestsReferences`, which GitHub already stores and which arrives with the issue.
+That is the `resolving commits: closing pull request 1` line above: `#1` was closed by pull
+request `#7`, and no history had to be searched to know it.
 
 Every tier match is checked against the set of numbers actually being imported and discarded
 when it is not one of them, because `#456` in a squash subject almost always names a pull

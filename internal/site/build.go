@@ -23,6 +23,12 @@ type Document struct {
 	// Live says the page's commands write, so it runs against a repository of
 	// its own with no issues in it rather than against the sample repository.
 	Live bool
+	// Dump is a recorded GitHub issue list the page's commands import from,
+	// copied into the page's repository under this name from
+	// internal/site/testdata/import. It is a recording rather than a request
+	// because a page that needs github.com to build is a page that stops
+	// building, and because a sample nobody can reproduce is not evidence.
+	Dump string
 }
 
 // Documents are the documentation pages, in reading order. The order is the
@@ -33,7 +39,7 @@ var Documents = []Document{
 	{Name: "statuses"},
 	{Name: "checks"},
 	{Name: "json"},
-	{Name: "importing"},
+	{Name: "importing", Dump: "acme.json"},
 	{Name: "not-doing"},
 	// Last, and after the reference pages rather than between two of them: this
 	// is the maintainer's notebook, and a stranger reading the documentation is
