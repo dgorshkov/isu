@@ -1,9 +1,9 @@
 # Importing from GitHub Issues
 
-> **Not in this build.** The importer is milestone 7 and has not been written yet. This page is
-> the mapping it is specified to implement, published so that anybody weighing a migration can
-> see exactly what would happen to their data before the code exists. No page on this site
-> shows `isu import` running, because nothing would.
+> **In this build.** This page described a mapping before the code existed; milestone 7 has
+> since implemented it, and what follows is what `isu import` does. No page on this site yet
+> shows it running against a live repository, because the samples are generated from a fixture
+> and a live import needs a network.
 
 GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than
 an omission. Whoever is adopting isu is already in a git repository, that repository is almost
@@ -79,7 +79,7 @@ race is one that half-works on exactly the repositories people most want migrate
 links stay in the body byte for byte, they are listed in `source.yml`, and the dry run says how
 many there are.
 
-## What running it will look like
+## What running it looks like
 
 A dry run is the default and writing requires `--write`. The dry run reports counts, coverage
 and samples without touching the repository: how many issues, how many types it could not

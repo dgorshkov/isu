@@ -40,11 +40,11 @@
 <li><a href="#the-mapping">The mapping</a></li>
 <li><a href="#the-fields-the-schema-requires-and-github-does-not-have">The fields the schema requires and GitHub does not have</a></li>
 <li><a href="#attachments-are-recorded-not-downloaded">Attachments are recorded, not downloaded</a></li>
-<li><a href="#what-running-it-will-look-like">What running it will look like</a></li>
+<li><a href="#what-running-it-looks-like">What running it looks like</a></li>
 <li><a href="#once-and-one-way">Once, and one way</a></li>
 </ul>
 </nav>
-<blockquote><p><strong>Not in this build.</strong> The importer is milestone 7 and has not been written yet. This page is the mapping it is specified to implement, published so that anybody weighing a migration can see exactly what would happen to their data before the code exists. No page on this site shows <code>isu import</code> running, because nothing would.</p></blockquote>
+<blockquote><p><strong>In this build.</strong> This page described a mapping before the code existed; milestone 7 has since implemented it, and what follows is what <code>isu import</code> does. No page on this site yet shows it running against a live repository, because the samples are generated from a fixture and a live import needs a network.</p></blockquote>
 <p>GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than an omission. Whoever is adopting isu is already in a git repository, that repository is almost always on GitHub, and GitHub answers for free — with no licence and no administrator — two questions Jira answers only through an integration somebody had to install: <strong>which pull request closed this issue</strong>, and <strong>what is this issue blocked by</strong>. It can also be read without credentials, which is what lets the importer be tested against real public repositories rather than against a fixture nobody can check.</p>
 <p>Jira and Linear are on the <a href="not-doing.html">out-of-scope list</a> as deferrals. The importer&#39;s source interface is the seam they arrive through.</p>
 <h2 id="ids">Ids</h2>
@@ -124,7 +124,7 @@
 <p>The rejected alternative was to call everything a <code>chore</code>, which validates trivially and throws away the bug/story distinction across the entire history in one move.</p>
 <h2 id="attachments-are-recorded-not-downloaded">Attachments are recorded, not downloaded</h2>
 <p>A GitHub attachment is a <code>github.com/user-attachments/assets/…</code> link inside the markdown. On a private repository it cannot be fetched with a personal access token or a GitHub App token at all: the asset wants a browser session. An importer whose completeness depends on winning that race is one that half-works on exactly the repositories people most want migrated — so the links stay in the body byte for byte, they are listed in <code>source.yml</code>, and the dry run says how many there are.</p>
-<h2 id="what-running-it-will-look-like">What running it will look like</h2>
+<h2 id="what-running-it-looks-like">What running it looks like</h2>
 <p>A dry run is the default and writing requires <code>--write</code>. The dry run reports counts, coverage and samples without touching the repository: how many issues, how many types it could not place, how many owners it could not find, how many provenance lines it had to write, how many attachment links it recorded, and what the API budget cost.</p>
 <p>Two things are also recovered from history for issues that predate isu: which commit resolved each one, at three tiers of evidence — a key in a commit message, a key in a merge commit&#39;s branch name, a key in a squash subject — and, better than all three, <code>closedByPullRequestsReferences</code>, which GitHub already stores and which arrives with the issue.</p>
 <p>Every tier match is checked against the set of numbers actually being imported and discarded when it is not one of them, because <code>#456</code> in a squash subject almost always names a pull request and <code>#1234</code> turns up in prose about nothing at all.</p>
