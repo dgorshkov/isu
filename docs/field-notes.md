@@ -1,8 +1,8 @@
 # First contact with real repositories
 
-M4-S8. Everything before this ran against fixtures written by the same person
-who wrote the assumptions; this is the first place the world gets a vote, and it
-is deliberately before the TUI and the importers are built on top of those
+Everything before this ran against fixtures written by the same person who wrote
+the assumptions, so this is the first place the world gets a vote. M4-S8 put it
+deliberately before the TUI and the importers were built on top of those
 assumptions.
 
 Read paths only. Nothing was written to any of these repositories, nothing was

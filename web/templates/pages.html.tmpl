@@ -1,0 +1,94 @@
+{{define "page" -}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Description}}">
+<link rel="canonical" href="{{.Canonical}}">
+<link rel="icon" href="{{.Rel}}favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{.Rel}}site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{.Title}}">
+<meta property="og:description" content="{{.Description}}">
+<meta property="og:url" content="{{.Canonical}}">
+<meta property="og:image" content="{{.Image}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{.Title}}">
+<meta name="twitter:description" content="{{.Description}}">
+<meta name="twitter:image" content="{{.Image}}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="{{.Home}}">isu</a>
+<span class="version">{{.Version}}</span>
+<nav aria-label="Sections">
+{{range .Nav}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Text}}</a>
+{{end}}</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+{{.Body}}
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>{{.Footer}}</p>
+</div>
+</footer>
+</body>
+</html>
+{{end}}
+
+{{define "index" -}}
+<div class="hero">
+<h1>{{.Tagline}}</h1>
+<p class="tagline">{{.Lede}}</p>
+<p class="install" tabindex="0" role="region" aria-label="install command">{{.Install}}</p>
+<p class="requires">{{.Requires}}</p>
+{{with .HeroSample}}<div class="proof">
+<p class="command">{{.Command}}</p>
+<pre tabindex="0" role="region" aria-label="output of {{.Command}}"><code>{{.Output}}</code></pre>
+</div>
+{{end}}</div>
+{{range .Sections}}
+<section class="section" id="{{.ID}}">
+<h2>{{.Title}}</h2>
+{{if .Claim}}<p class="claim">{{.Claim}}</p>
+{{end}}{{range .Samples}}<div class="proof">
+<p class="command">{{.Command}}</p>
+<pre tabindex="0" role="region" aria-label="output of {{.Command}}"><code>{{.Output}}</code></pre>
+</div>
+{{end}}{{range .Copy}}<p>{{.}}</p>
+{{end}}</section>
+{{end}}
+{{end}}
+
+{{define "doc" -}}
+<h1>{{.Heading}}</h1>
+{{if .Headings}}<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+{{range .Headings}}<li><a href="#{{.ID}}">{{.Text}}</a></li>
+{{end}}</ul>
+</nav>
+{{end}}{{.Content}}
+{{end}}
+
+{{define "contents" -}}
+<h1>{{.Heading}}</h1>
+<p class="tagline">{{.Lede}}</p>
+<ul class="pages">
+{{range .Links}}<li><a href="{{.Href}}">{{.Text}}</a><span class="note">{{.Note}}</span></li>
+{{end}}</ul>
+{{end}}
+
+{{define "notfound" -}}
+<h1>{{.Heading}}</h1>
+<p>{{.Lede}}</p>
+<ul>
+{{range .Links}}<li><a href="{{.Href}}">{{.Text}}</a></li>
+{{end}}</ul>
+{{end}}

@@ -1,0 +1,600 @@
+/* isu.dev — the whole stylesheet.
+ *
+ * Every colour and every type size is declared once, in the two token blocks
+ * below, and referenced through a custom property everywhere else. M8-S2 makes
+ * that a test rather than a convention: a hex literal or a pixel font size
+ * outside those blocks fails the build.
+ *
+ * There is no webfont. PLAN.md M8-S2 asks for fonts "self-hosted and subset,
+ * no third-party font CDN"; the strongest form of that is not to ship a font at
+ * all, so the prose is set in the reader's own UI face and the terminal in
+ * their own monospace. Nothing is fetched, nothing is subset, nothing is a
+ * third-party request, and the page renders at first paint with no swap.
+ */
+
+:root {
+	color-scheme: light dark;
+
+	/* Colours. Six, named for their job rather than their hue. Every pair the
+	 * page actually puts together is asserted against WCAG AA in gates.go. */
+	--paper: #fbf9f5;
+	--ink: #12100e;
+	--slate: #5b5750;
+	--rule: #e2dcd1;
+	--signal: #b4451f;
+	--terminal: #1b1917;
+	--terminal-ink: #fbf9f5;
+	--glow: #f0ac7a;
+
+	/* The type scale, hand-tuned rather than geometric — and said plainly here
+	 * because the comment used to claim "up and down by a factor of 1.25" and
+	 * only one of its six steps was. The real ratios are 1.125, 1.111, 1.25,
+	 * 1.4, 1.371 and 1.333: tight at reading sizes where a reader needs two
+	 * sizes to look deliberately different, loose at display sizes where they
+	 * need to look unrelated. A file that fails the build over a stray hex
+	 * literal should not carry a comment its own numbers contradict. */
+	--text-xs: 0.8rem;
+	--text-s: 0.9rem;
+	--text-m: 1rem;
+	--text-l: clamp(1.1rem, 1rem + 0.5vw, 1.25rem);
+	--text-xl: 1.75rem;
+	--text-2xl: 2.4rem;
+
+	/* The one fluid size on the site. Fixed at 3.2rem this broke to five lines
+	 * on a phone and pushed the first terminal card — the only thing on the
+	 * page that proves anything — below the fold on every mobile device. */
+	--text-3xl: clamp(2.1rem, 1.4rem + 3.2vw, 3.2rem);
+
+	--measure: 34rem;
+	--gap: 1.5rem;
+	--radius: 0.35rem;
+
+	--sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+		Arial, sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+		"Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--paper: #141312;
+		--ink: #f2eee7;
+		--slate: #a9a199;
+		--rule: #332f2a;
+		--signal: #f0894f;
+		--terminal: #0c0b0a;
+		--terminal-ink: #f2eee7;
+		--glow: #f0ac7a;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: var(--text-m);
+	line-height: 1.6;
+}
+
+.wrap {
+	max-width: 46rem;
+	margin: 0 auto;
+	padding: 0 var(--gap);
+}
+
+/* ---- the skip link, first in the document and visible when focused ---- */
+
+.skip {
+	position: absolute;
+	left: -100vw;
+	top: 0;
+	background: var(--signal);
+	color: var(--paper);
+	padding: 0.5rem 1rem;
+	z-index: 2;
+}
+
+.skip:focus {
+	left: 0;
+}
+
+/* ---- masthead ---- */
+
+/* The version of the binary that produced every sample below. A page for a
+ * pre-1.0 tool that declines to say which pre-1.0 it is asks to be trusted
+ * about the one thing it could simply state. */
+.version {
+	font-family: var(--mono);
+	font-size: var(--text-xs);
+	color: var(--slate);
+}
+
+.masthead {
+	border-bottom: 1px solid var(--rule);
+	padding: 1rem 0;
+}
+
+.masthead .wrap {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--gap);
+}
+
+.wordmark {
+	font-family: var(--mono);
+	font-size: var(--text-l);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.wordmark::before {
+	content: "> ";
+	color: var(--signal);
+}
+
+.masthead nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--gap);
+	font-size: var(--text-s);
+}
+
+/* ---- links ---- */
+
+a {
+	color: var(--signal);
+	text-underline-offset: 0.15em;
+}
+
+a:focus-visible,
+button:focus-visible {
+	outline: 2px solid var(--signal);
+	outline-offset: 2px;
+}
+
+/* The other half of WCAG 2.1.1's neighbour, 2.4.7 Focus Visible.
+ *
+ * M8-S2 made every scrolling box reachable with a tabindex and stopped there.
+ * The five cards on the landing page were then reachable and said nothing when
+ * they had focus: no rule here covered them, so they fell back to the browser's
+ * own outline, which is painted outside the border box — and `.proof` is
+ * `overflow: hidden`, which clipped it on three sides. Reachable and invisible.
+ *
+ * Inset, so nothing can clip it, and --glow on --terminal is 9.09:1. */
+.scroller:focus-visible,
+.install:focus-visible,
+.proof pre:focus-visible {
+	outline: 2px solid var(--signal);
+	outline-offset: -3px;
+}
+
+.proof pre:focus-visible {
+	outline-color: var(--glow);
+}
+
+/* ---- headings and prose ---- */
+
+h1,
+h2,
+h3,
+h4 {
+	line-height: 1.15;
+	letter-spacing: -0.015em;
+	margin: 2rem 0 0.75rem;
+}
+
+h1 {
+	font-size: var(--text-2xl);
+}
+
+h2 {
+	font-size: var(--text-xl);
+}
+
+h3 {
+	font-size: var(--text-l);
+}
+
+h4 {
+	font-size: var(--text-m);
+}
+
+p,
+li {
+	max-width: var(--measure);
+}
+
+code {
+	font-family: var(--mono);
+	font-size: 0.92em;
+	background: color-mix(in srgb, var(--rule) 55%, transparent);
+	border-radius: 0.2rem;
+	padding: 0.05em 0.3em;
+}
+
+hr {
+	border: 0;
+	border-top: 1px solid var(--rule);
+	margin: 2.5rem 0;
+}
+
+blockquote {
+	margin: 1.5rem 0;
+	padding-left: 1rem;
+	border-left: 3px solid var(--signal);
+	color: var(--slate);
+}
+
+/* ---- the hero ---- */
+
+.hero {
+	padding: 2rem 0 1rem;
+}
+
+.hero h1 {
+	font-size: var(--text-3xl);
+	margin-top: 0;
+}
+
+.tagline {
+	font-size: var(--text-l);
+	color: var(--slate);
+	max-width: var(--measure);
+}
+
+/* The one call to action on the page, and it was the faintest thing in the hero.
+ *
+ * The prompt and the caret are pseudo-elements rather than spans, so selecting
+ * this line selects the command and nothing else. They used to be
+ * `<span aria-hidden="true">`, which hides a string from a screen reader and not
+ * from a clipboard: triple-clicking the page's only CTA and pasting it gave
+ * `$ go install …@latest_`, which does not run. The proof card two rules down
+ * had always done its prompt correctly, as ::before.
+ *
+ * The box is in the accent now. It was 1px of --rule, which is 1.3:1 against
+ * paper — so in practice there was no box, and the only thing giving the CTA any
+ * weight at all was a blinking caret that a reader who asked for less motion
+ * correctly never sees. */
+.install {
+	font-family: var(--mono);
+	font-size: var(--text-m);
+	border: 1px solid var(--signal);
+	background: color-mix(in srgb, var(--signal) 8%, transparent);
+	border-radius: var(--radius);
+	padding: 0.7rem 0.9rem;
+	display: inline-block;
+	overflow-x: auto;
+	max-width: 100%;
+
+	/* One tap or click selects the whole command and nothing else. There is no
+	 * copy button because there is no JavaScript, and selecting text by hand
+	 * inside a horizontally scrolling box on a touchscreen is among the least
+	 * reliable things a phone does. */
+	user-select: all;
+}
+
+.install::before {
+	content: "$ ";
+	color: var(--signal);
+	user-select: none;
+}
+
+.install::after {
+	content: "_";
+	user-select: none;
+	animation: blink 1.2s steps(1) infinite;
+}
+
+/* What you need before the command above will work. A page that ships a single
+ * `go install` line and never names a toolchain has no path for the reader who
+ * does not already have one. */
+.requires {
+	font-size: var(--text-s);
+	color: var(--slate);
+	margin-top: 0.6rem;
+}
+
+/* ---- the proof card: the site's signature element ----
+ *
+ * Every claim the site makes sits directly above one of these, and everything
+ * inside it came out of the binary in this repository. The header bar carries
+ * the command; the body carries exactly the bytes isu wrote.
+ */
+
+.proof {
+	/* The card is dark in both schemes, so its scrollbar should be too. Without
+	 * this it inherits :root's `light dark` and a light scrollbar sits under a
+	 * black terminal. */
+	color-scheme: dark;
+	margin: 1.25rem 0 2.5rem;
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	overflow: hidden;
+	background: var(--terminal);
+}
+
+.proof .command {
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	color: var(--glow);
+	padding: 0.6rem 0.9rem;
+	border-bottom: 1px solid color-mix(in srgb, var(--glow) 25%, transparent);
+	margin: 0;
+	max-width: none;
+}
+
+.proof .command::before {
+	content: "$ ";
+	opacity: 0.65;
+}
+
+.proof pre {
+	margin: 0;
+	padding: 0.9rem;
+	overflow-x: auto;
+	color: var(--terminal-ink);
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	line-height: 1.5;
+	tab-size: 4;
+}
+
+.proof code {
+	background: none;
+	padding: 0;
+	font-size: inherit;
+}
+
+/* ---- documents ---- */
+
+.scroller {
+	overflow-x: auto;
+	max-width: 100%;
+	margin: 1.25rem 0;
+}
+
+.scroller pre {
+	margin: 0;
+	padding: 0.9rem;
+	border-radius: var(--radius);
+	font-family: var(--mono);
+	font-size: var(--text-s);
+	line-height: 1.5;
+}
+
+.scroller code {
+	background: none;
+	padding: 0;
+	font-size: inherit;
+}
+
+/* A block that ran. The dark ground is this site's word for "these are the
+ * bytes the binary wrote", and it is spent nowhere else. */
+.scroller.ran pre {
+	background: var(--terminal);
+	color: var(--terminal-ink);
+}
+
+/* A command the build ran and whose output the document cannot quote, because
+ * the output is a fresh id every time. Without this the card is a prompt on a
+ * dark ground with nothing under it, which on a site where dark means "the
+ * binary wrote these bytes" reads as "it printed nothing". */
+.unquoted {
+	margin-top: -0.75rem;
+	color: var(--slate);
+	font-size: var(--text-s);
+}
+
+/* A block that did not. Illustrative, placeholders in it, never executed — so
+ * it gets a ground it cannot be mistaken for the other one on.
+ *
+ * It got a 1px --rule border, and --rule on --paper is 1.30:1: the positive
+ * signal that was supposed to replace the borrowed dark ground was not
+ * perceivable, so a sketch was a <pre> on paper and nothing else. --slate is
+ * 6.83:1 and carries the same weight as the claim rule on the landing page,
+ * which is the site's existing word for "this line is doing a job". */
+.scroller.sketch pre {
+	background: none;
+	color: var(--ink);
+	border: 0;
+	border-left: 3px solid var(--slate);
+	border-radius: 0;
+	padding-left: 1rem;
+}
+
+table {
+	border-collapse: collapse;
+	font-size: var(--text-s);
+}
+
+th,
+td {
+	border-bottom: 1px solid var(--rule);
+	padding: 0.4rem 0.8rem 0.4rem 0;
+	text-align: left;
+	vertical-align: top;
+}
+
+th {
+	white-space: nowrap;
+}
+
+/* ---- contents list beside a document ---- */
+
+.contents {
+	border-left: 2px solid var(--rule);
+	padding-left: 1rem;
+	margin: 1.5rem 0 2.5rem;
+	font-size: var(--text-s);
+}
+
+.contents ul {
+	list-style: none;
+	margin: 0.4rem 0 0;
+	padding: 0;
+}
+
+.contents li {
+	margin: 0.2rem 0;
+}
+
+.contents strong {
+	color: var(--slate);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: var(--text-xs);
+}
+
+/* ---- the documentation index ----
+ *
+ * A link and the line its page opens with. Eight bare titles told a reader who
+ * arrived here from search nothing about which two of them they wanted.
+ */
+
+.pages {
+	list-style: none;
+	margin: 1.5rem 0;
+	padding: 0;
+	max-width: var(--measure);
+}
+
+.pages li {
+	border-top: 1px solid var(--rule);
+	padding: 0.7rem 0;
+	max-width: none;
+}
+
+.pages a {
+	font-weight: 600;
+}
+
+.pages .note {
+	display: block;
+	color: var(--slate);
+	font-size: var(--text-s);
+	line-height: 1.5;
+}
+
+/* ---- section headings on the landing page ---- */
+
+/* The one sentence in a section that is worth reading if nothing else is.
+ *
+ * It was one step up the scale from body copy and identical in every other
+ * respect, which meant the sentence built to be skimmed did not look like one.
+ * Three things separate it now — size, weight, and a rule in the accent — and
+ * the rule is also the only steady job --signal does on this page. */
+.claim {
+	font-size: var(--text-l);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: -0.01em;
+	border-left: 2px solid var(--signal);
+	padding-left: 0.9rem;
+	max-width: var(--measure);
+}
+
+.section {
+	border-top: 1px solid var(--rule);
+	padding-top: 2.25rem;
+	margin-top: 2.5rem;
+}
+
+/* Padding blocks margin collapse, so a section's opening heading added its own
+ * 2rem to the section's — 6.5rem of gap that was arithmetic rather than a
+ * decision. The gap is the section's to choose. */
+.section > h2:first-child {
+	margin-top: 0;
+}
+
+/* ---- foot ---- */
+
+.foot {
+	border-top: 1px solid var(--rule);
+	margin-top: 3.5rem;
+	padding: 1.5rem 0 3rem;
+	color: var(--slate);
+	font-size: var(--text-s);
+}
+
+.foot a {
+	color: var(--slate);
+}
+
+/* ---- narrow screens ----
+ *
+ * The one width breakpoint on the site, and it exists for one reason: the
+ * first terminal card is the only thing on this page that proves anything, and
+ * a hero set at desktop proportions pushed it most of a screen further down on
+ * a phone than it needed to be. Type, not layout — there is nothing here to
+ * reflow.
+ */
+
+@media (max-width: 30rem) {
+	.hero {
+		padding: 1.25rem 0 0.75rem;
+	}
+
+	.tagline {
+		font-size: var(--text-m);
+	}
+
+	/* The install command is 53 cells wide. On a 390px phone `.install` has
+	 * 313px of inner width, so about 40% of the one command this page asks
+	 * anybody to run was off the right-hand edge, in a box that had to be
+	 * scrolled sideways by hand to read and by touch-drag to select. Wrapping
+	 * it costs a second line and shows the whole thing.
+	 *
+	 * gateWidth could not see this: it holds <pre> and <table> to a scrolling
+	 * box, and the install line is a <p>. "No page-level horizontal scroll" and
+	 * "readable on a phone" are not the same property, and this is where they
+	 * came apart. */
+	.install {
+		display: block;
+		overflow-x: visible;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+}
+
+/* ---- motion ----
+ *
+ * The page animates one thing: the caret after the install line. Anybody who
+ * has asked their system for less motion gets none.
+ */
+
+@keyframes blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	.install::after {
+		animation: none;
+		opacity: 1;
+	}
+}

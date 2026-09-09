@@ -26,6 +26,17 @@ Errors go to standard error, as one `Failure` object and nothing else — no usa
 text, no warnings. Exit status is `0` for success, `1` for a command that could
 not do what it was asked, and `2` for a command line that does not make sense.
 
+One whole line, before the fifteen tables of fields below it, because a shape is
+easier to hold in the head than a schema of it:
+
+```console
+$ isu show APP-9cx2rt --json
+{"issue":{"id":"APP-9cx2rt","title":"Show the sign-up queue on the board","type":"story","state":"open","status":"in progress","owner":"priya","created":"2026-02-21","priority":"p2","parent":"APP-40b1cc","blocked_by":[],"repro":"","acceptance":"the board shows queue depth and the oldest waiting account","question":"","reason":"","resolution":"","on_trunk":true,"reopened":false,"contended":false,"stale":false,"claims":[{"ref":"refs/heads/isu/APP-9cx2rt","claimant":"Priya Raman","email":"priya@example.invalid","commit":"570aec153ebaae2fedc94a4b49ed8063bd6b53f1","when":"2026-04-14T04:15:00Z","age_seconds":21600,"stale":false}],"elsewhere":["refs/heads/isu/APP-9cx2rt"],"epic":null,"broken":null},"body":"","attachments":[],"comments":[],"children":[],"parent":{"id":"APP-40b1cc","title":"Make sign-up reliable","status":"open","known":true},"blockers":[],"freshness":{"remote":true,"newest":"2026-04-14T09:15:00Z","age_seconds":3600,"warn":false}}
+```
+
+Every field on it is defined below, and `contended`, `claims` and `elsewhere`
+are the three that a tracker with a database has no way to express at all.
+
 ## Failure
 
 Printed on standard error by any command that fails while `--json` is set.
