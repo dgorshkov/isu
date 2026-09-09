@@ -252,7 +252,7 @@ func (s *session) whoami(ctx context.Context, given string) (string, error) {
 // checkParent refuses a parent that is not an epic, at the command rather than
 // at CI.
 //
-// PLAN.md is explicit that this is a repository-level rule and not a field one:
+// The plan is explicit that this is a repository-level rule and not a field one:
 // Validate takes one issue and nothing else, so it checks that a parent is
 // shaped like an id and stops. Here the whole board is loaded, so the rule can
 // be enforced where the mistake is being made.

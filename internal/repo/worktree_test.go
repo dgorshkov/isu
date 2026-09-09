@@ -13,7 +13,7 @@ import (
 	"github.com/dgorshkov/isu/internal/issue"
 )
 
-// agreementIssues is the size PLAN.md M2-S3 is done at. The property is cheap
+// agreementIssues is the size M2-S3 is done at. The property is cheap
 // to hold on three issues and only interesting on five thousand: that is where
 // a loader that skipped a folder, followed a link or read a stale blob has
 // somewhere to hide.

@@ -27,7 +27,7 @@ import (
 // read across refs and is never written down.
 type Status string
 
-// The derived statuses, in the precedence order of PLAN.md's table: several of
+// The derived statuses, in the precedence order of the plan's table: several of
 // them overlap, and the first match wins.
 const (
 	// StatusDone is a terminal trunk state, and it beats every claim: a
@@ -272,7 +272,7 @@ func (d *deriver) collect() {
 	}
 }
 
-// status walks the table in PLAN.md section 1, in its order, because the rows
+// status walks the table in the data model, in its order, because the rows
 // overlap and the first match wins. The epics are folded afterwards, over the
 // statuses this leaves behind.
 func (d *deriver) status() {

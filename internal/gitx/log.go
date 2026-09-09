@@ -45,7 +45,7 @@ type Commit struct {
 	Committer Signature
 	// Subject is the first line of the message. A squash merge composed by the
 	// forge puts the pull request's title here, which is the third tier of the
-	// resolving-commit recovery in PLAN.md.
+	// resolving-commit recovery in the plan.
 	Subject string
 	// Body is everything below the subject, which is where the Isu-Resolves
 	// trailer lives.

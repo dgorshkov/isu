@@ -5,7 +5,7 @@
  * that a test rather than a convention: a hex literal or a pixel font size
  * outside those blocks fails the build.
  *
- * There is no webfont. PLAN.md M8-S2 asks for fonts "self-hosted and subset,
+ * There is no webfont. M8-S2 asks for fonts "self-hosted and subset,
  * no third-party font CDN"; the strongest form of that is not to ship a font at
  * all, so the prose is set in the reader's own UI face and the terminal in
  * their own monospace. Nothing is fetched, nothing is subset, nothing is a

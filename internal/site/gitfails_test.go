@@ -14,7 +14,7 @@ import (
 // What the site build says when git will not answer.
 //
 // The fixture is a dozen git processes in a row and each of them has an error
-// return nobody had ever taken. The lever is the one PLAN.md's definition of
+// return nobody had ever taken. The lever is the one the plan's definition of
 // done names and internal/cli/gitfails_test.go already uses: a git on PATH that
 // forwards to the real one and refuses exactly one invocation, chosen by the
 // argument it carries.

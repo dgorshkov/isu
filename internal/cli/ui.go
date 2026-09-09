@@ -63,7 +63,7 @@ func (a *app) ui(cmd *cobra.Command) error {
 // uiInput is the whole repository, handed over.
 //
 // The groups are the ones `isu board` renders, from the same function, which is
-// what PLAN.md M6-S2 means by the grouping matching exactly: not two orderings
+// what M6-S2 means by the grouping matching exactly: not two orderings
 // that agree, one ordering used twice.
 func (a *app) uiInput(s *session, v *view) ui.Input {
 	loaded := v.itemGroups()

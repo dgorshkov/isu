@@ -105,7 +105,7 @@ func timeless(payload BoardPayload) BoardPayload {
 	return payload
 }
 
-// PLAN.md M6-S2: the grouping matches `isu board` exactly. It is one function
+// M6-S2: the grouping matches `isu board` exactly. It is one function
 // used twice rather than two orderings that agree, and this is the fixture that
 // says so.
 func TestTheInterfaceGroupsExactlyAsTheBoardDoes(t *testing.T) {
@@ -186,7 +186,7 @@ func TestTheInterfaceNamesTheRefItReadAsTrunk(t *testing.T) {
 // performs and the issue an editor files are all read back out of the
 // repository afterwards, with git.
 
-// PLAN.md M6-S5: "`c` claims through the same code path as `isu claim`". The
+// M6-S5: "`c` claims through the same code path as `isu claim`". The
 // proof is the repository: a claim is a branch, a state flip and a push, and
 // all three are here.
 func TestClaimingFromTheInterfaceIsAClaim(t *testing.T) {
@@ -222,7 +222,7 @@ func TestClaimingSomethingAlreadyClaimedFromTheInterfaceNamesTheHolder(t *testin
 	require.Contains(t, got.stdout, "alice")
 }
 
-// PLAN.md M6-S5: "`g` checks out the claiming branch."
+// M6-S5: "`g` checks out the claiming branch."
 func TestGoingToTheBranchFromTheInterfaceChecksItOut(t *testing.T) {
 	t.Parallel()
 
@@ -246,7 +246,7 @@ func TestGoingToTheBranchOfAnUnclaimedIssueChangesNothing(t *testing.T) {
 	require.Equal(t, before, r.Git("rev-parse", "--abbrev-ref", "HEAD"))
 }
 
-// PLAN.md M6-S5: "`n` opens an editor for a new issue". The editor is the
+// M6-S5: "`n` opens an editor for a new issue". The editor is the
 // user's own and it is handed a whole issue file to edit, so that what comes
 // back is parsed by internal/issue and not by something this command invented.
 func TestFilingAnIssueFromTheInterfaceOpensTheEditor(t *testing.T) {

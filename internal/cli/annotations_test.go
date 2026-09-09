@@ -10,7 +10,7 @@ import (
 
 // The annotations, which are the facts a status alone cannot carry.
 //
-// PLAN.md §1 makes each of them survive losing the precedence contest — an
+// The data model makes each of them survive losing the precedence contest — an
 // issue that is being re-fixed reads `in progress` and is still `reopened` —
 // so each has to be rendered beside whatever status won, and the only way to
 // know they are is to build a repository holding each one.
@@ -71,7 +71,7 @@ func annotated(t *testing.T) *gittest.Repo {
 	//
 	// A squash rather than a merge commit, because a merge cannot be reverted
 	// without saying which side to keep — and because the whole point of
-	// PLAN.md's squash-merge safety is that the two read the same.
+	// the plan's squash-merge safety is that the two read the same.
 	//
 	// **The squash subject must differ from the branch's, and that is not
 	// cosmetic.** Given the same subject, the squash commit and the commit it
@@ -94,7 +94,7 @@ func annotated(t *testing.T) *gittest.Repo {
 
 	// A claim with nobody named: the branch says resolved where trunk says
 	// open, and there is nothing ahead of trunk on it to look an author up in.
-	// PLAN.md M3-S3 is explicit that this is still a claim — the file is the
+	// M3-S3 is explicit that this is still a claim — the file is the
 	// claim, and the lookup only names who made it.
 	//
 	// This one is a real merge rather than a squash, which is what makes the

@@ -123,7 +123,8 @@ because react's newest branch had not moved in three days.
 The words and the intent diverge on a quiet repository. What would measure fetch
 age is the mtime of `.git/FETCH_HEAD`, which is a fact about this clone rather
 than about the project. Recorded rather than changed, because the current
-behaviour is what PLAN.md says and the amendment belongs in PLAN.md first.
+behaviour is what M4-S2 specified and the amendment belongs in the
+[design record](design.html) first.
 
 ### Submodules are a non-event, and the interesting case does not exist
 
@@ -148,7 +149,7 @@ isu: <repo> has no .isu.yml: isu needs one line of configuration to know what
 to call an issue, and `isu init` writes it
 ```
 
-This is the open question PLAN.md §1 raised and asked to be settled before
+This is the open question the [data model](data-model.html) raised and asked to be settled before
 M4-S1, and it is why `isu init` exists. The field notes confirm the answer was
 worth making: the first thing anybody does with isu in an existing repository
 is hit this, and a tool whose first interaction is an error about a file the

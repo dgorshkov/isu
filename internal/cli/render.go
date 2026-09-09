@@ -21,7 +21,7 @@ type theme struct {
 }
 
 // ANSI is written by hand here rather than pulled in from a styling library.
-// lipgloss is in PLAN.md's allowlist for the TUI, where a layout engine earns
+// lipgloss is in the plan's allowlist for the TUI, where a layout engine earns
 // its place; a board that dims one column does not.
 const (
 	ansiReset = "\x1b[0m"

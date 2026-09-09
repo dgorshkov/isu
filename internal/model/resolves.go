@@ -37,7 +37,7 @@ const (
 // cannot answer, so it is answered from the message, and from nowhere else this
 // package can reach.
 //
-// Two of PLAN.md's three tiers are here, because they are the two that are in a
+// Two of the plan's three tiers are here, because they are the two that are in a
 // commit message. The middle tier — the branch name the merge recorded — is not
 // in one: it needs the merge's own refs, so it belongs to whatever loads them,
 // and M7-S3 already scans for exactly that when it walks the years of history

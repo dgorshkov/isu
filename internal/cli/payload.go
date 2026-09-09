@@ -118,7 +118,7 @@ type BoardPayload struct {
 	Groups    []Group   `json:"groups"`
 }
 
-// Group is one status's issues, in the precedence order of PLAN.md's table.
+// Group is one status's issues, in the precedence order of the plan's table.
 type Group struct {
 	Status string  `json:"status"`
 	Issues []Issue `json:"issues"`

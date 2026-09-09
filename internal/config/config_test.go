@@ -286,7 +286,7 @@ func TestThisRepositorysOwnConfigParses(t *testing.T) {
 	require.Equal(t, config.DefaultStaleDays, cfg.StaleDays)
 }
 
-// The spelling PLAN.md's M1-S4 names, over the pure generator in the issue
+// The spelling M1-S4 names, over the pure generator in the issue
 // package: the prefix comes from the configuration rather than from the call.
 func TestConfigNewID(t *testing.T) {
 	t.Parallel()

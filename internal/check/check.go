@@ -2,7 +2,7 @@
 // it.
 //
 // The rules themselves are not new. Almost every one of them is a sentence
-// PLAN.md section 1 already wrote down — a parent names an epic, resolving
+// the data model already wrote down — a parent names an epic, resolving
 // something requires a change outside issues/, an agent never reassigns an
 // owner — and until this package existed there was nowhere for those sentences
 // to be enforced. `isu check` is where a pull request finds out.
@@ -14,7 +14,7 @@
 // and what the branch under review proposes. **No check runs git.** That is the
 // same rule internal/model lives under and it is here for the same reason: a
 // check that could spawn a process would spawn one per issue the first time
-// somebody was in a hurry, and the read path in PLAN.md §0 exists precisely so
+// somebody was in a hurry, and the read path in the plan exists precisely so
 // that nothing has to.
 //
 // # Two scopes, and why a hook needs them
@@ -89,7 +89,7 @@ var Scopes = []Scope{ScopeTree, ScopeBranch}
 // The check's own name is stamped on by the registry rather than written by
 // each check, so that a check cannot disagree with the name it was registered
 // under — and so that adding one stays the one file and one registry line
-// PLAN.md asks for.
+// the plan asks for.
 type Finding struct {
 	// Check is the name of the check that found it.
 	Check string

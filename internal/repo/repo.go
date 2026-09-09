@@ -8,7 +8,7 @@
 //
 // Three sources, one shape:
 //
-//   - LoadRef reads a commit, using the read path PLAN.md §0 mandates;
+//   - LoadRef reads a commit, using the read path the plan mandates;
 //   - LoadWorktree reads what is on disk, uncommitted edits included;
 //   - LoadHistory reads the states an issue's file has held at trunk.
 package repo
@@ -75,7 +75,7 @@ func (r *Repo) Processes() int64 { return r.git.Processes() }
 
 // Broken is one issue folder that could not be read at all.
 //
-// PLAN.md M2-S2 describes the result as a plain map. It cannot be one: M2-S3
+// M2-S2 describes the result as a plain map. It cannot be one: M2-S3
 // requires that a half-written issue is reported rather than fatal, and a map
 // of the issues that loaded has nowhere to say which ones did not. So the
 // result is a Set, and this is the half of it a map cannot carry.

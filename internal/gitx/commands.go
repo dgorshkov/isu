@@ -20,7 +20,7 @@ type TreeEntry struct {
 	// Type is blob, tree or commit. `-r` flattens trees away, so a tree here is
 	// a submodule's gitlink rather than a directory.
 	Type string
-	// OID is the object id. It is the point of this whole call: PLAN.md §0
+	// OID is the object id. It is the point of this whole call: the plan
 	// measures `cat-file --batch` fed object ids at 0.6 s where the same batch
 	// fed `ref:path` takes 4.9 s, because a path costs a tree walk per lookup.
 	OID string
@@ -34,7 +34,7 @@ type TreeEntry struct {
 
 // LsTree lists every object under paths at ref, recursively.
 //
-// It is step one of the read path PLAN.md mandates: take the object id of every
+// It is step one of the read path the plan mandates: take the object id of every
 // issues/*/README.md here, then read them all in one batch.
 func (g *Git) LsTree(ctx context.Context, ref string, paths ...string) ([]TreeEntry, error) {
 	args := []string{"ls-tree", "-r", "-z", "--full-tree", ref}
@@ -54,7 +54,7 @@ func (g *Git) LsTree(ctx context.Context, ref string, paths ...string) ([]TreeEn
 // LsTreeLong is LsTree with the size of every blob.
 //
 // It is a separate call rather than a flag on the one above because `-l` makes
-// git look up the size of every object it lists, and the read path in PLAN.md
+// git look up the size of every object it lists, and the read path in the plan
 // §0 lists five thousand issues without wanting one of them. The attachment cap
 // in M5-S2 is the opposite case: it is asking about sizes and nothing else.
 func (g *Git) LsTreeLong(ctx context.Context, ref string, paths ...string) ([]TreeEntry, error) {
@@ -143,7 +143,7 @@ type Object struct {
 // arrives.
 //
 // Objects are fed in as object ids rather than as ref:path, which is the whole
-// performance requirement in PLAN.md §0: a path costs a tree walk per lookup
+// performance requirement in the plan: a path costs a tree walk per lookup
 // and an object id does not. Feeding nothing runs nothing.
 //
 // fn is called in stream order. An error from fn stops the walk, kills git and

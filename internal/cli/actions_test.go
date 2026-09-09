@@ -108,7 +108,7 @@ func TestTheFolderActionCarriesWhatLivesBesideTheIssue(t *testing.T) {
 }
 
 // A folder that cannot be listed is reported rather than rendered as an issue
-// with nothing beside it. The lever is the one PLAN.md's coverage note names —
+// with nothing beside it. The lever is the one the plan's coverage note names —
 // a path something else is already sitting on.
 func TestTheFolderActionSaysWhenTheFolderWillNotOpen(t *testing.T) {
 	t.Parallel()

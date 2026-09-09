@@ -29,7 +29,7 @@ import (
 // together and says nothing about a pair nobody wrote down.
 
 // PageBudget is the weight one page may cost: its own bytes plus every
-// same-origin resource it loads. PLAN.md M8-S3 sets it at 300 KB.
+// same-origin resource it loads. M8-S3 sets it at 300 KB.
 const PageBudget = 300 * 1024
 
 // Narrowest is the viewport the page must survive, in CSS pixels.
@@ -779,7 +779,7 @@ func scrollable(before []Element, e Element) bool {
 	return false
 }
 
-// gateMotion is PLAN.md M8-S3's `prefers-reduced-motion` honoured: a stylesheet
+// gateMotion is M8-S3's `prefers-reduced-motion` honoured: a stylesheet
 // that animates must also say what it does for somebody who asked it not to.
 func gateMotion(_ map[string][]byte, css string) error {
 	animates := strings.Contains(css, "animation:") || strings.Contains(css, "transition:")

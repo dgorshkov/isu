@@ -17,7 +17,7 @@ import (
 var update = flag.Bool("update", false, "rewrite the golden files")
 
 // jsonCases is one invocation of every command isu registers that must produce
-// JSON, and it is the gate PLAN.md M4-S1 asks for: adding a command without
+// JSON, and it is the gate M4-S1 asks for: adding a command without
 // --json fails the test suite, because a command with no row here fails
 // TestEveryCommandIsInTheJSONContract before it ever gets to run.
 //

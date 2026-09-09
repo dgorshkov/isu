@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// This file is behind a build tag and out of the default suite, which PLAN.md
+// This file is behind a build tag and out of the default suite, which the plan
 // M4-S4 asks for in as many words: repeating a network operation a hundred
 // times per CI run buys confidence in the network, not in the code. The
 // deterministic rejection test in claim_test.go is what actually guards the

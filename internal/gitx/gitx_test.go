@@ -101,7 +101,7 @@ func TestGitIsInvokedWithNoPagerAndACleanEnvironment(t *testing.T) {
 }
 
 // A user's own git configuration, credential helpers and hooks are the reason
-// PLAN.md shells out rather than using go-git. Scrubbing the environment must
+// isu shells out rather than using go-git. Scrubbing the environment must
 // not take them away.
 func TestGitKeepsTheRestOfTheEnvironment(t *testing.T) {
 	t.Setenv("ISU_KEEP_ME", "yes")
@@ -179,7 +179,7 @@ func TestProcessesCountsEveryInvocation(t *testing.T) {
 		"M2-S5 asserts a process count, so something has to be counting")
 }
 
-// PLAN.md M2-S1: "Done when `grep -r \"exec.Command\" internal/ | grep -v gitx`
+// M2-S1: "Done when `grep -r \"exec.Command\" internal/ | grep -v gitx`
 // returns nothing. Add that grep as a test."
 // editorFile is the one file outside this package that may start a process, and
 // the process it starts is the user's editor.

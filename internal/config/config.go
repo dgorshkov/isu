@@ -1,6 +1,6 @@
 // Package config reads .isu.yml, the one configuration file isu has.
 //
-// The schema in PLAN.md section 1 is the whole schema. An unknown key is a
+// The schema in the data model is the whole schema. An unknown key is a
 // validation error rather than a silent no-op, because a typo in a key that is
 // ignored is a setting somebody believes is on.
 package config
@@ -79,7 +79,7 @@ func (c Config) FetchWarnAfter() time.Duration {
 }
 
 // NewID returns a fresh id under this repository's prefix. It is the spelling
-// PLAN.md's M1-S4 names, over the pure generator in the issue package.
+// M1-S4 names, over the pure generator in the issue package.
 func (c Config) NewID(title, owner string, created time.Time) (string, error) {
 	return issue.NewID(c.Prefix, title, owner, created)
 }
@@ -308,7 +308,7 @@ func describe(value any) string {
 	}
 }
 
-// keys is every key the schema defines, in the order PLAN.md documents them.
+// keys is every key the schema defines, in the order the plan documents them.
 var keys = []string{
 	KeyPrefix, KeyAgents, KeyDirectTriage, KeyStaleDays,
 	KeyFetchWarnHours, KeyAttachmentMaxBytes,

@@ -8,7 +8,7 @@
 // it was handed goes back out through Actions, which internal/cli implements
 // with the same code paths its commands run.
 //
-// That layering is the point rather than a tidiness: PLAN.md M6-S5 asks for a
+// That layering is the point rather than a tidiness: M6-S5 asks for a
 // test that fails if this package calls git, and a package that cannot load
 // anything cannot call git by accident. It is the same rule internal/model and
 // internal/check are held to, for the same reason — a derivation that could run
@@ -54,7 +54,7 @@ type Data struct {
 	// that resolved ids itself would be a pane that loaded a repository.
 	Board *model.Board
 	// Groups are the issues by derived status, in the precedence order of
-	// PLAN.md's table — the same grouping `isu board` renders, built by the
+	// the plan's table — the same grouping `isu board` renders, built by the
 	// same function, so that two screens showing one repository cannot
 	// disagree about it.
 	Groups []Group
@@ -162,7 +162,7 @@ type held struct {
 	err    error
 }
 
-// The size a terminal is assumed to be until it says otherwise. PLAN.md asks
+// The size a terminal is assumed to be until it says otherwise. The plan asks
 // for 80×24 and that is the smallest terminal anybody still ships, so it is
 // also the honest guess for the one frame drawn before the first resize.
 const (
