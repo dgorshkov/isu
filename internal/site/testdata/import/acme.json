@@ -1,0 +1,112 @@
+{
+  "repository": "acme/acme-app",
+  "issues": [
+    {
+      "number": 1,
+      "title": "Login retries drop the second attempt",
+      "body": "The retry reuses the first request's nonce, so the second POST is rejected before it reaches the handler.\n\n![trace](https://github.com/user-attachments/assets/8b17c0d4)\n",
+      "state": "closed",
+      "state_reason": "completed",
+      "created_at": "2026-01-12T09:20:00Z",
+      "closed_at": "2026-02-02T16:05:00Z",
+      "html_url": "https://github.com/acme/acme-app/issues/1",
+      "user": { "login": "support" },
+      "assignees": [{ "login": "dana" }],
+      "labels": [{ "name": "regression" }],
+      "milestone": {
+        "number": 1,
+        "title": "Make sign-up reliable",
+        "description": "Everything between the landing page and the first invoice.\n",
+        "state": "closed",
+        "created_at": "2026-01-05T09:00:00Z",
+        "due_on": "2026-03-31T00:00:00Z",
+        "creator": { "login": "dana" }
+      },
+      "type": { "name": "Bug" },
+      "comments": [
+        {
+          "user": { "login": "priya" },
+          "created_at": "2026-01-13T10:00:00Z",
+          "body": "Reproduced on staging with two tabs open.\n"
+        },
+        {
+          "user": { "login": "priya" },
+          "created_at": "2026-01-13T15:30:00Z",
+          "body": "The nonce is cached per session, not per request.\n"
+        }
+      ],
+      "closedByPullRequestsReferences": [
+        { "number": 7, "url": "https://github.com/acme/acme-app/pull/7" }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Show the sign-up queue on the board",
+      "body": "Support cannot tell how many accounts are waiting.\n",
+      "state": "open",
+      "created_at": "2026-01-19T11:00:00Z",
+      "html_url": "https://github.com/acme/acme-app/issues/2",
+      "user": { "login": "dana" },
+      "assignees": [{ "login": "priya" }],
+      "milestone": {
+        "number": 1,
+        "title": "Make sign-up reliable",
+        "state": "closed",
+        "created_at": "2026-01-05T09:00:00Z"
+      },
+      "type": { "name": "Feature" },
+      "blocked_by": [{ "number": 1 }, { "number": 41 }],
+      "issue_field_values": [
+        {
+          "issue_field_name": "Severity",
+          "data_type": "single_select",
+          "single_select_option": { "name": "Major" }
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "Upgrade the linter",
+      "body": "Two majors behind, and the rules we want are in the newer one.\n",
+      "state": "open",
+      "created_at": "2026-02-04T08:45:00Z",
+      "html_url": "https://github.com/acme/acme-app/issues/3",
+      "user": { "login": "sam" },
+      "labels": [{ "name": "housekeeping" }],
+      "type": { "name": "Task" }
+    },
+    {
+      "number": 4,
+      "title": "Rewrite the CSS in another framework",
+      "state": "closed",
+      "state_reason": "not_planned",
+      "created_at": "2026-02-09T13:15:00Z",
+      "closed_at": "2026-02-10T09:00:00Z",
+      "html_url": "https://github.com/acme/acme-app/issues/4",
+      "user": { "login": "sam" },
+      "assignees": [{ "login": "sam" }],
+      "type": { "name": "Task" }
+    },
+    {
+      "number": 5,
+      "title": "Login fails after a retry",
+      "state": "closed",
+      "state_reason": "duplicate",
+      "created_at": "2026-02-11T07:30:00Z",
+      "closed_at": "2026-02-11T09:12:00Z",
+      "html_url": "https://github.com/acme/acme-app/issues/5",
+      "user": { "login": "support" },
+      "assignees": [{ "login": "dana" }],
+      "type": { "name": "Bug" }
+    },
+    {
+      "number": 7,
+      "title": "Give the retry its own nonce",
+      "state": "closed",
+      "created_at": "2026-01-28T14:00:00Z",
+      "html_url": "https://github.com/acme/acme-app/pull/7",
+      "user": { "login": "dana" },
+      "pull_request": { "url": "https://api.github.com/repos/acme/acme-app/pulls/7" }
+    }
+  ]
+}

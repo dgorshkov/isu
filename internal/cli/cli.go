@@ -249,6 +249,7 @@ func (a *app) root() *cobra.Command {
 		a.commentCmd(),
 		a.triageCmd(),
 		a.checkCmd(),
+		a.importCmd(),
 		a.initCmd(),
 		a.uiCmd(),
 	)

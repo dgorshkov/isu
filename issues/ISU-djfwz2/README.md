@@ -3,7 +3,7 @@ schema: 1
 id: ISU-djfwz2
 title: M7-S4 · GitHub: issues, types, milestones and state
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
@@ -11,6 +11,55 @@ parent: ISU-2wyps1
 blocked_by: ISU-4jsxyw
 acceptance: the imported tree passes `isu check` with zero failures and makes no request per issue.
 ---
+**Done** #15, 2026-09-03. **Three decisions this document left open, each recorded here because
+the reason matters more than the answer.**
+
+**The dump is the REST list, and `gh`'s spelling is read as an alias.** This story says "a saved
+`gh issue list --json` dump". `gh` writes camelCase for four keys and the REST API writes
+snake_case, and `--fetch-only` records what the API returned — so the REST shape is the format
+and `stateReason`, `createdAt`, `url`, `author` and `issueType` are accepted beside it. `comments`
+is an integer in the REST list and an array in a dump that carries them, so it is held raw and
+decoded only when it is the second; a count is not a comment, and refusing the import over one
+would refuse every REST dump.
+
+**The sub-issue hierarchy is free and the dependencies are not, and the difference is which of
+them the list carries.** This was written the other way round first and the documentation
+corrected it: every row of the REST list carries `parent_issue_url`, so the whole tree is in the
+pages already read and costs nothing — no request per issue and no dump extension needed to have
+it. `sub_issues` stays readable as the other direction of the same link, for a dump somebody
+assembled from the sub-issues endpoint, and both go through one `link` that ignores anything that
+would not be a tree: an issue outside the import, an issue under itself, a second parent for a
+child that has one. Dependencies have no such field — GitHub answers them at
+`/issues/{n}/dependencies/blocked_by`, per issue — so they are read where a dump carries them and
+never fetched, because 5,000 issues would be 5,000 requests against a budget of 5,000 an hour.
+
+**A milestone's first copy wins.** The REST list embeds the whole milestone on every issue in it,
+so the copies are one object repeated; a dump somebody assembled by hand may have thinned the
+later ones, and overwriting would lose the description the first one carried.
+
+**A 403 is not a rate limit on its own, and reading it as one was a defect.** This story says rate
+limits are handled rather than hoped for, and 403 is what a secondary rate limit returns — so the
+first version waited one out on every 403 it saw. GitHub answers 403 for "you may not read this"
+as well, and the two want opposite handling: one is worth waiting out and the other will never
+improve. Pointed at a repository the token could not read, that cost five requests and eleven
+seconds of backoff before a message that was already correct on the first one — against the
+budget the waiting exists to protect. A 403 is now throttling only when the response says so: a
+`retry-after`, a spent `x-ratelimit-remaining`, or a body that mentions the limit it is about.
+Eleven seconds became three tenths of one, measured on the same call.
+
+**No part of this milestone has been run against github.com.** M7-S5 asks for a recorded
+transcript and never the live API, and that is what the suite reads; the API path is exercised
+against a server the tests start, which is real HTTP over a real socket and is not real GitHub.
+The two shapes this milestone had wrong were found by reading the documentation rather than by
+running anything, and the 403 above was found by one call that never got past the proxy. **A
+first-contact story in the shape of M4-S8 is what would close this**, and it is not in the plan.
+
+Everything else landed as specified. Pull requests are dropped first and `null` under the
+`pull_request` key is not a pull request — which matters because a dump this importer wrote
+round-trips the key as exactly that. The type falls through the organisation's own type, then the
+label map, then `chore`, and an issue GitHub's own type placed never puts its labels on the
+"could not place" list. An issue's `blocked_by` naming another repository is keyed
+`owner/repo#5`, so it stays outside the import rather than resolving to this repository's `#5`.
 **Branch** `isu/M7-S4-github-core`
 **Build** read issues from the GitHub API, or from a saved `gh issue list --json` dump —
 `--fetch-only` writes that dump, the tests read one, and an import is therefore reproducible

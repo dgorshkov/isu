@@ -182,12 +182,21 @@ func openTag(inner string, depth int) (Element, error) {
 	for rest = strings.TrimSpace(rest); rest != ""; rest = strings.TrimSpace(rest) {
 		key, after, found := strings.Cut(rest, "=")
 		if !found {
-			element.Attr[strings.ToLower(strings.TrimSpace(rest))] = ""
+			barewords(element, rest)
 
 			break
 		}
 
+		// A bareword attribute carries no `=`, so the cut above swallowed
+		// every one of them standing in front of this attribute. The key is
+		// the last word; the rest are attributes in their own right, and
+		// dropping them takes the one after them with it — which is how
+		// `<script async src="…">` came to have no src.
 		key = strings.ToLower(strings.TrimSpace(key))
+		if at := strings.LastIndexAny(key, " \t\r\n"); at >= 0 {
+			barewords(element, key[:at])
+			key = key[at+1:]
+		}
 
 		if !strings.HasPrefix(after, `"`) {
 			return Element{}, fmt.Errorf("<%s %s=…> is not a quoted attribute value",
@@ -205,6 +214,15 @@ func openTag(inner string, depth int) (Element, error) {
 	}
 
 	return element, nil
+}
+
+// barewords records the valueless attributes in a run of them. HTML gives a
+// bareword the empty string, which is what a reader of Attr already expects
+// from an attribute written `disabled=""`.
+func barewords(element Element, run string) {
+	for _, name := range strings.Fields(run) {
+		element.Attr[strings.ToLower(name)] = ""
+	}
 }
 
 // unescape reverses the entities html/template writes, which is enough to

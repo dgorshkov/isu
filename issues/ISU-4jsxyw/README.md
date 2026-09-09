@@ -3,7 +3,7 @@ schema: 1
 id: ISU-4jsxyw
 title: M7-S3 · Resolving-commit recovery
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
@@ -11,6 +11,24 @@ parent: ISU-2wyps1
 blocked_by: ISU-traxr8
 acceptance: the scanner runs against a real repository and reports its coverage.
 ---
+**Done** #15, 2026-09-03. The tiers are ordered weakest-first as integers, so "record the stronger
+of two" is a comparison rather than a table, and M7-S5's closing pull request slots in above all
+three without disturbing them.
+
+**One carve-out this document did not make.** On a merge commit the subject is git's own
+composition, so the number in `Merge pull request #456 from alice/topic` is the pull request *by
+construction* — reading it as a candidate would produce a wrong link on every merge in a
+repository whose issue numbers overlap its pull requests', which is every GitHub repository. So a
+merge's subject is read for the branch name it recorded and for nothing else. The squash-subject
+tier is unaffected and still discards `(#456)` unless 456 is an issue being imported.
+
+The walk itself is `repo.LoadCommits`: trunk's own timeline, oldest first, no diffs, one git
+process. `--first-parent` for the same reason `LoadHistory` uses it, and for one more — without
+it the walk descends into the branch and the merge commit, which is the only record of the
+branch's name, is never visited.
+
+`--scan=false` turns the whole thing off, for an import into a repository whose history has
+nothing to do with the tracker being left behind.
 **Branch** `isu/M7-S3-evidence-scan`
 **Build** one pass over history recovering issue-key → commit links at three tiers: key in a
 commit message, key in a merge commit's branch name, key in a squash subject. (Issues resolved

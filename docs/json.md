@@ -256,3 +256,63 @@ One thing a check found.
 
 `check` is a stable name. A pipeline that greps for one is reading a contract,
 so a rule is renamed the way a JSON field is: it is not.
+
+## ImportPayload
+
+`isu import`. A dry run and a write print the same shape, and `wrote` is the
+only field that tells them apart — so a caller that wants to know what an import
+did reads one document either way.
+
+| field | type | meaning |
+|---|---|---|
+| `source` | string | the tracker imported from; `github` is the only one v1.0.0 has |
+| `repository` | string | what the source calls the project — `owner/repo` |
+| `prefix` | string | what ids were formed under, which is `.isu.yml`'s unless `--id-prefix` said otherwise |
+| `wrote` | bool | this was a write rather than a dry run |
+| `items` | number | how many issues the source handed over, milestones-turned-epics included |
+| `folders` | number | how many would be written; smaller than `items` whenever something was refused |
+| `epics` | number | how many of those are containers rather than tickets |
+| `comments` | number | comment files, one per comment |
+| `attachments` | number | attachment links recorded — never fetched, see below |
+| `fields` | number | values the schema has no place for, kept in `source.yml` |
+| `provenance` | number | required fields written as a provenance line because the source supplied none |
+| `unowned` | number | issues with neither an assignee nor `--owner`; any at all makes `--write` refuse |
+| `dangling` | number | `parent` and `blocked_by` links pointing outside the import, recorded rather than written |
+| `requests` | number | what reading the source cost its rate-limit budget |
+| `types` | object | how many issues of each isu type |
+| `states` | object | how many issues in each state; an epic counts under `(fold over its children)` |
+| `evidence` | object | how many issues were linked to a resolving commit, by tier |
+| `found` | array of string | the source features this repository actually uses |
+| `unplaced` | array of string | type names and labels no map placed, which fell through to `chore` |
+| `notes` | array of string | what this source has to say for itself |
+| `skipped` | array of `ImportSkip` | what was not imported, and why |
+| `samples` | array of `ImportSample` | issues shown in full, so `5,000 issues` is not the only thing anybody sees |
+| `paths` | array of string | what was written, relative to the repository root; empty on a dry run |
+
+The evidence tiers, weakest first: `squash subject`, `merge branch name`,
+`commit message`, `closing pull request`. The last is not recovered from history
+at all — GitHub already stores it — so it outranks the three the scan finds.
+
+**Attachments are recorded and not downloaded.** A GitHub asset wants a browser
+session on a private repository, so the links stay in the body byte for byte and
+are listed in `source.yml`, where they still resolve on github.com.
+
+## ImportSkip
+
+One thing an import declined.
+
+| field | type | meaning |
+|---|---|---|
+| `ref` | string | what was skipped, as a human writes it — `owner/repo#1234` |
+| `why` | string | the reason, in one clause |
+
+## ImportSample
+
+One issue a dry run shows in full.
+
+| field | type | meaning |
+|---|---|---|
+| `id` | string | the folder it would be written as |
+| `key` | string | the source's own key it was formed from |
+| `files` | array of string | every file in the folder, relative to it |
+| `readme` | string | the issue file this import would write, verbatim |

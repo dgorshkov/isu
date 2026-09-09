@@ -41,6 +41,12 @@ func scratchFor(t *testing.T, d Document) string {
 	dir, err := build(t.Context(), t.TempDir())
 	require.NoError(t, err)
 
+	if d.Dump != "" {
+		body, err := os.ReadFile(filepath.Join(root, "internal", "site", "testdata", "import", d.Dump))
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(dir, d.Dump), body, 0o600))
+	}
+
 	return dir
 }
 

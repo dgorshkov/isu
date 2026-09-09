@@ -1,0 +1,37 @@
+import github → acme/widgets, as ISU-*
+  would write 5 folders from 5 issues, 1 of them epics
+  types: bug 1, chore 2, epic 1, story 1
+  states: (fold over its children) 1, dropped 1, open 2, resolved 1
+  2 comment files
+  1 attachment link, recorded and not fetched
+  13 values with nowhere in the schema, kept in source.yml
+  2 required fields written as a provenance line, not as content
+  1 link pointing outside the import, recorded and not written
+  resolving commits: closing pull request 1, commit message 1
+  found: comments, dependencies, issue fields, issue types, milestones
+  could not place: enhancement
+  attachment links are recorded, not fetched: resolving one still needs github.com, because on a private repository the asset wants a browser session
+
+skipped
+  #4  a pull request, which the REST list returns beside the issues
+
+ISU-1 (#1)
+  README.md  source.yml  comments/<date>-alice-o-hara-01.md  comments/<date>-alice-o-hara-02.md
+  ---
+  schema: 1
+  id: ISU-1
+  title: Login retries drop the second attempt
+  type: bug
+  state: open
+  owner: dmitry
+  created: <date>
+  parent: ISU-M1
+  blocked_by: ISU-2
+  repro: imported from acme/widgets#1; see the body
+  ---
+  The second POST is dropped.
+  
+  ![trace](https://github.com/user-attachments/assets/<oid>)
+
+
+nothing was written: pass --write when this says what you expected

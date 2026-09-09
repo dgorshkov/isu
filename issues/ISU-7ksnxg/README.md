@@ -3,7 +3,7 @@ schema: 1
 id: ISU-7ksnxg
 title: M7-S5 · GitHub: comments, fields and closing pull requests
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2
@@ -11,6 +11,37 @@ parent: ISU-2wyps1
 blocked_by: ISU-djfwz2
 acceptance: a realistic export imports completely and idempotently — twice gives a zero-length diff.
 ---
+**Done** #15, 2026-09-03. **Comments cost pages, not issues, and that was worth finding.**
+`/repos/{owner}/{repo}/issues/comments` lists every comment in the repository, so the thing that
+looks like it needs a request per issue does not — they are grouped by the `issue_url` each one
+carries. Issue field values are the one genuine exception, because there is no repository-wide
+list of them; they are read per issue as this story specifies, `--fields=false` turns them off,
+and the dry run reports what the budget cost either way.
+
+**A field value is not shaped the way this document assumed, and the difference is silent.** The
+API spells the name `issue_field_name`, not `name`, and a select field's answer is in
+`single_select_option` or `multi_select_options` rather than in `value` — so a reader looking for
+`name` and `value` would have produced a `source.yml` keyed by empty strings with every select
+field blank, and nothing would have said so. Both are read, the shorter spellings a hand-written
+dump uses are accepted beside them, and a select keeps its option's name while dropping the id
+and the colour, which are GitHub's rather than this repository's.
+
+Attachments are recorded and not downloaded, as specified, and the note saying so is
+unconditional: a reader has to be told that resolving one still needs github.com whether or not
+this repository has any.
+
+**One decision this document did not make: two imports colliding are told apart by the source
+*ref*, not the key.** This story asks that running one import twice produce a zero-length diff
+and M7-S4 asks that two imports into one tracker be refused rather than overwritten. Both are
+true only if "is this folder already this issue" is asked of `acme/widgets#7` rather than of
+`#7` — a key is repository-relative, so the pair the rule exists to catch is exactly the pair
+that would look identical. A folder isu wrote itself has no `source.yml` at all and is never
+overwritten either.
+
+The command surface is here rather than in M7-S1 because this is the commit that made the whole
+pipeline usable, and M7-S1's own done-when — a dry run by default, `--write` to change that — is
+asserted by the tests in this pair. `isu import` takes the source as an argument rather than
+offering a subcommand per tracker, since everything after "which tracker" is identical.
 **Branch** `isu/M7-S5-github-content`
 **Build** comments become files under `comments/`, named by date, author and sequence per
 the data model — an active issue routinely has three comments from the same person on the same day,

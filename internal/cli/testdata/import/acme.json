@@ -1,0 +1,63 @@
+{
+  "repository": "acme/widgets",
+  "issues": [
+    {
+      "number": 1,
+      "title": "Login retries drop the second attempt",
+      "body": "The second POST is dropped.\n\n![trace](https://github.com/user-attachments/assets/0f1e2d3c)\n",
+      "state": "open",
+      "created_at": "2026-03-04T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/1",
+      "user": {"login": "support"},
+      "assignees": [{"login": "dmitry"}],
+      "labels": [{"name": "login"}],
+      "milestone": {"number": 1, "title": "Make login reliable", "description": "Everything about signing in.\n", "state": "open", "created_at": "2026-01-05T09:00:00Z", "creator": {"login": "dmitry"}},
+      "type": {"name": "Bug"},
+      "blocked_by": [{"number": 2}, {"number": 999}],
+      "issue_field_values": [{"field": {"name": "Severity"}, "value": "high"}],
+      "comments": [
+        {"user": {"login": "Alice O'Hara"}, "created_at": "2026-03-05T10:00:00Z", "body": "Seen it too.\n"},
+        {"user": {"login": "Alice O'Hara"}, "created_at": "2026-03-05T14:00:00Z", "body": "And again.\n"}
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Board renders epics",
+      "state": "closed",
+      "state_reason": "completed",
+      "created_at": "2026-03-04T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/2",
+      "assignees": [{"login": "alice"}],
+      "milestone": {"number": 1, "title": "Make login reliable", "state": "open", "created_at": "2026-01-05T09:00:00Z", "creator": {"login": "dmitry"}},
+      "type": {"name": "Feature"},
+      "closedByPullRequestsReferences": [{"number": 456, "url": "https://github.com/acme/widgets/pull/456"}]
+    },
+    {
+      "number": 3,
+      "title": "Rewrite it in another language",
+      "state": "closed",
+      "state_reason": "not_planned",
+      "created_at": "2026-02-04T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/3",
+      "assignees": [{"login": "dmitry"}],
+      "type": {"name": "Task"}
+    },
+    {
+      "number": 4,
+      "title": "Fix the login retries",
+      "state": "closed",
+      "created_at": "2026-03-07T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/pull/4",
+      "pull_request": {"url": "https://api.github.com/repos/acme/widgets/pulls/4"},
+      "assignees": [{"login": "dmitry"}]
+    },
+    {
+      "number": 5,
+      "title": "Nobody is assigned to this",
+      "state": "open",
+      "created_at": "2026-03-08T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/5",
+      "labels": [{"name": "enhancement"}]
+    }
+  ]
+}

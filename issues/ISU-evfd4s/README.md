@@ -101,6 +101,36 @@ directory something else is sitting on, and by a git on `PATH` that refuses one 
 that one needs `html/template` to fail on a `docBody` this package built out of its own types,
 which it cannot. The renderer's own execution failure *is* reached, directly, in
 `render_test.go`.
+
+**A valueless attribute hid the one written after it, and that is the hole the gates had.**
+Corrected in #15. `openTag` split an attribute list on the first `=` anywhere in what was left of
+the tag, so `<script async src="...">` parsed as a single attribute named `async src` and the
+element carried no `src` at all. `gateLinks` and `gateThirdParty` both ask an element for its
+`src`, so writing `async` in front of one walked a third-party script past every gate here and
+the build reported the site clean. The key is now the last word before the `=`, and the words in
+front of it are recorded as the barewords they are — which also fixes `<input disabled readonly>`
+having been read as one attribute with a space in its name.
+
+**Netlify is injecting markup again, and again nothing in this repository could see it.** The
+paragraph above says that somebody turning post-processing back on in the dashboard would break
+the site invisibly and that confirming it is a curl and a diff against `web/site`. Doing exactly
+that on 2026-09-09 found three insertions on every published page: an HTML comment advertising
+Netlify with UTM parameters, `<meta name="hosting-provider">` and `<meta name="netlify-deploy">`,
+and `<script async src="/.netlify/scripts/hud?variant=public">` after the closing `</html>`.
+That is the **Powered by Netlify badge**, which is on by default for Free-plan projects created
+on or after 19 August 2026 and is turned off at Project configuration → General → Powered by
+Netlify badge. There is no `netlify.toml` key for it, so this repository cannot pin it and this
+paragraph is the record instead. With the parser defect above fixed, the gates run over the
+served `index.html` report `/.netlify/scripts/hud?variant=public points at
+.netlify/scripts/hud?variant=public, which this build does not produce`; before it, they passed
+those bytes clean. Third time, same pattern.
+
+**And the deploy preview is clean, which is the sharpest version of that pattern yet.**
+`https://deploy-preview-15--isu-website.netlify.app/docs/importing.html` is byte for byte the
+16,110 bytes `make site` wrote — no comment, no meta tags, no script. The badge is a property of
+the *public project*, and a preview is not one, so the artifact a reviewer opens on a pull
+request and the artifact a reader is served are now provably different documents. Checking the
+preview says nothing about production. Only production says anything about production.
 **Branch** `isu/M8-S3-docs-deploy`
 **Build** `docs/`: getting started, the data model, every derived status with its rule, the
 check catalogue, the JSON contract, importing from GitHub Issues, and a page on what isu

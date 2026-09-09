@@ -287,3 +287,44 @@ func TestLoadHistorySpawnsTwoProcessesWhateverTheIssueCount(t *testing.T) {
 		require.Equal(t, int64(2), loader.Processes(), "%d issues", issues)
 	}
 }
+
+// LoadCommits is trunk's own timeline, and it is what the importer's evidence
+// scan walks: the years of history that predate isu, where the link between a
+// commit and the issue it resolved is whatever somebody typed into a message,
+// a branch name or a squash subject.
+func TestLoadCommitsWalksTrunkOldestFirst(t *testing.T) {
+	r := gittest.New(t).
+		File("a.go", "package main\n").Commit("first").
+		File("b.go", "package main\n").Commit("second").
+		Branch("topic").Checkout("topic").
+		File("c.go", "package main\n").Commit("on the branch").
+		Checkout(gittest.DefaultBranch).
+		Merge("topic")
+
+	commits, err := open(t, r).LoadCommits(t.Context(), gittest.DefaultBranch)
+	require.NoError(t, err)
+
+	subjects := make([]string, 0, len(commits))
+	for _, c := range commits {
+		subjects = append(subjects, c.Subject)
+	}
+
+	require.Equal(t, []string{"first", "second", "Merge branch 'topic'"}, subjects,
+		"trunk's own timeline: the merge is on it and the branch commit is not, "+
+			"which is what leaves the branch name a merge recorded readable")
+
+	require.Len(t, commits[2].Parents, 2)
+}
+
+func TestLoadCommitsOnAnEmptyRepository(t *testing.T) {
+	commits, err := open(t, gittest.New(t)).LoadCommits(t.Context(), "HEAD")
+	require.NoError(t, err)
+	require.Empty(t, commits)
+}
+
+func TestLoadCommitsRefusesARefThatIsNotThere(t *testing.T) {
+	r := gittest.New(t).File("a.go", "package main\n").Commit("first")
+
+	_, err := open(t, r).LoadCommits(t.Context(), "refs/heads/nope")
+	require.ErrorContains(t, err, "nope")
+}

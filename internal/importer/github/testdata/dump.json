@@ -1,0 +1,313 @@
+{
+  "repository": "acme/widgets",
+  "issues": [
+    {
+      "number": 1,
+      "title": "Login retries drop the second attempt",
+      "body": "The second POST is dropped.\n\n![trace](https://github.com/user-attachments/assets/0f1e2d3c) and again https://github.com/user-attachments/assets/0f1e2d3c\n",
+      "state": "open",
+      "created_at": "2026-03-04T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/1",
+      "user": {
+        "login": "support"
+      },
+      "assignees": [
+        {
+          "login": "dmitry"
+        },
+        {
+          "login": "alice"
+        }
+      ],
+      "labels": [
+        {
+          "name": "login"
+        },
+        {
+          "name": "regression"
+        }
+      ],
+      "milestone": {
+        "number": 1,
+        "title": "Make login reliable",
+        "description": "Everything about signing in.\n",
+        "state": "open",
+        "created_at": "2026-01-05T09:00:00Z",
+        "due_on": "2026-06-30T00:00:00Z",
+        "creator": {
+          "login": "dmitry"
+        }
+      },
+      "type": {
+        "name": "Bug"
+      },
+      "blocked_by": [
+        {
+          "number": 3
+        },
+        {
+          "number": 999
+        },
+        {
+          "number": 5,
+          "repository": "other/repo"
+        }
+      ],
+      "issue_field_values": [
+        {
+          "issue_field_name": "Severity",
+          "data_type": "text",
+          "value": "high"
+        },
+        {
+          "issue_field_name": "Stage",
+          "data_type": "single_select",
+          "value": null,
+          "single_select_option": {
+            "id": 3,
+            "name": "in review",
+            "color": "BLUE"
+          }
+        },
+        {
+          "issue_field_name": "Surfaces",
+          "data_type": "multi_select",
+          "value": null,
+          "multi_select_options": [
+            {
+              "id": 1,
+              "name": "cli",
+              "color": "GREEN"
+            },
+            {
+              "id": 2,
+              "name": "tui",
+              "color": "RED"
+            }
+          ]
+        },
+        {
+          "field": {
+            "name": "Team"
+          },
+          "value": "platform"
+        },
+        {
+          "name": "Sprint",
+          "value": 14
+        }
+      ],
+      "comments": [
+        {
+          "user": {
+            "login": "Alice O'Hara"
+          },
+          "created_at": "2026-03-05T10:00:00Z",
+          "body": "Seen it too.\n"
+        },
+        {
+          "user": {
+            "login": "Alice O'Hara"
+          },
+          "created_at": "2026-03-05T14:00:00Z",
+          "body": "---\nowner: mallory\n---\nand again\n"
+        },
+        {
+          "created_at": "2026-03-06T14:00:00Z",
+          "body": "no author at all\n"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Board renders epics",
+      "body": "",
+      "state": "closed",
+      "state_reason": "completed",
+      "created_at": "2026-03-04T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/2",
+      "assignees": [
+        {
+          "login": "alice"
+        }
+      ],
+      "labels": [
+        {
+          "name": "enhancement"
+        }
+      ],
+      "milestone": {
+        "number": 1,
+        "title": "Make login reliable",
+        "state": "open",
+        "created_at": "2026-01-05T09:00:00Z",
+        "creator": {
+          "login": "dmitry"
+        }
+      }
+    },
+    {
+      "number": 3,
+      "title": "An ordinary closed issue from before 2022",
+      "state": "closed",
+      "created_at": "2020-05-04T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/issues/3",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "closedByPullRequestsReferences": [
+        {
+          "number": 456,
+          "url": "https://github.com/acme/widgets/pull/456"
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "Rewrite it in another language",
+      "state": "closed",
+      "state_reason": "not_planned",
+      "created_at": "2026-02-04T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "Login retries, again",
+      "state": "closed",
+      "state_reason": "duplicate",
+      "created_at": "2026-02-05T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "closed_at": "2026-02-06T09:00:00Z",
+      "closed_by_commit": "9e1f0a4c"
+    },
+    {
+      "number": 6,
+      "title": "The linter upgrade did not hold",
+      "state": "open",
+      "state_reason": "reopened",
+      "created_at": "2026-02-06T09:00:00Z",
+      "assignees": [
+        {
+          "login": "alice"
+        }
+      ],
+      "type": {
+        "name": "Task"
+      }
+    },
+    {
+      "number": 7,
+      "title": "Fix the login retries",
+      "state": "closed",
+      "created_at": "2026-03-07T09:00:00Z",
+      "html_url": "https://github.com/acme/widgets/pull/7",
+      "pull_request": {
+        "url": "https://api.github.com/repos/acme/widgets/pulls/7"
+      },
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "milestone": {
+        "number": 2,
+        "title": "Nobody's milestone",
+        "state": "closed",
+        "created_at": "2026-01-05T09:00:00Z",
+        "creator": {
+          "login": "dmitry"
+        }
+      }
+    },
+    {
+      "number": 8,
+      "title": "Nobody is assigned to this",
+      "state": "open",
+      "created_at": "2026-03-08T09:00:00Z",
+      "type": {
+        "name": "Chore of ours"
+      }
+    },
+    {
+      "number": 10,
+      "title": "The root of a four-level tree",
+      "state": "open",
+      "created_at": "2026-03-10T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "sub_issues": [
+        11
+      ],
+      "body": "see https://github.com/user-attachments/assets/aabbccdd"
+    },
+    {
+      "number": 11,
+      "title": "Level two",
+      "state": "open",
+      "created_at": "2026-03-11T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "sub_issues": [
+        12
+      ]
+    },
+    {
+      "number": 12,
+      "title": "Level three",
+      "state": "open",
+      "created_at": "2026-03-12T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "sub_issues": [
+        13
+      ]
+    },
+    {
+      "number": 13,
+      "title": "Level four",
+      "state": "open",
+      "created_at": "2026-03-13T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/12",
+      "sub_issues": [
+        13,
+        999
+      ]
+    },
+    {
+      "number": 14,
+      "title": "Level four again",
+      "state": "open",
+      "created_at": "2026-03-14T09:00:00Z",
+      "assignees": [
+        {
+          "login": "dmitry"
+        }
+      ],
+      "parent_issue_url": "https://api.github.com/repos/acme/widgets/issues/12"
+    }
+  ]
+}

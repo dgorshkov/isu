@@ -51,6 +51,9 @@
 <li><a href="#write">Write</a></li>
 <li><a href="#checkpayload">CheckPayload</a></li>
 <li><a href="#finding">Finding</a></li>
+<li><a href="#importpayload">ImportPayload</a></li>
+<li><a href="#importskip">ImportSkip</a></li>
+<li><a href="#importsample">ImportSample</a></li>
 </ul>
 </nav>
 <p>Every isu command supports <code>--json</code>, because half the people reading its output are agents. <strong>What follows is a contract</strong>, not a rendering: fields are added, never repurposed, and an agent written against this document keeps working.</p>
@@ -684,6 +687,186 @@
 </tr>
 </tbody></table></div>
 <p><code>check</code> is a stable name. A pipeline that greps for one is reading a contract, so a rule is renamed the way a JSON field is: it is not.</p>
+<h2 id="importpayload">ImportPayload</h2>
+<p><code>isu import</code>. A dry run and a write print the same shape, and <code>wrote</code> is the only field that tells them apart — so a caller that wants to know what an import did reads one document either way.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>source</code></td>
+<td>string</td>
+<td>the tracker imported from; <code>github</code> is the only one v1.0.0 has</td>
+</tr>
+<tr>
+<td><code>repository</code></td>
+<td>string</td>
+<td>what the source calls the project — <code>owner/repo</code></td>
+</tr>
+<tr>
+<td><code>prefix</code></td>
+<td>string</td>
+<td>what ids were formed under, which is <code>.isu.yml</code>&#39;s unless <code>--id-prefix</code> said otherwise</td>
+</tr>
+<tr>
+<td><code>wrote</code></td>
+<td>bool</td>
+<td>this was a write rather than a dry run</td>
+</tr>
+<tr>
+<td><code>items</code></td>
+<td>number</td>
+<td>how many issues the source handed over, milestones-turned-epics included</td>
+</tr>
+<tr>
+<td><code>folders</code></td>
+<td>number</td>
+<td>how many would be written; smaller than <code>items</code> whenever something was refused</td>
+</tr>
+<tr>
+<td><code>epics</code></td>
+<td>number</td>
+<td>how many of those are containers rather than tickets</td>
+</tr>
+<tr>
+<td><code>comments</code></td>
+<td>number</td>
+<td>comment files, one per comment</td>
+</tr>
+<tr>
+<td><code>attachments</code></td>
+<td>number</td>
+<td>attachment links recorded — never fetched, see below</td>
+</tr>
+<tr>
+<td><code>fields</code></td>
+<td>number</td>
+<td>values the schema has no place for, kept in <code>source.yml</code></td>
+</tr>
+<tr>
+<td><code>provenance</code></td>
+<td>number</td>
+<td>required fields written as a provenance line because the source supplied none</td>
+</tr>
+<tr>
+<td><code>unowned</code></td>
+<td>number</td>
+<td>issues with neither an assignee nor <code>--owner</code>; any at all makes <code>--write</code> refuse</td>
+</tr>
+<tr>
+<td><code>dangling</code></td>
+<td>number</td>
+<td><code>parent</code> and <code>blocked_by</code> links pointing outside the import, recorded rather than written</td>
+</tr>
+<tr>
+<td><code>requests</code></td>
+<td>number</td>
+<td>what reading the source cost its rate-limit budget</td>
+</tr>
+<tr>
+<td><code>types</code></td>
+<td>object</td>
+<td>how many issues of each isu type</td>
+</tr>
+<tr>
+<td><code>states</code></td>
+<td>object</td>
+<td>how many issues in each state; an epic counts under <code>(fold over its children)</code></td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td>object</td>
+<td>how many issues were linked to a resolving commit, by tier</td>
+</tr>
+<tr>
+<td><code>found</code></td>
+<td>array of string</td>
+<td>the source features this repository actually uses</td>
+</tr>
+<tr>
+<td><code>unplaced</code></td>
+<td>array of string</td>
+<td>type names and labels no map placed, which fell through to <code>chore</code></td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>array of string</td>
+<td>what this source has to say for itself</td>
+</tr>
+<tr>
+<td><code>skipped</code></td>
+<td>array of <code>ImportSkip</code></td>
+<td>what was not imported, and why</td>
+</tr>
+<tr>
+<td><code>samples</code></td>
+<td>array of <code>ImportSample</code></td>
+<td>issues shown in full, so <code>5,000 issues</code> is not the only thing anybody sees</td>
+</tr>
+<tr>
+<td><code>paths</code></td>
+<td>array of string</td>
+<td>what was written, relative to the repository root; empty on a dry run</td>
+</tr>
+</tbody></table></div>
+<p>The evidence tiers, weakest first: <code>squash subject</code>, <code>merge branch name</code>, <code>commit message</code>, <code>closing pull request</code>. The last is not recovered from history at all — GitHub already stores it — so it outranks the three the scan finds.</p>
+<p><strong>Attachments are recorded and not downloaded.</strong> A GitHub asset wants a browser session on a private repository, so the links stay in the body byte for byte and are listed in <code>source.yml</code>, where they still resolve on github.com.</p>
+<h2 id="importskip">ImportSkip</h2>
+<p>One thing an import declined.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>ref</code></td>
+<td>string</td>
+<td>what was skipped, as a human writes it — <code>owner/repo#1234</code></td>
+</tr>
+<tr>
+<td><code>why</code></td>
+<td>string</td>
+<td>the reason, in one clause</td>
+</tr>
+</tbody></table></div>
+<h2 id="importsample">ImportSample</h2>
+<p>One issue a dry run shows in full.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>the folder it would be written as</td>
+</tr>
+<tr>
+<td><code>key</code></td>
+<td>string</td>
+<td>the source&#39;s own key it was formed from</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td>array of string</td>
+<td>every file in the folder, relative to it</td>
+</tr>
+<tr>
+<td><code>readme</code></td>
+<td>string</td>
+<td>the issue file this import would write, verbatim</td>
+</tr>
+</tbody></table></div>
 
 
 </main>

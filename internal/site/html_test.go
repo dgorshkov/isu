@@ -117,6 +117,31 @@ func TestParseHTMLReadsABarewordAttributeAndUnescapesValues(t *testing.T) {
 	require.Equal(t, `a.html?x=1&y="2"`, Find(elements, "a")[0].Attribute("href"))
 }
 
+// TestABarewordAttributeDoesNotHideTheNextOne is a defect this parser shipped
+// with, and the way it was found is the point. Attributes were split on the
+// first `=` anywhere in what was left of the tag, so `<script async src="…">`
+// read as one attribute named `async src` and the element carried no src at
+// all. gateLinks and gateThirdParty both ask an element for its src, so a
+// valueless attribute written in front of one was enough to walk a script past
+// every gate on this site.
+func TestABarewordAttributeDoesNotHideTheNextOne(t *testing.T) {
+	t.Parallel()
+
+	elements, err := ParseHTML(
+		`<!DOCTYPE html>` + "\n" + `<html lang="en">` +
+			`<script async defer src="https://cdn.example/x.js"></script>` +
+			`<input disabled readonly></html>`)
+	require.NoError(t, err)
+
+	script := Find(elements, "script")[0]
+	require.Equal(t, "https://cdn.example/x.js", script.Attribute("src"))
+	require.Contains(t, script.Attr, "async")
+	require.Contains(t, script.Attr, "defer")
+
+	require.Contains(t, Find(elements, "input")[0].Attr, "disabled")
+	require.Contains(t, Find(elements, "input")[0].Attr, "readonly")
+}
+
 func TestAnUnfinishedCommentOrDoctypeEndsTheDocument(t *testing.T) {
 	t.Parallel()
 
