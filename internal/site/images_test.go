@@ -44,7 +44,7 @@ func TestTheImagesTakeTheirColoursFromTheStylesheet(t *testing.T) {
 	require.Contains(t, string(icon), palette["glow"])
 	require.True(t, strings.HasPrefix(string(icon), "<svg "))
 
-	card, err := OpenGraph(palette)
+	card, err := OpenGraph(palette, sampleTagline)
 	require.NoError(t, err)
 	require.Equal(t, image.Rect(0, 0, 1200, 630), card.Bounds(),
 		"1200×630 is what every card scraper crops to")
@@ -53,7 +53,7 @@ func TestTheImagesTakeTheirColoursFromTheStylesheet(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ground, card.At(2, 2), "the corner is the terminal's own ground")
 
-	encoded, err := Card(palette)
+	encoded, err := Card(palette, sampleTagline)
 	require.NoError(t, err)
 
 	decoded, err := png.Decode(bytes.NewReader(encoded))
@@ -75,10 +75,10 @@ func TestTheImagesSayWhichTokenTheStylesheetIsMissing(t *testing.T) {
 			}
 		}
 
-		_, err := OpenGraph(partial)
+		_, err := OpenGraph(partial, sampleTagline)
 		require.ErrorContains(t, err, "declares no --"+missing)
 
-		_, err = Card(partial)
+		_, err = Card(partial, sampleTagline)
 		require.ErrorContains(t, err, "declares no --"+missing)
 	}
 
@@ -93,4 +93,90 @@ func TestTheImagesSayWhichTokenTheStylesheetIsMissing(t *testing.T) {
 		_, err := Favicon(partial)
 		require.ErrorContains(t, err, "declares no --"+missing)
 	}
+}
+
+// sampleTagline is the sentence the card is asked to set. It is the site's own,
+// because the shapes below are the shapes the published card has.
+const sampleTagline = "Issues that branch, merge and review like code."
+
+func TestTheCardSetsTheTaglineAndNotJustAWordmark(t *testing.T) {
+	t.Parallel()
+
+	palette, err := Palette(stylesheet(t))
+	require.NoError(t, err)
+
+	card, err := OpenGraph(palette, sampleTagline)
+	require.NoError(t, err)
+
+	ink, err := RGB(palette["terminal-ink"])
+	require.NoError(t, err)
+
+	glow, err := RGB(palette["glow"])
+	require.NoError(t, err)
+
+	// The two things drawn in the accent are the chevron and the rule under the
+	// wordmark, in that order.
+	accent := bands(card, glow)
+	require.Len(t, accent, 2, "the chevron and the rule")
+
+	// Under that rule: the tagline, in the three lines it wraps to. The card
+	// used to carry nothing there at all — a share card with a logo and no
+	// argument, in front of a page whose argument is the only thing it has.
+	var lines int
+
+	for _, y := range bands(card, ink) {
+		if y > accent[1] {
+			lines++
+		}
+	}
+
+	require.Equal(t, 3, lines, "the tagline, set under the rule")
+}
+
+func TestTheCardRefusesACharacterItCannotSet(t *testing.T) {
+	t.Parallel()
+
+	palette, err := Palette(stylesheet(t))
+	require.NoError(t, err)
+
+	_, err = OpenGraph(palette, "issues that branch — and merge")
+	require.ErrorContains(t, err, "cannot set '—'")
+}
+
+func TestWrapBreaksOnWordsAndNeverInsideOne(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, []string{"issues that", "branch, merge and", "review like code."},
+		wrap(strings.ToLower(sampleTagline), 18))
+
+	require.Equal(t, []string{"a", "supercalifragilistic", "word"},
+		wrap("a supercalifragilistic word", 4),
+		"a word longer than the measure gets a line rather than a hyphen")
+
+	require.Empty(t, wrap("   ", 18))
+}
+
+// bands is the number of runs of consecutive rows carrying a colour, which is
+// how many lines of type in that colour the card has.
+func bands(img image.Image, c color.RGBA) []int {
+	var (
+		out  []int
+		open bool
+	)
+
+	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+		found := false
+
+		for x := img.Bounds().Min.X; x < img.Bounds().Max.X && !found; x++ {
+			found = img.At(x, y) == c
+		}
+
+		if found && !open {
+			out = append(out, y)
+		}
+
+		open = found
+	}
+
+	return out
 }

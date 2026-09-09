@@ -3,8 +3,9 @@
 <!-- title: isu — issues that branch, merge and review like code -->
 <!-- tagline: Issues that branch, merge and review like code. -->
 <!-- description: isu keeps issues as folders in your repository, so a bug report arrives as a pull request and the branch that fixes a bug carries that bug's state. Status is derived from git rather than stored anywhere. -->
-<!-- lede: A command-line issue tracker whose issues are folders in your repository. The branch that fixes a bug carries that bug's state, so there is no second system to keep in step. -->
+<!-- lede: A command-line issue tracker whose issues are folders in your repository, so a bug report arrives as a pull request and the branch that fixes a bug carries that bug's state. There is no second system to keep in step. -->
 <!-- install: go install github.com/dgorshkov/isu/cmd/isu@latest -->
+<!-- requires: Needs Go 1.24 or newer, and git. -->
 
 **This file is the site.** The landing page is built from the section sequence below and
 carries no words of its own; `internal/site` reads this document, runs every command in it
@@ -19,7 +20,7 @@ An engineer arrives from a link, gives the page about thirty seconds, and decide
 
 They already have an issue tracker. They are not looking for a better one; they are looking for
 a reason to believe this is not a weekend project with a landing page. So the page does not
-argue. It shows the tool running, four times, and gets out of the way.
+argue. It shows the tool running, five times, and gets out of the way.
 
 What has to be proved, in order:
 
@@ -28,9 +29,10 @@ What has to be proved, in order:
 | 1 | it exists and it runs | terminal output, above the fold |
 | 2 | the central claim is real — status is derived, not stored | a board with six derived statuses on it |
 | 3 | it is safe with more than one person | a claim, and what happens when two people want the same issue |
-| 4 | it holds a team to something | a check failing on a branch, with a reason |
-| 5 | it is built for agents as well as people | one JSON object per line |
-| 6 | it knows what it is not | the out-of-scope page, linked, not hidden |
+| 4 | the loop closes — state moves because git moved | the same issue, read from trunk and read from the branch that resolves it |
+| 5 | it holds a team to something | a check failing on a branch, with a reason |
+| 6 | it is built for agents as well as people | one JSON object per line |
+| 7 | it knows what it is not | the out-of-scope page, linked, not hidden |
 
 Nothing about roadmaps, nothing about philosophy, no testimonial, no logo wall. There is
 nobody to quote yet, and a page that pretends otherwise fails the thirty-second test on the
@@ -44,9 +46,9 @@ first pretence.
 say — there is no status field anywhere in the repository.
 **Proof.** `isu board` against the sample repository.
 
-An issue is a folder with a `README.md` in it. The file says `state: open`, `resolved` or
-`dropped`, and nothing else about where the work has got to. Everything the board groups by is
-derived: `done` because trunk says resolved, `in progress` because a branch says resolved where
+An issue is [a folder with a `README.md` in it](docs/data-model.html). The file says
+`state: open`, `resolved` or `dropped`, and nothing else about where the work has got to.
+Everything the board groups by is [derived](docs/statuses.html): `done` because trunk says resolved, `in progress` because a branch says resolved where
 trunk says open, `awaiting triage` because the folder exists on a branch and has never reached
 trunk at all.
 
@@ -113,12 +115,47 @@ APP-9cx2rt  Show the sign-up queue on the board
 remote refs 3h ago
 ```
 
-### 3. The rules read the diff, not your memory
+### 3. Merging is the state change
+<!-- id: merge -->
+**Claim.** The same issue, in the same repository, with nothing edited: `in progress` when
+trunk is `main`, `done` when trunk is the branch that resolves it.
+**Proof.** `isu show` again, one flag different.
+
+Nothing in the file changed between this card and the one above it. `state: resolved` was
+already written, by `isu claim`, before any of the work started. The only difference is which
+ref isu was told to treat as trunk — and putting a commit into that ref is the whole of what
+merging does.
+
+So there is no transition for anybody to perform. A tracker with a database has to be told the
+work is finished, by a person who remembers, some time after the merge; the gap between those
+two moments is where every stale board comes from. Here the merge *is* the telling, and a board
+built a second later says so without being asked.
+
+```console
+$ isu show APP-9cx2rt --ref isu/APP-9cx2rt
+APP-9cx2rt  Show the sign-up queue on the board
+
+  status      done
+  type        story
+  state       resolved
+  owner       priya
+  created     2026-02-21
+  priority    p2
+  acceptance  the board shows queue depth and the oldest waiting account
+  parent      APP-40b1cc  Make sign-up reliable (open)
+  branches    refs/heads/main
+              refs/heads/report/firefox-500
+  trunk       isu/APP-9cx2rt
+
+remote refs 3h ago
+```
+
+### 4. The rules read the diff, not your memory
 <!-- id: checks -->
 **Claim.** `isu check` fails a branch that says it fixed something and changed nothing else.
 **Proof.** `isu check` on the claiming branch above, which is exactly that branch.
 
-Nine rules run over the repository and over what this branch proposes. Some are about the tree
+[Nine rules](docs/checks.html) run over the repository and over what this branch proposes. Some are about the tree
 — a `parent` that names nothing, an epic with no children, an attachment over the limit — and
 some are about the branch: an owner an agent reassigned, a resolution with no work beside it.
 
@@ -133,7 +170,7 @@ main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
 fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution
 ```
 
-### 4. Half of what reads this is an agent
+### 5. Half of what reads this is an agent
 <!-- id: json -->
 **Claim.** Every command speaks newline-delimited JSON, and the shape is a contract rather
 than a rendering.
@@ -146,8 +183,8 @@ what it prints by default, because the caller that reads it most often is not a 
 criteria or the repro, because an agent picking work up needs the briefing before it needs
 anything else.
 
-Fields are added and never repurposed. What that shape means, field by field, is written down
-and tested against the code that prints it.
+Fields are added and never repurposed. What that shape means, field by field, is
+[written down](docs/json.html) and tested against the code that prints it.
 
 ```console
 $ isu ready
@@ -155,7 +192,7 @@ $ isu ready
 {"id":"APP-b5n3kt","title":"Send a receipt after the first invoice","type":"story","state":"open","status":"open","owner":"priya","created":"2026-03-05","priority":"p2","parent":"APP-40b1cc","blocked_by":[],"repro":"","acceptance":"a paid invoice sends one receipt, and only one","question":"","reason":"","resolution":"","on_trunk":true,"reopened":false,"contended":false,"stale":false,"claims":[],"elsewhere":[],"epic":null,"broken":null}
 ```
 
-### 5. What it deliberately does not do
+### 6. What it deliberately does not do
 <!-- id: limits -->
 **Claim.** There is no web UI, no sync, no sprints, and the import is one-way — and each of
 those is a decision with a reason written down.
@@ -167,7 +204,7 @@ buried: no `isu serve`, no bidirectional sync with anything, no story points, no
 issues, and sub-issue hierarchies recorded losslessly rather than flattened into a shape that
 would misrepresent them.
 
-### 6. Start here
+### 7. Start here
 <!-- id: start -->
 **Claim.** Two commands, and the second one is the whole product.
 **Proof.** No terminal output. The page has spent five cards earning this; the closer is a
@@ -177,6 +214,13 @@ place to go, not a sixth demonstration.
 repository you already have. [Getting started](docs/getting-started.html) takes it from there to
 a merged fix, and every command on it was run against a scratch repository while this page was
 built.
+
+It is `0.1.0-dev`, which is the version in the masthead and the version that produced every
+card above. What that does and does not put at risk is worth saying plainly rather than leaving
+to be inferred: ids are permanent and are never rewritten, and an issue is a folder with a
+`README.md` in it that stays readable whatever happens to this tool. Frontmatter is round-tripped
+byte for byte, unknown keys included, so nothing this writes into your repository is in a format
+only isu can read.
 
 ## The docs
 
@@ -222,7 +266,7 @@ together is computed from these values at build time and held to WCAG AA — whi
 | `--ink` | `#12100e` | `#f2eee7` | body text and headings |
 | `--slate` | `#5b5750` | `#a9a199` | secondary text |
 | `--rule` | `#e2dcd1` | `#332f2a` | hairlines and borders |
-| `--signal` | `#b4451f` | `#f0894f` | links, the caret, the one accent |
+| `--signal` | `#b4451f` | `#f0894f` | links, the install box, the caret, the one accent |
 | `--terminal` | `#1b1917` | `#0c0b0a` | the ground of every proof card |
 
 `--terminal-ink` and `--glow` are the two foregrounds that go on `--terminal`, and they do not
@@ -242,18 +286,26 @@ there is nothing that could fail it.
 | prose | `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, …` |
 | wordmark, commands, terminal output | `ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, …` |
 
-The scale is 1 rem, up and down by 1.25, expressed in rem so that a reader who has changed
-their browser's text size gets what they asked for:
+The scale is hand-tuned rather than geometric — the ratios are 1.125, 1.111, 1.25, 1.4, 1.371
+and 1.333, tight where a reader needs two sizes to look deliberately different and loose where
+they need to look unrelated. It is in rem so that a reader who has changed their browser's text
+size gets what they asked for, and the two sizes that carry the page's shape are fluid: a fixed
+hero broke to five lines on a phone and pushed the first terminal card most of a screen down.
+
+This table is held to `web/assets/site.css` by the build. It said `1.25rem` for a week after
+`--text-l` became a clamp, which is the second time a claim this document made about itself has
+turned out to be false — so `internal/site/content.go` now fails the build when a row here and
+the stylesheet disagree.
 
 | token | size | used for |
 |---|---|---|
 | `--text-xs` | 0.8rem | the contents label |
 | `--text-s` | 0.9rem | terminal output, tables, the foot |
 | `--text-m` | 1rem | body |
-| `--text-l` | 1.25rem | the lede, section claims, `h3` |
+| `--text-l` | `clamp(1.1rem, 1rem + 0.5vw, 1.25rem)` | the lede, section claims, `h3` |
 | `--text-xl` | 1.75rem | `h2` |
 | `--text-2xl` | 2.4rem | `h1` |
-| `--text-3xl` | 3.2rem | the hero |
+| `--text-3xl` | `clamp(2.1rem, 1.4rem + 3.2vw, 3.2rem)` | the hero |
 
 ### The signature element
 
@@ -262,5 +314,8 @@ carries the command and whose body carries the bytes isu wrote — no highlighti
 annotation, no invented prompt. The site is a stack of those cards, and that is the thing to
 remember it by: it does not describe the tool, it runs it.
 
-The card's one moving part is the caret after the install line, which blinks. It is the only
-animation on the site and it stops for anybody whose system asks for reduced motion.
+The one moving part on the site is the caret after the install line, which blinks. It is drawn
+by the stylesheet rather than written into the markup, along with that line's `$ ` prompt:
+`aria-hidden` hides a string from a screen reader and not from a clipboard, and for a while the
+one command this page asks anybody to run pasted as `$ go install …@latest_`. It stops for
+anybody whose system asks for reduced motion.

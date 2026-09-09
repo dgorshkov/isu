@@ -487,3 +487,23 @@ func TestStripCommentsSurvivesAnUnclosedOne(t *testing.T) {
 	require.Equal(t, "a ", stripComments("a /* never closed"))
 	require.Equal(t, "plain", stripComments("plain"))
 }
+
+// The defect this gate exists for: the page's one call to action was a command
+// with two aria-hidden spans wrapped round it, so a reader who selected it and
+// pasted it got a prompt and a caret in their shell.
+func TestNothingHiddenFromAScreenReaderCarriesTextAReaderCopies(t *testing.T) {
+	t.Parallel()
+
+	files := smallSite(t)
+	files["index.html"] = []byte(smallPage(
+		`<p><span aria-hidden="true">$ </span>go install example.com/x@latest</p>` + "\n"))
+
+	require.ErrorContains(t, Gates(files),
+		`hidden from a screen reader carries the text "$"`)
+
+	files["index.html"] = []byte(smallPage(
+		`<p><span aria-hidden="true"></span>go install example.com/x@latest</p>` + "\n"))
+
+	require.NoError(t, Gates(files),
+		"an empty hidden element is decoration the stylesheet fills in, which is the point")
+}

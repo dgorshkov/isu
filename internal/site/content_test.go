@@ -160,3 +160,30 @@ func TestABlockThePlanCannotParseIsNotASample(t *testing.T) {
 	require.Len(t, consoleSamples(fences), 1,
 		"an empty block contributes no sample, and neither does another kind of fence")
 }
+
+// The plan describes the stylesheet, twice in a table, and prose about a file is
+// prose that stops being true. It already had: the type table went on saying
+// 1.25rem after --text-l became a clamp.
+func TestThePlansDesignTablesAreHeldToTheStylesheet(t *testing.T) {
+	t.Parallel()
+
+	css := stylesheet(t)
+
+	require.ErrorContains(t,
+		TokensAgree("| `--nonesuch` | x | y |\n", css),
+		"the stylesheet declares no such token")
+
+	require.ErrorContains(t,
+		TokensAgree("| `--paper` | `#ffffff` | `#000000` | the page |\n", css),
+		"does not carry its light value")
+
+	require.ErrorContains(t,
+		TokensAgree("| `--paper` | `#fbf9f5` | `#000000` | the page |\n", css),
+		"does not carry its dark value")
+
+	require.ErrorContains(t, TokensAgree("", "body { color: red }"),
+		"declares no :root block")
+
+	require.ErrorContains(t, TokensAgree("", ":root {\n\t--paper: #fbf9f5;\n}\n"),
+		"no dark colour scheme")
+}

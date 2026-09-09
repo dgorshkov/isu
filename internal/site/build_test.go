@@ -240,11 +240,17 @@ func TestBuildRefusesAStylesheetTheImagesCannotUse(t *testing.T) {
 	t.Parallel()
 
 	root := copyWithout(t, "")
+
+	// --glow, because the plan's colour table documents every other token the
+	// images need and TokensAgree would now refuse the stylesheet first. It is
+	// named in the plan's prose and not in a row, which is the difference.
+	css := removeLinePrefixed(stylesheet(t), "\t--glow:")
+
 	require.NoError(t, os.WriteFile(filepath.Join(root, "web", "assets", "site.css"),
-		[]byte(":root {\n\t--paper: #ffffff;\n}\n"), 0o600))
+		[]byte(css), 0o600))
 
 	_, err := Build(t.Context(), root, t.TempDir())
-	require.ErrorContains(t, err, "declares no --terminal")
+	require.ErrorContains(t, err, "declares no --glow")
 }
 
 func TestBuildRefusesAWorkingDirectoryItCannotBuildAFixtureIn(t *testing.T) {
@@ -300,4 +306,24 @@ func TestBuildRefusesADocumentThatCannotSayWhatItIsFor(t *testing.T) {
 	_, err := Build(t.Context(), root, t.TempDir())
 	require.ErrorContains(t, err, "docs/"+name+".md")
 	require.ErrorContains(t, err, "too short to say what the page is for")
+}
+
+// The share card sets the page's own tagline, so a plan with no tagline is a
+// plan the card cannot be drawn from either.
+func TestBuildRefusesAPlanWithNoTagline(t *testing.T) {
+	t.Parallel()
+
+	root := copyWithout(t, "")
+
+	body, err := os.ReadFile(filepath.Join(root, "web", "CONTENT.md"))
+	require.NoError(t, err)
+
+	stripped := removeLinePrefixed(string(body), "<!-- tagline:")
+	require.NotEqual(t, string(body), stripped)
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "web", "CONTENT.md"),
+		[]byte(stripped), 0o600))
+
+	_, err = Build(t.Context(), root, t.TempDir())
+	require.ErrorContains(t, err, "declares no <!-- tagline:")
 }

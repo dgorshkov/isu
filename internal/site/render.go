@@ -98,6 +98,10 @@ type indexBody struct {
 	Tagline string
 	Lede    string
 	Install string
+	// Requires is what a reader needs before the install line will work. The
+	// page shipped a single `go install` and never named a toolchain, which
+	// leaves a reader without Go on the machine with no path at all.
+	Requires string
 	// HeroSample is the first section's proof, shown in the hero rather than
 	// after two paragraphs of prose. A page whose whole argument is that the
 	// output is real opened with no output on it.
@@ -184,7 +188,9 @@ func newShell(title, description, path, rel string) shell {
 func (r *Renderer) Index(plan Plan) ([]byte, error) {
 	fields := map[string]string{}
 
-	for _, key := range []string{"title", "tagline", "description", "lede", "install"} {
+	for _, key := range []string{
+		"title", "tagline", "description", "lede", "install", "requires",
+	} {
 		value, err := plan.Get(key)
 		if err != nil {
 			return nil, err
@@ -194,9 +200,10 @@ func (r *Renderer) Index(plan Plan) ([]byte, error) {
 	}
 
 	body := indexBody{
-		Tagline: fields["tagline"],
-		Lede:    fields["lede"],
-		Install: fields["install"],
+		Tagline:  fields["tagline"],
+		Lede:     fields["lede"],
+		Install:  fields["install"],
+		Requires: fields["requires"],
 	}
 	for i, section := range plan.Sections {
 		v := view(section)

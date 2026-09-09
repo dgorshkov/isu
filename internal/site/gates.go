@@ -42,7 +42,7 @@ func Gates(files map[string][]byte) error {
 	for _, gate := range []func(map[string][]byte, string) error{
 		gateHTML, gateLinks, gateWeight, gateAccessibility, gateMeta,
 		gateThirdParty, gateContrast, gateWidth, gateMotion, gateTokens, gateProse,
-		gateFocus,
+		gateFocus, gateDecoration,
 	} {
 		if err := gate(files, css); err != nil {
 			return err
@@ -509,6 +509,41 @@ func linksSomewhere(after []Element, depth int) bool {
 	}
 
 	return false
+}
+
+// gateDecoration keeps decoration out of the text layer.
+//
+// The page's one call to action was written as
+// `<span aria-hidden="true">$ </span>{{.Install}}<span class="caret" aria-hidden="true">_</span>`,
+// and aria-hidden hides a string from a screen reader and not from a clipboard.
+// Nothing on this site sets user-select, so a reader who selected the only
+// command the landing page asks them to run and pasted it got
+// `$ go install github.com/dgorshkov/isu/cmd/isu@latest_`, which does not run.
+// The proof card three hundred lines away had been doing the same prompt as a
+// pseudo-element since the day it was written.
+//
+// So the rule is one sentence: anything hidden from assistive technology is
+// decoration, and decoration belongs in the stylesheet. Text inside an
+// aria-hidden element is a string the clipboard gets and the screen reader does
+// not, which is the wrong way round in both directions.
+func gateDecoration(files map[string][]byte, _ string) error {
+	for _, page := range pages(files) {
+		elements, _ := ParseHTML(string(files[page]))
+
+		for _, e := range elements {
+			text := strings.TrimSpace(e.Text)
+			if e.Attribute("aria-hidden") != "true" || text == "" {
+				continue
+			}
+
+			return fmt.Errorf(
+				"%s: a <%s> hidden from a screen reader carries the text %q, which a "+
+					"reader still copies — put decoration in the stylesheet",
+				page, e.Name, text)
+		}
+	}
+
+	return nil
 }
 
 // gateMeta is what a page needs before anybody has opened it: a title, a

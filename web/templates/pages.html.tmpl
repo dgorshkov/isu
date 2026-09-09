@@ -46,12 +46,13 @@
 <div class="hero">
 <h1>{{.Tagline}}</h1>
 <p class="tagline">{{.Lede}}</p>
+<p class="install" tabindex="0" role="region" aria-label="install command">{{.Install}}</p>
+<p class="requires">{{.Requires}}</p>
 {{with .HeroSample}}<div class="proof">
 <p class="command">{{.Command}}</p>
 <pre tabindex="0" role="region" aria-label="output of {{.Command}}"><code>{{.Output}}</code></pre>
 </div>
-{{end}}<p class="install" tabindex="0" role="region" aria-label="install command"><span aria-hidden="true">$ </span>{{.Install}}<span class="caret" aria-hidden="true">_</span></p>
-</div>
+{{end}}</div>
 {{range .Sections}}
 <section class="section" id="{{.ID}}">
 <h2>{{.Title}}</h2>

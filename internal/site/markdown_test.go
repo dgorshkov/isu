@@ -168,3 +168,24 @@ func TestARuleRowIsARuleRowAndNothingElse(t *testing.T) {
 	require.False(t, isRule("not a row"))
 	require.False(t, isRule("| a | b |"))
 }
+
+// A console block the build ran and whose output the document does not quote
+// renders as a dark card with a prompt in it and nothing underneath, which on
+// this site reads as "the command printed nothing".
+func TestABlockThatRanAndPrintsNothingHereSaysSo(t *testing.T) {
+	t.Parallel()
+
+	got, err := Markdown("# t\n\n```console\n$ isu new --title x\n```\n")
+	require.NoError(t, err)
+	require.Contains(t, got.HTML, `<p class="unquoted">`+unquotedNote+`</p>`)
+
+	got, err = Markdown("# t\n\n```console\n$ isu board\nmain\n```\n")
+	require.NoError(t, err)
+	require.NotContains(t, got.HTML, "unquoted",
+		"a block that quotes its output needs no apology for it")
+
+	got, err = Markdown("# t\n\n```sh\nisu claim <id>\n```\n")
+	require.NoError(t, err)
+	require.NotContains(t, got.HTML, "unquoted",
+		"and a block nothing ran is already marked as one")
+}

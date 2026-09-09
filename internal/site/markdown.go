@@ -243,6 +243,34 @@ func (r *renderer) code() {
 	r.out = append(r.out, `<div class="scroller `+kind+
 		`" tabindex="0" role="region" aria-label="terminal output"><pre><code>`+
 		strings.Join(body, "\n")+"</code></pre></div>")
+
+	if kind == "ran" && !quoted(body) {
+		r.out = append(r.out, `<p class="unquoted">`+unquotedNote+`</p>`)
+	}
+}
+
+// unquotedNote is what the site says about a command it ran and whose output it
+// does not print.
+//
+// getting-started opens on `isu new`, whose output is an id, a branch and a
+// commit — none of them the same twice. The document deliberately does not claim
+// output it cannot reproduce, and the page then rendered that as a dark terminal
+// card with a prompt in it and nothing underneath: on this site the dark ground
+// means "these are the bytes the binary wrote", so an empty one reads as "this
+// printed nothing" or "this failed", on the tutorial's first real action.
+const unquotedNote = "The build ran this command. Its output is not printed here " +
+	"because it is different every time."
+
+// quoted reports whether a console block claims any output at all, rather than
+// being commands and nothing else.
+func quoted(body []string) bool {
+	for _, line := range body {
+		if trimmed := strings.TrimSpace(line); trimmed != "" && !strings.HasPrefix(trimmed, "$ ") {
+			return true
+		}
+	}
+
+	return false
 }
 
 // table renders a pipe table. The header row and the `|---|` row beneath it are

@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -276,4 +277,61 @@ func ordinal(heading string) string {
 	}
 
 	return strings.TrimSpace(rest)
+}
+
+// tokenRow is a table row in the content plan whose first cell names a custom
+// property.
+var tokenRow = regexp.MustCompile("(?m)^\\|\\s*`(--[a-z0-9-]+)`\\s*\\|(.*)$")
+
+// TokensAgree holds the plan's design tables to the stylesheet they describe.
+//
+// The plan carries a colour table and a type table, and both are prose about a
+// file — which means both can quietly stop being true, and twice now they have.
+// The stylesheet's own comment claimed a geometric scale over six ratios that
+// were not it; the plan then went on saying `--text-l` was 1.25rem for a week
+// after it became a clamp. A site whose entire argument is "what this page says
+// about the product is mechanically true" cannot make an exception for what it
+// says about itself.
+//
+// So every row that names a token has to carry the value the stylesheet
+// declares for it — both values, where the two schemes differ.
+func TokensAgree(doc, css string) error {
+	light, err := Palette(css)
+	if err != nil {
+		return err
+	}
+
+	dark, err := DarkPalette(css)
+	if err != nil {
+		return err
+	}
+
+	schemes := []struct {
+		name    string
+		palette map[string]string
+	}{{"light", light}, {"dark", dark}}
+
+	for _, row := range tokenRow.FindAllStringSubmatch(doc, -1) {
+		name := strings.TrimPrefix(row[1], "--")
+
+		cells := map[string]bool{}
+		for _, cell := range strings.Split(row[2], "|") {
+			cells[strings.Trim(strings.TrimSpace(cell), "`")] = true
+		}
+
+		for _, scheme := range schemes {
+			value, ok := scheme.palette[name]
+			if !ok {
+				return fmt.Errorf("the plan names --%s and the stylesheet declares no such token",
+					name)
+			}
+
+			if !cells[value] {
+				return fmt.Errorf("the plan's row for --%s does not carry its %s value, %q",
+					name, scheme.name, value)
+			}
+		}
+	}
+
+	return nil
 }

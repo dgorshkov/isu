@@ -34,8 +34,11 @@ var Documents = []Document{
 	{Name: "checks"},
 	{Name: "json"},
 	{Name: "importing"},
-	{Name: "field-notes"},
 	{Name: "not-doing"},
+	// Last, and after the reference pages rather than between two of them: this
+	// is the maintainer's notebook, and a stranger reading the documentation is
+	// not looking for it in the same list as the JSON contract.
+	{Name: "field-notes"},
 }
 
 // Build produces the whole site: every path it publishes, and the bytes at it.
@@ -64,7 +67,14 @@ func Build(ctx context.Context, root, work string) (map[string][]byte, error) {
 		return nil, err
 	}
 
-	plan, err := planFrom(ctx, root, work)
+	plan, err := planFrom(ctx, root, work, string(css))
+	if err != nil {
+		return nil, err
+	}
+
+	// The share card sets the same sentence the page opens with, so it is read
+	// here rather than written a second time in images.go.
+	tagline, err := plan.Get("tagline")
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +91,7 @@ func Build(ctx context.Context, root, work string) (map[string][]byte, error) {
 		return nil, err
 	}
 
-	if err := chrome(r, files, pages, palette); err != nil {
+	if err := chrome(r, files, pages, palette, tagline); err != nil {
 		return nil, err
 	}
 
@@ -101,7 +111,7 @@ func Build(ctx context.Context, root, work string) (map[string][]byte, error) {
 // the site was produced by running the binary in this repository. Holding the
 // document to it is what keeps the plan honest, so a reviewer reading
 // CONTENT.md is reading what the product does.
-func planFrom(ctx context.Context, root, work string) (Plan, error) {
+func planFrom(ctx context.Context, root, work, css string) (Plan, error) {
 	body, err := os.ReadFile(filepath.Join(root, "web", "CONTENT.md"))
 	if err != nil {
 		return Plan{}, err
@@ -113,6 +123,10 @@ func planFrom(ctx context.Context, root, work string) (Plan, error) {
 	}
 
 	if err = Verify(demo, string(body)); err != nil {
+		return Plan{}, fmt.Errorf("web/CONTENT.md: %w", err)
+	}
+
+	if err = TokensAgree(string(body), css); err != nil {
 		return Plan{}, fmt.Errorf("web/CONTENT.md: %w", err)
 	}
 
@@ -219,7 +233,10 @@ func (a *assembler) put(path string, body []byte, err error) {
 
 // chrome is everything on the site that is not a page of prose: the docs
 // index, the 404, the icons, the sitemap and robots.txt.
-func chrome(r *Renderer, files map[string][]byte, pages []link, palette map[string]string) error {
+func chrome(
+	r *Renderer, files map[string][]byte, pages []link,
+	palette map[string]string, tagline string,
+) error {
 	a := &assembler{files: files}
 
 	contents, err := r.Contents(pages)
@@ -231,7 +248,7 @@ func chrome(r *Renderer, files map[string][]byte, pages []link, palette map[stri
 	favicon, err := Favicon(palette)
 	a.put("favicon.svg", favicon, err)
 
-	card, err := Card(palette)
+	card, err := Card(palette, tagline)
 	a.put("og.png", card, err)
 
 	if a.err != nil {

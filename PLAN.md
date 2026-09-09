@@ -1986,7 +1986,7 @@ nobody covers against a floor with nine statements of headroom, and running the 
 is what executes the docs' console blocks before anything is published rather than after.
 
 ### M8-S1 · Content plan and information architecture ✅
-**Done** #15, 2026-09-08. `web/CONTENT.md` is not a brief the page was built *from* — it is the
+**Done** #21, 2026-09-09. `web/CONTENT.md` is not a brief the page was built *from* — it is the
 page. `internal/site/content.go` parses the section sequence, the claim, the copy and the sample
 out of it, and the template carries structure and not one word, because a template with a
 sentence in it is a second place the site's copy lives.
@@ -2015,7 +2015,7 @@ and produces the output the document claims.
 sentence what isu does and who it is for.
 
 ### M8-S2 · Landing page ✅
-**Done** #15, 2026-09-08. Five sections, four of them a claim above a card containing bytes isu
+**Done** #21, 2026-09-09. Seven sections, five of them a claim above a card containing bytes isu
 wrote. The card is the signature element: a header bar with the command and a body with the
 output, and nothing in between for a designer to embellish.
 
@@ -2030,10 +2030,59 @@ it. If a brand face is wanted later it is a stylesheet change and a file, not a 
 3.18:1 and looks perfectly fine; the terminal card's command line uses `--glow` at 9.09:1
 because a computed number said so and an eye did not.
 
-`SiteURL` is the only absolute URL the site contains, and it is `https://dgorshkov.github.io/isu`
-pending a decision about where this is actually published. Everything else is relative, so the
-site works from a `file://` checkout, from a project path on Pages and from a domain of its own
-without being rebuilt — changing the host is one constant and a `make site`.
+**The page was read back three times by a hostile reader, and each pass found something the
+gates could not.** They are recorded here because the pattern is the point: every round turned
+up at least one place where the site *said* something that was not mechanically true, on a site
+whose whole argument is that it never does.
+
+- Round one: section 5 said the out-of-scope page "is linked from here" and carried no anchor;
+  a `sh` block with placeholder ids in it was borrowing the dark ground that means "the binary
+  wrote these bytes"; the copy recommended `isu ready --json | head -1` beside a card proving
+  the flag is a no-op; and the type scale's comment contradicted its own six ratios. `gateProse`
+  and the `ran`/`sketch` grounds came out of it.
+- Round two: twelve scrolling regions across the site and not one `tabindex` — WCAG 2.1.1, in
+  the element this site is built around. `gateFocus` reads the stylesheet rather than a list of
+  element names, and **a scrolling selector it cannot evaluate fails the build**, because the
+  bug was not the missing rule but that the gate did not know what it was not checking.
+- Round three: the share card was 1200×630 of dark ground with a logo on it and no argument,
+  which is the one asset that reaches a reader before the page does. The page's only call to
+  action was a command with two `aria-hidden` spans round it, so selecting and pasting it gave
+  `$ go install …@latest_` — `aria-hidden` hides a string from a screen reader and not from a
+  clipboard. Four of six sections named a documentation page and did not link it. And the middle
+  verb of the headline was the one the page never demonstrated.
+
+What each of those produced is in the diff: a card that sets the tagline out of `CONTENT.md`, a
+prompt and caret drawn by the stylesheet with `gateDecoration` refusing text inside anything
+`aria-hidden`, five links where there were two, and section 3 — *Merging is the state change* —
+which shows the same issue read from trunk and read from the branch that resolves it, with
+nothing edited in between.
+
+**And `TokensAgree` exists because this document lied about itself twice.** The plan's colour and
+type tables are prose about a stylesheet, and prose about a file stops being true: the type table
+went on saying `--text-l` was `1.25rem` for a week after it became a clamp. Every row naming a
+token is now held to what the stylesheet declares, in both schemes.
+
+**Two findings were not acted on, and the reason is the same in both cases: they are somebody
+else's story.**
+
+- **`isu board` prints `done` and `dropped` first.** `internal/cli/view.go` renders the groups in
+  `model.Statuses` order, and that slice is the *precedence* table from §1 — which rule wins when
+  two match. That has nothing to do with what a person wants to read first, so the flagship card
+  on the landing page opens with three rows of finished work, one of them a joke about rewriting
+  the CSS. It is a real defect and it is M2/M3's, not M8's; a display order of `open`,
+  `in progress`, `awaiting triage`, `reopened`, then the terminal groups is the obvious fix and
+  it moves golden files in `internal/cli` that this pull request has no business moving.
+- **The `isu ready` card is two 22-field objects with `"question":"","reason":"","resolution":""`
+  visible in both.** The complaint is fair — it reads as "this JSON is mostly empty" — but two
+  lines is what makes *newline-delimited* legible, and `isu ready` has no flag that would print
+  one. Filling those fields in the fixture would mean inventing content for states the issues are
+  not in, which is the one thing this site may not do.
+
+`SiteURL` is the only absolute URL the site contains. It was
+`https://dgorshkov.github.io/isu` while this story was written and is
+`https://isu-website.netlify.app` now, decided under M8-S3. Everything else is relative, so the
+site works from a `file://` checkout, from a deploy preview at a URL nobody chose and from a
+domain of its own without being rebuilt — changing the host is one constant and a `make site`.
 **Branch** `isu/M8-S2-landing`
 **Build** the page from `CONTENT.md`. Colours and type sizes come from CSS custom properties
 declared once; fonts are self-hosted and subset, no third-party font CDN. Terminal output, board
@@ -2046,7 +2095,7 @@ requests.
 **Done when** every artifact on the page came out of the binary in this repo.
 
 ### M8-S3 · Docs, gates and deploy ✅
-**Done** #15, 2026-09-08. Eight pages under `docs/`, every console block in them run against a
+**Done** #21, 2026-09-09. Eight pages under `docs/`, every console block in them run against a
 scratch repository during `make test` and `make site`. Two facts about them are worth writing
 down rather than discovering:
 

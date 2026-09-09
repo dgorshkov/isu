@@ -76,21 +76,106 @@ func pick(palette map[string]string, name string) (color.RGBA, error) {
 	return RGB(hex)
 }
 
-// glyphs is the whole typeface these images need: the wordmark and the chevron
-// in front of it, five wide and seven tall.
+// The card's typeface: five wide, nine tall, the last two rows for descenders.
 //
-// A bitmap is the honest way to set four letters at one size. The alternative
-// is a font file — a third-party download, a subsetting step and a hundred
-// kilobytes — to draw eighty-four filled squares.
-var glyphs = map[rune][7]string{
-	'i': {"..#..", ".....", ".##..", "..#..", "..#..", "..#..", ".###."},
-	's': {".###.", "#...#", "#....", ".###.", "....#", "#...#", ".###."},
-	'u': {"#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."},
-	'>': {"#....", ".#...", "..#..", "...#.", "..#..", ".#...", "#...."},
+// It used to be four glyphs, because the card used to be a wordmark and nothing
+// else — 1200×630 of dark ground, a chevron and three letters nobody has heard
+// of. That is the one asset that reaches a reader *before* the page does, in a
+// Slack unfurl or a timeline, and on a site whose whole argument is "we show
+// the bytes rather than promise things" it was the one surface making no
+// argument at all. So the card now sets the tagline, and the tagline needs an
+// alphabet.
+//
+// A bitmap is still the honest way to do it. The alternative is a font file — a
+// third-party download, a subsetting step and a hundred kilobytes — to fill in
+// some squares at one size, on an image the reader sees at 600px wide.
+const (
+	glyphWidth  = 5
+	glyphHeight = 9
+)
+
+var glyphs = map[rune][9]string{
+	' ':  {".....", ".....", ".....", ".....", ".....", ".....", ".....", ".....", "....."},
+	'>':  {"#....", ".#...", "..#..", "...#.", "..#..", ".#...", "#....", ".....", "....."},
+	'-':  {".....", ".....", ".....", ".####", ".....", ".....", ".....", ".....", "....."},
+	'.':  {".....", ".....", ".....", ".....", ".....", ".##..", ".##..", ".....", "....."},
+	',':  {".....", ".....", ".....", ".....", ".....", ".##..", ".##..", ".#...", "....."},
+	'\'': {"..#..", "..#..", ".....", ".....", ".....", ".....", ".....", ".....", "....."},
+	'a':  {".....", ".....", ".###.", "....#", ".####", "#...#", ".####", ".....", "....."},
+	'b':  {"#....", "#....", "####.", "#...#", "#...#", "#...#", "####.", ".....", "....."},
+	'c':  {".....", ".....", ".####", "#....", "#....", "#....", ".####", ".....", "....."},
+	'd':  {"....#", "....#", ".####", "#...#", "#...#", "#...#", ".####", ".....", "....."},
+	'e':  {".....", ".....", ".###.", "#...#", "#####", "#....", ".###.", ".....", "....."},
+	'f':  {"..##.", ".#...", "####.", ".#...", ".#...", ".#...", ".#...", ".....", "....."},
+	'g':  {".....", ".....", ".####", "#...#", "#...#", ".####", "....#", "#...#", ".###."},
+	'h':  {"#....", "#....", "####.", "#...#", "#...#", "#...#", "#...#", ".....", "....."},
+	'i':  {"..#..", ".....", ".##..", "..#..", "..#..", "..#..", ".###.", ".....", "....."},
+	'j':  {"...#.", ".....", "..##.", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."},
+	'k':  {"#....", "#....", "#..#.", "#.#..", "##...", "#.#..", "#..#.", ".....", "....."},
+	'l':  {".##..", "..#..", "..#..", "..#..", "..#..", "..#..", ".###.", ".....", "....."},
+	'm':  {".....", ".....", "##.#.", "#.#.#", "#.#.#", "#.#.#", "#.#.#", ".....", "....."},
+	'n':  {".....", ".....", "####.", "#...#", "#...#", "#...#", "#...#", ".....", "....."},
+	'o':  {".....", ".....", ".###.", "#...#", "#...#", "#...#", ".###.", ".....", "....."},
+	'p':  {".....", ".....", "####.", "#...#", "#...#", "####.", "#....", "#....", "#...."},
+	'q':  {".....", ".....", ".####", "#...#", "#...#", ".####", "....#", "....#", "....#"},
+	'r':  {".....", ".....", "#.##.", "##...", "#....", "#....", "#....", ".....", "....."},
+	's':  {".....", ".....", ".####", "#....", ".###.", "....#", "####.", ".....", "....."},
+	't':  {".#...", ".#...", "###..", ".#...", ".#...", ".#..#", "..##.", ".....", "....."},
+	'u':  {".....", ".....", "#...#", "#...#", "#...#", "#...#", ".####", ".....", "....."},
+	'v':  {".....", ".....", "#...#", "#...#", "#...#", ".#.#.", "..#..", ".....", "....."},
+	'w':  {".....", ".....", "#...#", "#.#.#", "#.#.#", "#.#.#", ".#.#.", ".....", "....."},
+	'x':  {".....", ".....", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", ".....", "....."},
+	'y':  {".....", ".....", "#...#", "#...#", "#...#", ".####", "....#", "#...#", ".###."},
+	'z':  {".....", ".....", "#####", "...#.", "..#..", ".#...", "#####", ".....", "....."},
 }
 
-// OpenGraph draws the 1200×630 card every page names as its og:image.
-func OpenGraph(palette map[string]string) (image.Image, error) {
+// letters refuses a tagline the card cannot set, rather than drawing a hole
+// where the character should have been. A missing glyph would otherwise be a
+// blank the build never mentions and nobody sees until it is on a timeline.
+func letters(s string) error {
+	for _, r := range s {
+		if _, ok := glyphs[r]; !ok {
+			return fmt.Errorf("the card's typeface cannot set %q", r)
+		}
+	}
+
+	return nil
+}
+
+// wrap breaks a line of text into lines of at most n characters, on words. A
+// word longer than n gets a line of its own rather than being cut in half.
+func wrap(text string, n int) []string {
+	var (
+		lines []string
+		line  string
+	)
+
+	for _, word := range strings.Fields(text) {
+		switch {
+		case line == "":
+			line = word
+		case len(line)+1+len(word) <= n:
+			line += " " + word
+		default:
+			lines = append(lines, line)
+			line = word
+		}
+	}
+
+	if line != "" {
+		lines = append(lines, line)
+	}
+
+	return lines
+}
+
+// OpenGraph draws the 1200×630 card every page names as its og:image: the
+// wordmark, a rule, and the same tagline the page opens with.
+//
+// The tagline is passed in rather than written here, so the card and the page
+// cannot come to disagree — it is the string out of web/CONTENT.md, and the one
+// place the site's copy lives is that file.
+func OpenGraph(palette map[string]string, tagline string) (image.Image, error) {
 	ground, err := pick(palette, "terminal")
 	if err != nil {
 		return nil, err
@@ -106,45 +191,72 @@ func OpenGraph(palette map[string]string) (image.Image, error) {
 		return nil, err
 	}
 
+	// Lower case throughout: the wordmark is lower case, the terminal the card
+	// is dressed as is lower case, and it halves the typeface.
+	words := strings.ToLower(tagline)
+
+	if err := letters(words); err != nil {
+		return nil, err
+	}
+
 	const (
 		width, height = 1200, 630
-		scale         = 34
-		gap           = scale
+		margin        = 90
+		markScale     = 9
+		perLine       = 18
+		leading       = 34
+		above, below  = 30, 46
+		ruleHeight    = 5
 	)
+
+	lines := wrap(words, perLine)
+
+	// The headline is set to the width it is given rather than at a size chosen
+	// here, so the block spans the card whatever the tagline turns out to say.
+	longest := 1
+	for _, line := range lines {
+		longest = max(longest, len([]rune(line)))
+	}
+
+	scale := max(1, (width-2*margin)/(longest*(glyphWidth+1)-1))
+	span := longest*(glyphWidth+1)*scale - scale
+
+	mark := glyphHeight * markScale
+	step := glyphHeight*scale + leading
+	block := mark + above + ruleHeight + below + len(lines)*step - leading
 
 	card := image.NewRGBA(image.Rect(0, 0, width, height))
 	fill(card, card.Bounds(), ground)
 
-	word := []rune("> isu")
-	span := len(word)*5*scale + (len(word)-1)*gap
-	start := (width - span) / 2
-	y := (height - 7*scale) / 2
-	x := start
+	y := (height - block) / 2
 
-	for _, r := range word {
-		if r == ' ' {
-			x += 5*scale + gap
+	write(card, " isu", write(card, ">", margin, y, markScale, glow), y, markScale, ink)
 
-			continue
-		}
+	y += mark + above
+	fill(card, image.Rect(margin, y, margin+span, y+ruleHeight), glow)
 
-		colour := ink
-		if r == '>' {
-			colour = glow
-		}
+	y += ruleHeight + below
 
-		draw(card, glyphs[r], x, y, scale, colour)
-
-		x += 5*scale + gap
+	for _, line := range lines {
+		write(card, line, margin, y, scale, ink)
+		y += step
 	}
-
-	fill(card, image.Rect(start, y+9*scale, start+span, y+9*scale+scale/4), glow)
 
 	return card, nil
 }
 
+// write sets one string, and returns the x the next one would start at.
+func write(dst *image.RGBA, s string, x, y, scale int, c color.RGBA) int {
+	for _, r := range s {
+		draw(dst, glyphs[r], x, y, scale, c)
+		x += (glyphWidth + 1) * scale
+	}
+
+	return x
+}
+
 // draw paints one glyph at scale.
-func draw(dst *image.RGBA, glyph [7]string, x, y, scale int, c color.RGBA) {
+func draw(dst *image.RGBA, glyph [glyphHeight]string, x, y, scale int, c color.RGBA) {
 	for row, bits := range glyph {
 		for col, bit := range bits {
 			if bit != '#' {
@@ -173,8 +285,8 @@ func fill(dst *image.RGBA, r image.Rectangle, c color.RGBA) {
 // is no failure to report and no caller who could act on one. The alternative
 // is a branch no test can reach, and .golangci.yml says what this project does
 // with an error that has nowhere to go.
-func Card(palette map[string]string) ([]byte, error) {
-	img, err := OpenGraph(palette)
+func Card(palette map[string]string, tagline string) ([]byte, error) {
+	img, err := OpenGraph(palette, tagline)
 	if err != nil {
 		return nil, err
 	}
