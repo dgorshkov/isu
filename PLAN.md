@@ -2377,6 +2377,13 @@ served `index.html` report `/.netlify/scripts/hud?variant=public points at
 .netlify/scripts/hud?variant=public, which this build does not produce`; before it, they passed
 those bytes clean. Third time, same pattern.
 
+**And the deploy preview is clean, which is the sharpest version of that pattern yet.**
+`https://deploy-preview-15--isu-website.netlify.app/docs/importing.html` is byte for byte the
+16,110 bytes `make site` wrote — no comment, no meta tags, no script. The badge is a property of
+the *public project*, and a preview is not one, so the artifact a reviewer opens on a pull
+request and the artifact a reader is served are now provably different documents. Checking the
+preview says nothing about production. Only production says anything about production.
+
 **The gates are hand-written over the built site, and what they can and cannot see is stated in
 `internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at
 360 px" is enforced as the two things that cause it — a fixed width wider than the viewport, and
