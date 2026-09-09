@@ -2182,15 +2182,16 @@ consequence is the one that matters: twelve gates run inside `Build` over the by
 
 **`skip_processing = true` did not fix it, and finding that out took a deploy.** With that key in
 `netlify.toml`, the preview for `32cbc65` still served 13,233 bytes against 13,283 committed and
-every href still rewritten — so the file now carries `[build.processing.html] pretty_urls = false`
-as well, and says in as many words what follows if that fails too: the behaviour is a dashboard
-setting, `netlify.toml`'s opening claim is not true of it, and the next reader should reach for
-the dashboard rather than for that block. `scripts/site_test.go` asserts both keys are present
-and nothing more, because **nothing in this repository gates the delivery**: a test here cannot
-fetch a deploy. The only thing that establishes what a reader gets is fetching a deployed page
-and diffing it against `web/site`, which is how this was found and how it will have to be
-confirmed. A check that does it automatically needs production to exist and is a story of its
-own.
+every href still rewritten. `[build.processing.html] pretty_urls = false` is what the platform
+honours: on the preview for `d9a43e6`, `index.html`, `docs/json.html`,
+`docs/getting-started.html` and `404.html` are byte for byte what `make site` wrote. Both keys
+are kept — the general one is the intent, the specific one is what works — and
+`scripts/site_test.go` asserts both are present and nothing more, because a test here cannot
+fetch a deploy. So the gates now run over the bytes a reader receives, and **nothing in this
+repository holds them to that**: somebody turning post-processing back on in the dashboard would
+break it invisibly. Confirming it is a curl and a diff against `web/site`, which is how both the
+defect and the fix were established; a check that does it on every deploy needs production to
+exist and is a story of its own.
 
 That is the second time this milestone that a gate was believed rather than measured — the first
 was the accessibility pass that had never looked at what the stylesheet did to the document it

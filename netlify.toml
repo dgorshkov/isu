@@ -38,21 +38,23 @@
 #     byte a reader was served. gateLinks proves `docs/json.html` resolves; the
 #     reader gets `/docs/json`.
 #
-# What is settled, and what is not:
+# Both keys, and the second one is the one that works.
 #
-# `skip_processing` is meant to turn all of it off and **did not**. Measured on
-# the preview for 32cbc65, with that key already in this file: 13,233 bytes
-# served against 13,283 committed, and every href still rewritten. So the
-# targeted switch is here as well. If a deploy carrying `pretty_urls = false`
-# still rewrites the pages, then this behaviour is not controllable from this
-# file at all — it is a site setting in Netlify's dashboard, and the honest
-# consequence is that the first sentence of this file is not true of it and the
-# next reader should reach for the dashboard rather than for this block.
+# `skip_processing` is documented as turning all post-processing off, and on this
+# project it did not: the preview for 32cbc65 carried that key and still served
+# 13,233 bytes against 13,283 committed, with every href rewritten. Adding
+# `pretty_urls = false` fixed it — the preview for d9a43e6 serves index.html,
+# docs/json.html, docs/getting-started.html and 404.html byte for byte identical
+# to what `make site` wrote. Both are kept: the general key is the intent, the
+# specific one is what the platform actually honours, and dropping either would
+# be guessing again.
 #
-# scripts/site_test.go asserts these keys are here. That is the whole of what a
-# test in this repository can do: it cannot see a deploy, so **nothing here gates
-# the delivery**, and the only thing that establishes what a reader gets is
-# fetching a deployed page and diffing it against web/site by hand.
+# scripts/site_test.go asserts these keys are here, and that is the whole of what
+# a test in this repository can do — it cannot fetch a deploy. So the gates now
+# run over the bytes a reader receives, and **nothing here holds them to that**:
+# somebody turning post-processing back on in the dashboard would break it in a
+# way this repository cannot see. Confirming it is a curl and a diff against
+# web/site, which is how both the defect and the fix were established.
 [build.processing]
 	skip_processing = true
 

@@ -110,11 +110,12 @@ func TestNetlifyPublishesTheDirectoryTheBuildProduces(t *testing.T) {
 	// single — so the twelve gates that run over web/site have never seen a byte
 	// a reader was served.
 	//
-	// Both keys, because `skip_processing` alone did not stop it: measured on the
-	// preview for 32cbc65, 13,233 bytes served against 13,283 committed. This
-	// asserts the file says what it means to say, and no more than that — a test
-	// here cannot fetch a deploy, so nothing in this repository gates the
-	// delivery. netlify.toml carries what to do if the targeted key fails too.
+	// Both keys, because `skip_processing` alone did not stop it — 13,233 bytes
+	// served against 13,283 committed on the preview for 32cbc65 — and
+	// `pretty_urls = false` did: every page on the preview for d9a43e6 is byte
+	// for byte what `make site` wrote. This asserts the file says what it means
+	// to say, and no more than that: a test here cannot fetch a deploy, so
+	// nothing in this repository holds the delivery to it.
 	for _, want := range []string{
 		`(?m)^\[build\.processing\]\n\s*skip_processing = true$`,
 		`(?m)^\[build\.processing\.html\]\n\s*pretty_urls = false$`,
