@@ -1809,6 +1809,25 @@ rendered. `Dangling` in the dry run is that number.
 `source.yml` is sorted at every level rather than left to a map's iteration order, which is what
 makes M7-S5's idempotency assertion possible at all: a file whose key order changes per run
 produces a diff every run.
+
+**The importer's documentation executes now, and collecting that debt found a defect.** M8-S3
+landed first and handed this pull request one specific thing to collect: give `docs/importing.md`
+`console` blocks running `isu import github` against a recorded dump, so the importer's page runs
+like every other page on the site. The first attempt failed, and the reason is worth writing
+down. `--dump` read its path with `os.ReadFile`, while every other path in this product resolves
+against `cli.Env.Dir` — the directory isu was run in, carried rather than read from the process
+for the same reason `Getenv` and `Now` are carried. For `cmd/isu` the two are the same and
+nothing was visibly wrong. For the site build, which runs the documentation's own commands in
+process against a fixture repository somewhere else entirely, they are not. Both file paths the
+command takes — `--dump` and `--fetch-only` — now resolve against that directory.
+
+`internal/site/testdata/import/acme.json` is the recording the page imports: six rows of the REST
+list, one of them a pull request, covering the three issue types, all three state reasons, a
+milestone, two comments from one person on one day, a dependency inside the import and one
+outside it, an attachment link, an issue field value, an unassigned issue and a closing pull
+request reference. It is a file rather than a request because a page that needs github.com to
+build is a page that stops building. `docs/importing.md` is no longer the only page under `docs/`
+with no `$ isu` line in it.
 **Branch** `isu/M7-S1-import-framework`
 **Build** `internal/importer`: a source interface, field mapping to the isu schema, an
 evidence-tier recorder, and a `--dry-run` report showing counts, coverage and samples without
@@ -2334,6 +2353,29 @@ That is the second time this milestone that a gate was believed rather than meas
 was the accessibility pass that had never looked at what the stylesheet did to the document it
 read. The pattern is worth naming: a gate over an artifact says nothing about the artifact
 somebody actually receives.
+
+**A valueless attribute hid the one written after it, and that is the hole the gates had.**
+Corrected in #15. `openTag` split an attribute list on the first `=` anywhere in what was left of
+the tag, so `<script async src="...">` parsed as a single attribute named `async src` and the
+element carried no `src` at all. `gateLinks` and `gateThirdParty` both ask an element for its
+`src`, so writing `async` in front of one walked a third-party script past every gate here and
+the build reported the site clean. The key is now the last word before the `=`, and the words in
+front of it are recorded as the barewords they are — which also fixes `<input disabled readonly>`
+having been read as one attribute with a space in its name.
+
+**Netlify is injecting markup again, and again nothing in this repository could see it.** The
+paragraph above says that somebody turning post-processing back on in the dashboard would break
+the site invisibly and that confirming it is a curl and a diff against `web/site`. Doing exactly
+that on 2026-09-09 found three insertions on every published page: an HTML comment advertising
+Netlify with UTM parameters, `<meta name="hosting-provider">` and `<meta name="netlify-deploy">`,
+and `<script async src="/.netlify/scripts/hud?variant=public">` after the closing `</html>`.
+That is the **Powered by Netlify badge**, which is on by default for Free-plan projects created
+on or after 19 August 2026 and is turned off at Project configuration → General → Powered by
+Netlify badge. There is no `netlify.toml` key for it, so this repository cannot pin it and this
+paragraph is the record instead. With the parser defect above fixed, the gates run over the
+served `index.html` report `/.netlify/scripts/hud?variant=public points at
+.netlify/scripts/hud?variant=public, which this build does not produce`; before it, they passed
+those bytes clean. Third time, same pattern.
 
 **The gates are hand-written over the built site, and what they can and cannot see is stated in
 `internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at
