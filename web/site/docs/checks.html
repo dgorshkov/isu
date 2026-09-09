@@ -49,7 +49,7 @@
 <p>A <strong>tree</strong> rule is about the repository as it stands — a parent that names nothing, an epic with no children — and needs no branch. A <strong>branch</strong> rule is about what this branch proposes: a resolution with no code beside it, an owner an agent reassigned. <code>--scope</code> picks one kind.</p>
 <p>The pre-commit hook <code>isu init --hooks</code> writes runs the tree rules only, because at pre-commit time the change being committed is not a commit yet and the branch rules would be answering from the commits already there. It also passes <code>--worktree</code>, which reads the issues on disk rather than at a ref: a check that read a ref before a commit would be answering about the commit <em>before</em> the one being made, and would refuse the very commit that fixed what it was complaining about.</p>
 <h2 id="the-nine-rules">The nine rules</h2>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th>rule</th>
@@ -104,12 +104,12 @@
 </tr>
 </tbody></table></div>
 <p>A clean repository says so and exits 0:</p>
-<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu check --scope tree
-main ← isu/APP-9cx2rt · 7 checks · nothing to report · remote refs 3h ago</code></pre></div>
+<div class="scroller ran" tabindex="0" role="group" aria-label="terminal output"><pre><code>$ isu check --scope tree
+main ← isu/APP-9cx2rt · 7 checks · nothing to report · remote refs 1h ago</code></pre></div>
 <h2 id="evidence-is-the-rule-that-makes-a-claim-a-claim">Evidence is the rule that makes a claim a claim</h2>
 <p><code>isu claim</code> writes <code>state: resolved</code> on the claiming branch <em>before</em> any work starts — that is the whole compare-and-swap, and it is why a claimed issue reads <code>in progress</code>. So a branch that claimed something and did nothing looks, in the file, exactly like a branch that resolved it. What separates them is not the field, which is identical, but the diff beside it.</p>
-<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu check
-main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
+<div class="scroller ran" tabindex="0" role="group" aria-label="terminal output"><pre><code>$ isu check
+main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 1h ago
 
 fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution</code></pre></div>
 <p>What counts as work depends on the type. A bug, a story or a chore needs a change outside <code>issues/</code>. A spike needs a file in the issue&#39;s own folder that is not <code>README.md</code>, because a spike is answered rather than fixed and the artifact is the answer. A drop needs a <code>reason</code> and a <code>resolution</code> from the enum.</p>
@@ -117,7 +117,7 @@ fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outsi
 <h2 id="owner-is-expensive-to-change-on-purpose">Owner is expensive to change on purpose</h2>
 <p><code>owner</code> is the accountable human, set at triage. A commit whose author is listed under <code>agents</code> in <code>.isu.yml</code> and which changes an issue&#39;s <code>owner</code> is a failure — an agent may do the work, but it may not decide who answers for it.</p>
 <h2 id="running-them">Running them</h2>
-<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>isu check                      # everything, against the current branch
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>isu check                      # everything, against the current branch
 isu check --scope tree         # the repository only, no branch
 isu check --worktree           # the issues on disk, uncommitted edits included
 isu check --json               # one finding per line

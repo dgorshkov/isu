@@ -135,13 +135,13 @@ func planFrom(ctx context.Context, root, work, css string) (Plan, error) {
 		return Plan{}, err
 	}
 
+	// The output the page shows is the output the run produced, not the output
+	// the document claims — Verify above has already established that they are
+	// the same thing.
 	for i, section := range plan.Sections {
-		if section.Sample == nil {
-			continue
+		for j, sample := range section.Samples {
+			plan.Sections[i].Samples[j].Want = isu(demo, sample.Args).Output
 		}
-
-		sample := isu(demo, section.Sample.Args)
-		plan.Sections[i].Sample.Want = sample.Output
 	}
 
 	return plan, nil

@@ -2053,9 +2053,63 @@ whose whole argument is that it never does.
 
 What each of those produced is in the diff: a card that sets the tagline out of `CONTENT.md`, a
 prompt and caret drawn by the stylesheet with `gateDecoration` refusing text inside anything
-`aria-hidden`, five links where there were two, and section 3 — *Merging is the state change* —
-which shows the same issue read from trunk and read from the branch that resolves it, with
-nothing edited in between.
+`aria-hidden`, five links where there were two, and a section that shows the loop closing rather
+than four snapshots of a state machine.
+
+**A fourth read found the one place the front page and this repository's own evidence
+disagreed.** Section 2 said "two people cannot both take the same issue" while
+`docs/field-notes.md` says, in as many words, that the board reads local refs only and a
+colleague's claim is therefore invisible. Both are true — the *lock* holds, because the second
+push is refused; the *warning* does not — and the landing page was making the multiplayer claim
+without the carve-out, on the one page of eight it did not link. The carve-out is in section 2
+now, with the link, which is the move section 5 already makes with `not-doing` and gets credit
+for.
+
+**A section carries a sequence of samples rather than one.** `Section.Samples` is a slice because
+a state machine is not proved by a snapshot of it: the merge is now the same command on two
+claims one merge apart, `in progress` and then `done`, with no flag on either. Getting there
+needed a fixture that contains a completed loop, which it did not — every issue in it was either
+finished before the samples start or still in flight — so `APP-b5n3kt` is claimed on a branch and
+then squashed onto trunk, and the branch is left standing because that is what happens to
+branches.
+
+**`--ref <an ancestor of trunk>` is not a way to show a merge, and that is a product
+observation.** Reading the fixture at `main~1` reports `in progress (contended)` with two
+claimants, because `refs/heads/main` is a ref that proposes `resolved` and the contention rule
+counts it. It is correct and it is unreadable on a landing page, which is why the two cards are
+flagless. M3's contention rule deciding that trunk-ahead-of-the-ref is not a rival claimant is a
+story of its own.
+
+**The tutorial cannot quote a claim, and now says so instead of ending in a sketch nobody
+explains.** `isu claim` writes a random `Isu-Claim:` nonce, so the commit id differs every run;
+the board after it reads `remote refs just now`; and the claimant it prints is whoever `git` is
+configured as on the machine that built the page — `claimed by Claude`, on the run that found
+this. A page whose bytes must be identical on every machine can quote none of those three, so
+`docs/getting-started.md` names the reason and sends the reader to the front page, where the
+clock and the identities are fixed. Its lede promised "a merged fix" and now promises what it
+delivers.
+
+**Accessibility, twice over.** The fix that made every scrolling box reachable gave each one
+`role="region"`, which makes it a *landmark*: `docs/json.html` announced sixteen landmarks all
+called "table". They are `role="group"` now — reachable, labelled on entry, out of the landmark
+list — and a block that did not run says "example, not run" rather than "terminal output", which
+is the distinction the stylesheet had been drawing since the round before and the accessibility
+tree had never heard of. And the five cards on the landing page were reachable while announcing
+nothing on focus: no rule covered `.proof pre`, so it fell back to the browser's outline, which
+`.proof`'s own `overflow: hidden` clipped on three sides. The ring is inset now, in `--glow`,
+which is 9.09:1 on the terminal ground.
+
+**The install line was 40% off the right-hand edge of a phone.** `gateWidth` could not see it:
+that gate holds `<pre>` and `<table>` to a scrolling box, and the install line is a `<p>`, so
+"no page-level horizontal scroll" and "readable on a phone" came apart exactly where the page
+asks somebody to type something. It wraps under 30rem and `user-select: all` makes one tap take
+the command and neither pseudo-element — verified in Chromium, along with the focus ring and the
+landmark counts.
+
+**The share card is 1200×630 and had three letters on it.** It sets the tagline now, read out of
+`CONTENT.md` so the card and the page cannot disagree, which cost the bitmap face an alphabet —
+five by nine, the last two rows for descenders, and a tagline carrying a character the face
+cannot set fails the build rather than drawing a hole.
 
 **And `TokensAgree` exists because this document lied about itself twice.** The plan's colour and
 type tables are prose about a stylesheet, and prose about a file stops being true: the type table
@@ -2116,6 +2170,20 @@ is small and specific: drop the "not in this build" note, and give the page ```c
 running `isu import github` against a recorded dump, so the importer's documentation executes
 like every other page here. Merging #15 will also conflict in this file — both pull requests
 mark a milestone done in the same table and add `**Done**` paragraphs a few lines apart.
+
+**Netlify was rewriting the pages CI had just verified, and nothing in this repository could
+have told anybody.** Pretty URLs post-processing is on by default and is a dashboard form, so
+every deploy preview served an `index.html` 46 bytes shorter than the committed one — every
+internal href rewritten from `docs/json.html` to `/docs/json`, every attribute requoted from `"`
+to `'`. `site.css` and `og.png` came through untouched; only HTML was changed. The third
+consequence is the one that matters: twelve gates run inside `Build` over the bytes in
+`web/site`, and not one of them had ever seen a byte a reader was served — `gateLinks` proved
+`docs/json.html` resolves, and the reader got `/docs/json`. `netlify.toml` says
+`skip_processing = true` now, with the reasoning in the file, and `scripts/site_test.go` asserts
+that block is there. That assertion is as far as a test in this repository can follow the bytes:
+**nothing here gates the delivery**, and the honest way to close that would be a check that
+fetches the deployed page and diffs it against `web/site` — which needs a deploy to exist and is
+a story of its own.
 
 **The gates are hand-written over the built site, and what they can and cannot see is stated in
 `internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at

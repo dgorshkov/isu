@@ -47,7 +47,7 @@
 <p>Read paths only. Nothing was written to any of these repositories, nothing was pushed, and nothing was imported.</p>
 <h2 id="what-was-run-and-against-what">What was run, and against what</h2>
 <p>Three full clones, chosen for three different shapes rather than three different logos. Measured on the CI-class machine this milestone was built on, best of three runs, with a warm page cache.</p>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th></th>
@@ -112,7 +112,7 @@
 </tr>
 </tbody></table></div>
 <p>None of them has an <code>issues/</code> directory, so what these numbers measure is how isu&#39;s read paths behave against real repository <em>shapes</em> — depth of history, size of tree, number of refs, gitlinks in the tree. What loading five thousand issue files costs is measured by M2-S5&#39;s gate, on repositories built for it.</p>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th>command</th>
@@ -149,7 +149,7 @@
 <p>All three load. Nothing crashed, nothing hung, and no output was wrong.</p>
 <h2 id="where-the-time-goes-and-what-that-means-at-scale">Where the time goes, and what that means at scale</h2>
 <p>Every one of those numbers is almost entirely one git process:</p>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th>stage</th>
@@ -188,7 +188,7 @@
 <p><strong>Written down rather than fixed</strong>, because fixing it is a design question this story is not the place to answer. The shape of an answer: nothing needs <code>reopened</code> except a board and a show, and both could ask for it lazily; or the walk could stop at the oldest issue&#39;s <code>created</code> date, which is a bound the file already carries.</p>
 <h2 id="the-one-defect-fixed">The one defect, fixed</h2>
 <p>A <code>--ref</code> that does not resolve answered with:</p>
-<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>isu: git ls-tree -r -z --full-tree refs/heads/nope -- issues: unknown revision:
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>isu: git ls-tree -r -z --full-tree refs/heads/nope -- issues: unknown revision:
 exit status 128: fatal: Not a valid object name refs/heads/nope</code></pre></div>
 <p>which tells somebody who typed one flag about four they have never heard of. It now leads with <code>cannot read refs/heads/nope as trunk</code> and keeps git&#39;s sentence after it, where it helps rather than confuses. <code>TestARefThatDoesNotResolveNamesTheRefAndNotThePlumbing</code> is the regression test.</p>
 <h2 id="known-limitations-written-down">Known limitations, written down</h2>
@@ -206,7 +206,7 @@ exit status 128: fatal: Not a valid object name refs/heads/nope</code></pre></di
 <p>The case that would matter — a submodule mounted <em>at</em> <code>issues/</code> — appears in none of these repositories and probably in none at all. <code>ls-tree -r</code> reports a gitlink as type <code>commit</code>, which the loader would list and find no <code>README.md</code> under, so a repository shaped that way would read as having no issues. Untested against anything real, so: a known unknown rather than a known limitation.</p>
 <h3 id="isu-cannot-read-a-repository-until-something-writes-a-file-into-it">isu cannot read a repository until something writes a file into it</h3>
 <p>Every command against all three repositories failed identically until <code>.isu.yml</code> existed:</p>
-<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>isu: &lt;repo&gt; has no .isu.yml: isu needs one line of configuration to know what
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>isu: &lt;repo&gt; has no .isu.yml: isu needs one line of configuration to know what
 to call an issue, and `isu init` writes it</code></pre></div>
 <p>This is the open question PLAN.md §1 raised and asked to be settled before M4-S1, and it is why <code>isu init</code> exists. The field notes confirm the answer was worth making: the first thing anybody does with isu in an existing repository is hit this, and a tool whose first interaction is an error about a file the user has never heard of is a tool they close.</p>
 <h3 id="a-tag-or-an-old-commit-as-trunk-is-much-cheaper-for-the-obvious-reason">A tag or an old commit as trunk is much cheaper, for the obvious reason</h3>

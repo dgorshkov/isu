@@ -55,6 +55,10 @@ func NewRenderer(root string) (*Renderer, error) {
 type link struct {
 	Href string
 	Text string
+	// Current marks the masthead entry for the page being read, which is what
+	// aria-current="page" is for: a navigation that does not say where you are
+	// is a navigation a screen reader reads identically on all ten pages.
+	Current bool
 	// Note is the one line saying what a page is for. It is empty everywhere
 	// but the documentation index, where a bare list of eight titles tells a
 	// reader arriving cold nothing about which two to read.
@@ -87,11 +91,11 @@ type proofView struct {
 
 // sectionView is one landing-page section, with its copy rendered.
 type sectionView struct {
-	ID     string
-	Title  string
-	Claim  template.HTML
-	Copy   []template.HTML
-	Sample *proofView
+	ID      string
+	Title   string
+	Claim   template.HTML
+	Copy    []template.HTML
+	Samples []proofView
 }
 
 type indexBody struct {
@@ -117,6 +121,7 @@ type docBody struct {
 
 type contentsBody struct {
 	Heading string
+	Lede    string
 	Links   []link
 }
 
@@ -160,13 +165,22 @@ func (r *Renderer) page(s shell, bodyTemplate string, data any) ([]byte, error) 
 const footer = "Every sample on this site was produced by running isu against a " +
 	"repository the site's build creates from scratch. Apache-2.0."
 
-// nav is the masthead, with hrefs relative to a page at depth rel.
-func nav(rel string) []link {
-	return []link{
+// nav is the masthead, with hrefs relative to a page at depth rel, and the
+// entry for path marked as the one being read.
+func nav(rel, path string) []link {
+	here := rel + strings.TrimPrefix(path, "/")
+
+	out := []link{
 		{Href: rel + "docs/getting-started.html", Text: "Getting started"},
 		{Href: rel + "docs/index.html", Text: "Docs"},
 		{Href: Source, Text: "Source"},
 	}
+
+	for i := range out {
+		out[i].Current = out[i].Href == here
+	}
+
+	return out
 }
 
 // newShell is the head and chrome of one page.
@@ -180,7 +194,7 @@ func newShell(title, description, path, rel string) shell {
 		Home:        rel + "index.html",
 		Footer:      footer,
 		Version:     cli.Version,
-		Nav:         nav(rel),
+		Nav:         nav(rel, path),
 	}
 }
 
@@ -211,9 +225,9 @@ func (r *Renderer) Index(plan Plan) ([]byte, error) {
 		// The first section's proof is the hero's. Nothing about a page that
 		// argues from real output should put four paragraphs in front of the
 		// first of it.
-		if i == 0 && v.Sample != nil {
-			body.HeroSample = v.Sample
-			v.Sample = nil
+		if i == 0 && len(v.Samples) > 0 {
+			body.HeroSample = &v.Samples[0]
+			v.Samples = v.Samples[1:]
 		}
 
 		body.Sections = append(body.Sections, v)
@@ -235,11 +249,11 @@ func view(s Section) sectionView {
 		out.Copy = append(out.Copy, template.HTML(Inline(para))) //nolint:gosec // as above
 	}
 
-	if s.Sample != nil {
-		out.Sample = &proofView{
-			Command: s.Sample.String(),
-			Output:  strings.TrimRight(s.Sample.Want, "\n"),
-		}
+	for _, sample := range s.Samples {
+		out.Samples = append(out.Samples, proofView{
+			Command: sample.String(),
+			Output:  strings.TrimRight(sample.Want, "\n"),
+		})
 	}
 
 	return out
@@ -266,7 +280,13 @@ func (r *Renderer) Contents(pages []link) ([]byte, error) {
 		"Every page of isu's documentation, in reading order, and what each one is for.",
 		"/docs/index.html", "../")
 
-	return r.page(s, "contents", contentsBody{Heading: "Documentation", Links: pages})
+	return r.page(s, "contents", contentsBody{
+		Heading: "Documentation",
+		Lede: "In reading order, not alphabetical. A list sorted by title is one where " +
+			"getting started comes fourth, and the first two pages below are the two " +
+			"worth reading before deciding anything.",
+		Links: pages,
+	})
 }
 
 // NotFound renders the 404 page.

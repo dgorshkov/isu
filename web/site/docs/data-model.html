@@ -46,7 +46,7 @@
 </nav>
 <p>An issue is a folder. Everything else follows from that, and everything below is fixed for schema version 1.</p>
 <h2 id="the-folder">The folder</h2>
-<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>issues/
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>issues/
   APP-7f3akq/
     README.md                    the issue
     repro.har                    attachments live with the issue
@@ -55,7 +55,7 @@
 <p><code>README.md</code> so that a forge renders the issue when you browse to the folder. Comment files are <code>&lt;date&gt;-&lt;author&gt;-&lt;nn&gt;.md</code>, and the two-digit sequence is not decoration: without it, a second comment by the same author on the same day silently overwrites the first.</p>
 <p>Resolved issues stay in <code>issues/</code>. There is no <code>fixed/</code> directory and no archive command: state lives in the file, so moving the file would be storing the state twice.</p>
 <h2 id="the-frontmatter">The frontmatter</h2>
-<div class="scroller sketch" tabindex="0" role="region" aria-label="terminal output"><pre><code>---
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>---
 schema: 1              required, integer, the on-disk format version
 id: APP-7f3akq         required, must equal the folder name
 title: Login retries   required, one line
@@ -80,7 +80,7 @@ Free-form markdown body.</code></pre></div>
 <p><code>owner</code> is the accountable human. It is set at triage and an agent must never change it; a commit by a configured agent that reassigns an owner is a check failure. Who is <em>working</em> on an issue right now is a different question, answered by the claiming branch and not by this field.</p>
 <p><code>resolution</code> is one of <code>wontfix</code>, <code>duplicate</code>, <code>works-as-intended</code> or <code>fixed-elsewhere</code>, and sits alongside the free-text <code>reason</code>. <code>dropped</code> alone cannot distinguish a duplicate from a won&#39;t-fix, and the difference is the first thing anyone asks.</p>
 <h2 id="what-each-type-requires">What each type requires</h2>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th>type</th>
@@ -128,7 +128,7 @@ Free-form markdown body.</code></pre></div>
 <p><strong>Ids are permanent and are never rewritten.</strong> There is no <code>isu renumber</code>. That is what lets <code>blocked_by</code> on one branch keep pointing at the right issue while a hundred other branches are in flight, and it is why an imported issue keeps its source key verbatim: <code>PROJ-1234</code> is a perfectly legal id, and the format above governs generation rather than validation.</p>
 <h2 id="configuration">Configuration</h2>
 <p><code>.isu.yml</code> sits at the repository root. This is the whole schema, and an unknown key is a validation error rather than a silent no-op.</p>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th>key</th>

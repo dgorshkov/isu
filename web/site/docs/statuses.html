@@ -47,7 +47,7 @@
 <p>Status is never stored. It is computed, on every command, from what trunk and every branch say about an issue — which means it cannot be stale, cannot be forgotten and cannot disagree with the repository.</p>
 <h2 id="the-table">The table</h2>
 <p><strong>The rows are ordered and the first match wins.</strong> Several of them overlap, and without a stated precedence a merged issue whose claiming branch was never deleted would match both <code>done</code> and <code>in progress</code>.</p>
-<div class="scroller" tabindex="0" role="region" aria-label="table">
+<div class="scroller" tabindex="0" role="group" aria-label="table">
 <table>
 <thead><tr>
 <th>status</th>
@@ -81,12 +81,13 @@
 </tbody></table></div>
 <p>Terminal trunk state beats every claim, so a finished issue reads <code>done</code> whether or not the branch that claimed it was ever tidied up. <code>in progress</code> beats <code>reopened</code>, because somebody actively re-fixing an issue needs to show as worked rather than as merely broken again — but <strong><code>reopened</code> survives as an annotation</strong> on whatever status wins, so the fact is never lost.</p>
 <p>Here is all of it on one board:</p>
-<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu board
-main · 9 issues · remote refs 3h ago
+<div class="scroller ran" tabindex="0" role="group" aria-label="terminal output"><pre><code>$ isu board
+main · 9 issues · remote refs 1h ago
 
-done (2)
-  APP-x4h7vb  p2  spike  What does a failed payment cost us?  dana
-  APP-2mdz8k  p3  chore  Upgrade the linter                   sam
+done (3)
+  APP-x4h7vb  p2  spike  What does a failed payment cost us?     dana
+  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
+  APP-2mdz8k  p3  chore  Upgrade the linter                      sam
 
 dropped (1)
   APP-8ptr5s  p2  chore  Rewrite the CSS in another framework  sam
@@ -97,11 +98,10 @@ awaiting triage (1)
 in progress (1)
   APP-9cx2rt  p2  story  Show the sign-up queue on the board  priya · claimed by Priya Raman
 
-open (4)
-  APP-7f3akq  p1  bug    Login retries drop the second attempt   dana
-  APP-40b1cc  p2  epic   Make sign-up reliable                   dana · 5 children
-  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
-  APP-5wq7dn  p3  chore  Publish a status page                   sam</code></pre></div>
+open (3)
+  APP-7f3akq  p1  bug    Login retries drop the second attempt  dana
+  APP-40b1cc  p2  epic   Make sign-up reliable                  dana · 5 children
+  APP-5wq7dn  p3  chore  Publish a status page                  sam</code></pre></div>
 <h2 id="awaiting-triage">Awaiting triage</h2>
 <p>The folder exists on a branch and has never reached trunk. This is the status a tracker with a database cannot express at all: the issue has been <em>reported</em>, in a pull request somebody has to review, and it is not yet part of the repository&#39;s account of itself.</p>
 <p>It is also why <code>isu new</code> writes onto <code>report/&lt;id&gt;</code> rather than into your working tree. A report is a proposal like any other, and it goes through the same review as a code change.</p>
@@ -119,7 +119,7 @@ open (4)
 <li><strong>contended</strong> — two branches claiming the same issue. That is a warning and not a failure:</li>
 </ul>
 <p>two people about to do the same work is worth saying and is not a reason to refuse a pull request.</p>
-<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu show APP-9cx2rt
+<div class="scroller ran" tabindex="0" role="group" aria-label="terminal output"><pre><code>$ isu show APP-9cx2rt
 APP-9cx2rt  Show the sign-up queue on the board
 
   status      in progress
@@ -135,13 +135,13 @@ APP-9cx2rt  Show the sign-up queue on the board
 
   claimed by Priya Raman on refs/heads/isu/APP-9cx2rt, 2026-04-14T04:15:00Z
 
-remote refs 3h ago</code></pre></div>
+remote refs 1h ago</code></pre></div>
 <h2 id="reopened">Reopened</h2>
 <p>Trunk says <code>open</code> now, and some earlier trunk commit said <code>resolved</code>. That is read from file content at trunk commits rather than from commit messages, because a squash merge collapses authorship and does not touch the file.</p>
 <p>A deletion in between does not break the chain. Issues are files, so somebody can <code>git rm</code> a folder and commit it — there is no command for that, but nothing prevents it either — and an id can come back afterwards, whether by reverting that commit or by re-running an import. An id is permanent from creation, so the same id is the same issue, and trunk did resolve it once.</p>
 <h2 id="epics">Epics</h2>
 <p>An issue of <code>type: epic</code> takes its status from a fold over its children: all terminal means resolved, unless all are dropped, which means dropped; anything else is open. An epic with no children is a <a href="checks.html">check failure</a> rather than a status, because a fold over nothing has no honest answer.</p>
-<div class="scroller ran" tabindex="0" role="region" aria-label="terminal output"><pre><code>$ isu show APP-40b1cc
+<div class="scroller ran" tabindex="0" role="group" aria-label="terminal output"><pre><code>$ isu show APP-40b1cc
 APP-40b1cc  Make sign-up reliable
 
   status    open
@@ -156,11 +156,11 @@ children
   APP-7f3akq  open             Login retries drop the second attempt
   APP-9cx2rt  in progress      Show the sign-up queue on the board
   APP-x4h7vb  done             What does a failed payment cost us?
-  APP-b5n3kt  open             Send a receipt after the first invoice
+  APP-b5n3kt  done             Send a receipt after the first invoice
 
 Everything between the landing page and the first invoice.
 
-remote refs 3h ago</code></pre></div>
+remote refs 1h ago</code></pre></div>
 <h2 id="freshness">Freshness</h2>
 <p>Every derived status is a statement about refs, so a board computed from a week-old fetch is a board about last week — and two engineers with different fetch ages see different contention. Every board and every <code>isu show</code> therefore ends with how old the newest remote-tracking ref is, and says <code>run with --fetch</code> once that passes <code>fetch_warn_hours</code>.</p>
 

@@ -1,6 +1,6 @@
 # Getting started
 
-From an empty repository to a merged fix, with nothing installed but `isu` and the `git` it
+From an empty repository to a claimed issue, with nothing installed but `isu` and the `git` it
 shells out to. Every `$ ` command on this page is run against a repository the site's build
 creates from scratch, and the lines under it are what it printed.
 
@@ -85,6 +85,16 @@ nothing is ready: everything open is blocked, claimed or untriaged
 
 Four commands carry an issue from the queue to trunk. Replace `<id>` with the id `isu new`
 printed.
+
+This block is the one place on the site that shows commands without running them, and it is
+worth saying why rather than leaving a reader to wonder. `isu claim` writes a random
+`Isu-Claim:` nonce, so its commit id differs on every run; the board after it reads
+`remote refs just now`, which is a wall clock; and the claimant it prints is whoever `git` is
+configured as on the machine that built the page. A page whose bytes have to be identical on
+every machine cannot quote any of those three, and inventing them is the one thing this site
+does not do. What the loop looks like when it closes is [on the front
+page](../index.html#claims), against the sample repository, where the clock and the identities
+are fixed: the same command on two claims one merge apart, `in progress` and then `done`.
 
 ```sh
 isu triage <id> --owner dana --priority p1   # who is answerable, and how urgent

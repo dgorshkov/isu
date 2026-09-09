@@ -12,7 +12,35 @@
 #
 # Netlify serves web/site/404.html for a path that is not there, and
 # web/site/sitemap.xml and robots.txt from the root, because they are in the
-# published directory. Nothing else needs saying.
+# published directory.
 
 [build]
 	publish = "web/site"
+
+# Publish the bytes in web/site and not a rewriting of them.
+#
+# This file used to end "nothing else needs saying", and something did. Netlify's
+# Pretty URLs post-processing was on by default, and every deploy preview served
+# an index.html 46 bytes shorter than the committed one: every internal href
+# rewritten from `docs/json.html` to `/docs/json`, and every attribute requoted
+# from " to '. site.css and og.png came through untouched; only HTML was changed.
+#
+# Three things were wrong with that, and the third is the one that matters.
+#
+#   - This file exists to keep publishing reviewable in the diff, and a dashboard
+#     form was rewriting every link on every page from outside it.
+#   - internal/site/render.go claims every URL but the canonical one is relative,
+#     so the site works from a file:// checkout, a preview at a URL nobody chose,
+#     and a domain of its own without being rebuilt. The committed artifact has
+#     that property. What was being served did not.
+#   - Twelve gates run inside Build, over the bytes in web/site — links, HTML
+#     validity, weight, contrast, focus, the lot. Not one of them had ever seen a
+#     byte a reader was served. gateLinks proved `docs/json.html` resolves; the
+#     reader got `/docs/json`.
+#
+# skip_processing turns off all of it — pretty URLs, minification, bundling,
+# image compression — so what is deployed is what `make site` wrote and what CI
+# diffed. scripts/site_test.go asserts this block is here, which is as far as a
+# test in this repository can follow the bytes.
+[build.processing]
+	skip_processing = true

@@ -28,11 +28,10 @@ What has to be proved, in order:
 |---|---|---|
 | 1 | it exists and it runs | terminal output, above the fold |
 | 2 | the central claim is real — status is derived, not stored | a board with six derived statuses on it |
-| 3 | it is safe with more than one person | a claim, and what happens when two people want the same issue |
-| 4 | the loop closes — state moves because git moved | the same issue, read from trunk and read from the branch that resolves it |
-| 5 | it holds a team to something | a check failing on a branch, with a reason |
-| 6 | it is built for agents as well as people | one JSON object per line |
-| 7 | it knows what it is not | the out-of-scope page, linked, not hidden |
+| 3 | it is safe with more than one person, and the loop closes | two claims one merge apart: `in progress`, then `done` |
+| 4 | it holds a team to something | a check failing on a branch, with a reason |
+| 5 | it is built for agents as well as people | one JSON object per line |
+| 6 | it knows what it is not | the out-of-scope page, linked, not hidden |
 
 Nothing about roadmaps, nothing about philosophy, no testimonial, no logo wall. There is
 nobody to quote yet, and a page that pretends otherwise fails the thirty-second test on the
@@ -42,8 +41,8 @@ first pretence.
 
 ### 1. Status is derived, never stored
 <!-- id: derived -->
-**Claim.** Every status on this board was computed, just now, from what trunk and the branches
-say — there is no status field anywhere in the repository.
+**Claim.** Every status on the board above was computed, just now, from what trunk and the
+branches say — there is no status field anywhere in the repository.
 **Proof.** `isu board` against the sample repository.
 
 An issue is [a folder with a `README.md` in it](docs/data-model.html). The file says
@@ -58,11 +57,12 @@ nobody has merged it — and it stops being true the moment the report merges.
 
 ```console
 $ isu board
-main · 9 issues · remote refs 3h ago
+main · 9 issues · remote refs 1h ago
 
-done (2)
-  APP-x4h7vb  p2  spike  What does a failed payment cost us?  dana
-  APP-2mdz8k  p3  chore  Upgrade the linter                   sam
+done (3)
+  APP-x4h7vb  p2  spike  What does a failed payment cost us?     dana
+  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
+  APP-2mdz8k  p3  chore  Upgrade the linter                      sam
 
 dropped (1)
   APP-8ptr5s  p2  chore  Rewrite the CSS in another framework  sam
@@ -73,18 +73,18 @@ awaiting triage (1)
 in progress (1)
   APP-9cx2rt  p2  story  Show the sign-up queue on the board  priya · claimed by Priya Raman
 
-open (4)
-  APP-7f3akq  p1  bug    Login retries drop the second attempt   dana
-  APP-40b1cc  p2  epic   Make sign-up reliable                   dana · 5 children
-  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
-  APP-5wq7dn  p3  chore  Publish a status page                   sam
+open (3)
+  APP-7f3akq  p1  bug    Login retries drop the second attempt  dana
+  APP-40b1cc  p2  epic   Make sign-up reliable                  dana · 5 children
+  APP-5wq7dn  p3  chore  Publish a status page                  sam
 ```
 
-### 2. A claim is a branch, and the push is the lock
+### 2. A claim is a branch, and merging is what makes it true
 <!-- id: claims -->
 **Claim.** Two people cannot both take the same issue, and nothing had to be locked to make
-that true.
-**Proof.** `isu show` on a claimed issue.
+that true. When the work lands, nobody has to be told: the same command, on two claims one
+merge apart, says `in progress` and then `done`.
+**Proof.** `isu show`, twice, with no flag on either.
 
 `isu claim` creates `isu/<id>`, writes `state: resolved` into the issue, commits with a random
 `Isu-Claim:` trailer and pushes — before any work starts, so whoever loses the race has wasted
@@ -92,8 +92,26 @@ nothing. The push *is* the compare-and-swap: the trailer makes two claimants' co
 objects, so the second push is not a fast-forward and git refuses it.
 
 Saying `resolved` before the work is done is deliberate. A branch is a proposal, not a fact;
-trunk is where state is true. Until the branch merges, the only thing that reads it is a board
-that renders it as `in progress`, with the claimant and the age of the claim beside it.
+trunk is where state is true. Until the branch merges, what reads that proposal is a board that
+renders it as `in progress`, with the claimant and the age of the claim beside it.
+
+**One half of that is not true across a team yet, and this is a better place to read it than
+page seven.** The lock is real: two claimants write two different commits, so the second push is
+refused and nobody does the work twice. The *warning* is not. `isu board` reads trunk and every
+local branch, and a colleague's claim arrives as `refs/remotes/origin/isu/<id>`, which the board
+does not read at all — so their claim is invisible to you, and yours to them, until one of them
+merges. [What running isu against real repositories found](docs/field-notes.html) has it written
+down with the measurement beside it: reading remote-tracking refs too is one line in the ref
+pattern and cost 3.4 s over react's 967 refs, and it wants a story of its own rather than a
+patch, because a claimant's board would otherwise read their own claim as contending with
+itself.
+
+The second card is the same shape of branch, one merge later. Nothing in that issue's file
+changed between the two: `state: resolved` was written once, by `isu claim`, before any of the
+work started, and it never changed again. What changed is which commit `main` points at. So
+there is no transition for anybody to perform — a tracker with a database has to be told the
+work is finished, by a person who remembers, some time after the merge, and the gap between
+those two moments is where every stale board comes from. Here the merge *is* the telling.
 
 ```console
 $ isu show APP-9cx2rt
@@ -112,45 +130,26 @@ APP-9cx2rt  Show the sign-up queue on the board
 
   claimed by Priya Raman on refs/heads/isu/APP-9cx2rt, 2026-04-14T04:15:00Z
 
-remote refs 3h ago
-```
-
-### 3. Merging is the state change
-<!-- id: merge -->
-**Claim.** The same issue, in the same repository, with nothing edited: `in progress` when
-trunk is `main`, `done` when trunk is the branch that resolves it.
-**Proof.** `isu show` again, one flag different.
-
-Nothing in the file changed between this card and the one above it. `state: resolved` was
-already written, by `isu claim`, before any of the work started. The only difference is which
-ref isu was told to treat as trunk — and putting a commit into that ref is the whole of what
-merging does.
-
-So there is no transition for anybody to perform. A tracker with a database has to be told the
-work is finished, by a person who remembers, some time after the merge; the gap between those
-two moments is where every stale board comes from. Here the merge *is* the telling, and a board
-built a second later says so without being asked.
-
-```console
-$ isu show APP-9cx2rt --ref isu/APP-9cx2rt
-APP-9cx2rt  Show the sign-up queue on the board
+remote refs 1h ago
+$ isu show APP-b5n3kt
+APP-b5n3kt  Send a receipt after the first invoice
 
   status      done
   type        story
   state       resolved
   owner       priya
-  created     2026-02-21
+  created     2026-03-05
   priority    p2
-  acceptance  the board shows queue depth and the oldest waiting account
+  acceptance  a paid invoice sends one receipt, and only one
   parent      APP-40b1cc  Make sign-up reliable (open)
-  branches    refs/heads/main
+  branches    refs/heads/isu/APP-9cx2rt
               refs/heads/report/firefox-500
-  trunk       isu/APP-9cx2rt
+  trunk       main
 
-remote refs 3h ago
+remote refs 1h ago
 ```
 
-### 4. The rules read the diff, not your memory
+### 3. The rules read the diff, not your memory
 <!-- id: checks -->
 **Claim.** `isu check` fails a branch that says it fixed something and changed nothing else.
 **Proof.** `isu check` on the claiming branch above, which is exactly that branch.
@@ -165,12 +164,12 @@ them apart is the diff, so that is what the rule reads.
 
 ```console exit=1
 $ isu check
-main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
+main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 1h ago
 
 fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution
 ```
 
-### 5. Half of what reads this is an agent
+### 4. Half of what reads this is an agent
 <!-- id: json -->
 **Claim.** Every command speaks newline-delimited JSON, and the shape is a contract rather
 than a rendering.
@@ -189,10 +188,9 @@ Fields are added and never repurposed. What that shape means, field by field, is
 ```console
 $ isu ready
 {"id":"APP-7f3akq","title":"Login retries drop the second attempt","type":"bug","state":"open","status":"open","owner":"dana","created":"2026-02-21","priority":"p1","parent":"APP-40b1cc","blocked_by":[],"repro":"sign in, fail once, retry within 5s","acceptance":"","question":"","reason":"","resolution":"","on_trunk":true,"reopened":false,"contended":false,"stale":false,"claims":[],"elsewhere":[],"epic":null,"broken":null}
-{"id":"APP-b5n3kt","title":"Send a receipt after the first invoice","type":"story","state":"open","status":"open","owner":"priya","created":"2026-03-05","priority":"p2","parent":"APP-40b1cc","blocked_by":[],"repro":"","acceptance":"a paid invoice sends one receipt, and only one","question":"","reason":"","resolution":"","on_trunk":true,"reopened":false,"contended":false,"stale":false,"claims":[],"elsewhere":[],"epic":null,"broken":null}
 ```
 
-### 6. What it deliberately does not do
+### 5. What it deliberately does not do
 <!-- id: limits -->
 **Claim.** There is no web UI, no sync, no sprints, and the import is one-way — and each of
 those is a decision with a reason written down.
@@ -204,7 +202,7 @@ buried: no `isu serve`, no bidirectional sync with anything, no story points, no
 issues, and sub-issue hierarchies recorded losslessly rather than flattened into a shape that
 would misrepresent them.
 
-### 7. Start here
+### 6. Start here
 <!-- id: start -->
 **Claim.** Two commands, and the second one is the whole product.
 **Proof.** No terminal output. The page has spent five cards earning this; the closer is a
@@ -269,9 +267,13 @@ together is computed from these values at build time and held to WCAG AA — whi
 | `--signal` | `#b4451f` | `#f0894f` | links, the install box, the caret, the one accent |
 | `--terminal` | `#1b1917` | `#0c0b0a` | the ground of every proof card |
 
-`--terminal-ink` and `--glow` are the two foregrounds that go on `--terminal`, and they do not
-change between schemes: a terminal is dark in both, so making it lighter in dark mode would be
-a decision about nothing.
+`--terminal-ink` and `--glow` are the two foregrounds that go on `--terminal`. `--glow` is the
+same value in both schemes, because a terminal is dark in both and making the accent on it
+lighter in dark mode would be a decision about nothing; `--terminal-ink` follows `--ink` down by
+one step, so the card's body and the page's body match. This paragraph said neither of them
+changed, which was the third false claim this document has made about the stylesheet beside it —
+the first two are why `TokensAgree` exists, and it gates the table above and not the prose under
+it.
 
 ### Type
 

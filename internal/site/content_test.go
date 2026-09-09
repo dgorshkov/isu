@@ -57,14 +57,14 @@ func TestParsePlanReadsThePageAndNothingElse(t *testing.T) {
 	require.Equal(t, "A claim that wraps onto a second line.", first.Claim)
 	require.Equal(t, []string{"A paragraph that wraps.", "Another paragraph."}, first.Copy,
 		"the proof is editorial and does not reach the page")
-	require.NotNil(t, first.Sample)
-	require.Equal(t, "isu board", first.Sample.String())
-	require.Equal(t, "main\n", first.Sample.Want)
+	require.Len(t, first.Samples, 1)
+	require.Equal(t, "isu board", first.Samples[0].String())
+	require.Equal(t, "main\n", first.Samples[0].Want)
 
 	second := got.Sections[1]
 	require.Equal(t, "Second section", second.Title, "a heading with no ordinal keeps its words")
 	require.Empty(t, second.ID)
-	require.Nil(t, second.Sample,
+	require.Empty(t, second.Samples,
 		"a console block after the page is not one of the page's samples")
 
 	for key, want := range map[string]string{

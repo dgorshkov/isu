@@ -166,6 +166,26 @@ button:focus-visible {
 	outline-offset: 2px;
 }
 
+/* The other half of WCAG 2.1.1's neighbour, 2.4.7 Focus Visible.
+ *
+ * M8-S2 made every scrolling box reachable with a tabindex and stopped there.
+ * The five cards on the landing page were then reachable and said nothing when
+ * they had focus: no rule here covered them, so they fell back to the browser's
+ * own outline, which is painted outside the border box — and `.proof` is
+ * `overflow: hidden`, which clipped it on three sides. Reachable and invisible.
+ *
+ * Inset, so nothing can clip it, and --glow on --terminal is 9.09:1. */
+.scroller:focus-visible,
+.install:focus-visible,
+.proof pre:focus-visible {
+	outline: 2px solid var(--signal);
+	outline-offset: -3px;
+}
+
+.proof pre:focus-visible {
+	outline-color: var(--glow);
+}
+
 /* ---- headings and prose ---- */
 
 h1,
@@ -259,15 +279,23 @@ blockquote {
 	display: inline-block;
 	overflow-x: auto;
 	max-width: 100%;
+
+	/* One tap or click selects the whole command and nothing else. There is no
+	 * copy button because there is no JavaScript, and selecting text by hand
+	 * inside a horizontally scrolling box on a touchscreen is among the least
+	 * reliable things a phone does. */
+	user-select: all;
 }
 
 .install::before {
 	content: "$ ";
 	color: var(--signal);
+	user-select: none;
 }
 
 .install::after {
 	content: "_";
+	user-select: none;
 	animation: blink 1.2s steps(1) infinite;
 }
 
@@ -288,6 +316,10 @@ blockquote {
  */
 
 .proof {
+	/* The card is dark in both schemes, so its scrollbar should be too. Without
+	 * this it inherits :root's `light dark` and a light scrollbar sits under a
+	 * black terminal. */
+	color-scheme: dark;
 	margin: 1.25rem 0 2.5rem;
 	border: 1px solid var(--rule);
 	border-radius: var(--radius);
@@ -367,12 +399,21 @@ blockquote {
 	font-size: var(--text-s);
 }
 
-/* A block that did not. Illustrative, placeholders in it, never executed —
- * so it gets a ground it cannot be mistaken for the other one on. */
+/* A block that did not. Illustrative, placeholders in it, never executed — so
+ * it gets a ground it cannot be mistaken for the other one on.
+ *
+ * It got a 1px --rule border, and --rule on --paper is 1.30:1: the positive
+ * signal that was supposed to replace the borrowed dark ground was not
+ * perceivable, so a sketch was a <pre> on paper and nothing else. --slate is
+ * 6.83:1 and carries the same weight as the claim rule on the landing page,
+ * which is the site's existing word for "this line is doing a job". */
 .scroller.sketch pre {
 	background: none;
 	color: var(--ink);
-	border: 1px solid var(--rule);
+	border: 0;
+	border-left: 3px solid var(--slate);
+	border-radius: 0;
+	padding-left: 1rem;
 }
 
 table {
@@ -512,6 +553,22 @@ th {
 		font-size: var(--text-m);
 	}
 
+	/* The install command is 53 cells wide. On a 390px phone `.install` has
+	 * 313px of inner width, so about 40% of the one command this page asks
+	 * anybody to run was off the right-hand edge, in a box that had to be
+	 * scrolled sideways by hand to read and by touch-drag to select. Wrapping
+	 * it costs a second line and shows the whole thing.
+	 *
+	 * gateWidth could not see this: it holds <pre> and <table> to a scrolling
+	 * box, and the install line is a <p>. "No page-level horizontal scroll" and
+	 * "readable on a phone" are not the same property, and this is where they
+	 * came apart. */
+	.install {
+		display: block;
+		overflow-x: visible;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
 }
 
 /* ---- motion ----

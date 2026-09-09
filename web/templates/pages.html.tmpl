@@ -26,7 +26,7 @@
 <a class="wordmark" href="{{.Home}}">isu</a>
 <span class="version">{{.Version}}</span>
 <nav aria-label="Sections">
-{{range .Nav}}<a href="{{.Href}}">{{.Text}}</a>
+{{range .Nav}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Text}}</a>
 {{end}}</nav>
 </div>
 </header>
@@ -57,7 +57,7 @@
 <section class="section" id="{{.ID}}">
 <h2>{{.Title}}</h2>
 {{if .Claim}}<p class="claim">{{.Claim}}</p>
-{{end}}{{with .Sample}}<div class="proof">
+{{end}}{{range .Samples}}<div class="proof">
 <p class="command">{{.Command}}</p>
 <pre tabindex="0" role="region" aria-label="output of {{.Command}}"><code>{{.Output}}</code></pre>
 </div>
@@ -79,6 +79,7 @@
 
 {{define "contents" -}}
 <h1>{{.Heading}}</h1>
+<p class="tagline">{{.Lede}}</p>
 <ul class="pages">
 {{range .Links}}<li><a href="{{.Href}}">{{.Text}}</a><span class="note">{{.Note}}</span></li>
 {{end}}</ul>

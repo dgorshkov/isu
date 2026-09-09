@@ -35,7 +35,7 @@ A clean repository says so and exits 0:
 
 ```console
 $ isu check --scope tree
-main ← isu/APP-9cx2rt · 7 checks · nothing to report · remote refs 3h ago
+main ← isu/APP-9cx2rt · 7 checks · nothing to report · remote refs 1h ago
 ```
 
 ## Evidence is the rule that makes a claim a claim
@@ -47,7 +47,7 @@ What separates them is not the field, which is identical, but the diff beside it
 
 ```console exit=1
 $ isu check
-main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
+main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 1h ago
 
 fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution
 ```

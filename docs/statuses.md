@@ -28,11 +28,12 @@ Here is all of it on one board:
 
 ```console
 $ isu board
-main · 9 issues · remote refs 3h ago
+main · 9 issues · remote refs 1h ago
 
-done (2)
-  APP-x4h7vb  p2  spike  What does a failed payment cost us?  dana
-  APP-2mdz8k  p3  chore  Upgrade the linter                   sam
+done (3)
+  APP-x4h7vb  p2  spike  What does a failed payment cost us?     dana
+  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
+  APP-2mdz8k  p3  chore  Upgrade the linter                      sam
 
 dropped (1)
   APP-8ptr5s  p2  chore  Rewrite the CSS in another framework  sam
@@ -43,11 +44,10 @@ awaiting triage (1)
 in progress (1)
   APP-9cx2rt  p2  story  Show the sign-up queue on the board  priya · claimed by Priya Raman
 
-open (4)
-  APP-7f3akq  p1  bug    Login retries drop the second attempt   dana
-  APP-40b1cc  p2  epic   Make sign-up reliable                   dana · 5 children
-  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
-  APP-5wq7dn  p3  chore  Publish a status page                   sam
+open (3)
+  APP-7f3akq  p1  bug    Login retries drop the second attempt  dana
+  APP-40b1cc  p2  epic   Make sign-up reliable                  dana · 5 children
+  APP-5wq7dn  p3  chore  Publish a status page                  sam
 ```
 
 ## Awaiting triage
@@ -100,7 +100,7 @@ APP-9cx2rt  Show the sign-up queue on the board
 
   claimed by Priya Raman on refs/heads/isu/APP-9cx2rt, 2026-04-14T04:15:00Z
 
-remote refs 3h ago
+remote refs 1h ago
 ```
 
 ## Reopened
@@ -137,11 +137,11 @@ children
   APP-7f3akq  open             Login retries drop the second attempt
   APP-9cx2rt  in progress      Show the sign-up queue on the board
   APP-x4h7vb  done             What does a failed payment cost us?
-  APP-b5n3kt  open             Send a receipt after the first invoice
+  APP-b5n3kt  done             Send a receipt after the first invoice
 
 Everything between the landing page and the first invoice.
 
-remote refs 3h ago
+remote refs 1h ago
 ```
 
 ## Freshness

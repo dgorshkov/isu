@@ -240,13 +240,32 @@ func (r *renderer) code() {
 	// tabindex, because a box that scrolls is a box a keyboard has to be able
 	// to reach — WCAG 2.1.1, and the defect the accessibility gate here missed
 	// in the element this whole site is built around.
+	//
+	// role="group" and not role="region", which is what the fix for that defect
+	// reached for. A labelled region is a landmark, and a landmark repeated
+	// eighteen times is not navigation, it is noise: docs/json.html announced
+	// sixteen landmarks all called "table". A group is announced on entry with
+	// its label and stays out of the landmark list, which is what these are.
+	//
+	// The label says which of the two kinds of block this is, because the
+	// distinction the last round drew in the stylesheet — dark means the binary
+	// wrote these bytes, light means nobody ran it — had never reached the
+	// accessibility tree at all. A sketch was announced as "terminal output".
 	r.out = append(r.out, `<div class="scroller `+kind+
-		`" tabindex="0" role="region" aria-label="terminal output"><pre><code>`+
+		`" tabindex="0" role="group" aria-label="`+blockLabel[kind]+`"><pre><code>`+
 		strings.Join(body, "\n")+"</code></pre></div>")
 
 	if kind == "ran" && !quoted(body) {
 		r.out = append(r.out, `<p class="unquoted">`+unquotedNote+`</p>`)
 	}
+}
+
+// blockLabel is how a screen reader is told which kind of block this is. The
+// stylesheet has said it in two grounds since M8-S2; this is the same sentence
+// said to somebody who cannot see either of them.
+var blockLabel = map[string]string{
+	"ran":    "terminal output",
+	"sketch": "example, not run",
 }
 
 // unquotedNote is what the site says about a command it ran and whose output it
@@ -286,7 +305,7 @@ func (r *renderer) table() error {
 	r.at += 2
 
 	out := []string{
-		`<div class="scroller" tabindex="0" role="region" aria-label="table">`,
+		`<div class="scroller" tabindex="0" role="group" aria-label="table">`,
 		"<table>", "<thead><tr>",
 	}
 	for _, cell := range head {

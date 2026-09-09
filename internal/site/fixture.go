@@ -363,6 +363,10 @@ const (
 // ClaimBranch is the branch the story sample is claimed on.
 const ClaimBranch = "isu/" + idQueue
 
+// ReceiptBranch is the branch that claimed and then resolved the receipt story.
+// It is still here after the merge, which is what a branch usually is.
+const ReceiptBranch = "isu/" + idReceipt
+
 // ReportBranch carries an issue that is not on trunk yet.
 const ReportBranch = "report/firefox-500"
 
@@ -411,12 +415,7 @@ func build(s *scratch) {
 			Type: issue.TypeChore, State: issue.StateOpen, Owner: "sam",
 			Created: day90(52),
 		}).
-		issueFile(&issue.Issue{
-			ID: idReceipt, Title: "Send a receipt after the first invoice",
-			Type: issue.TypeStory, State: issue.StateOpen, Owner: "priya",
-			Created: day90(40), Parent: idEpic,
-			Acceptance: "a paid invoice sends one receipt, and only one",
-		}).
+		issueFile(receiptIssue(issue.StateOpen)).
 		issueFile(&issue.Issue{
 			ID: idStatus, Title: "Publish a status page", Type: issue.TypeChore,
 			State: issue.StateOpen, Owner: "sam", Created: day90(40),
@@ -481,7 +480,41 @@ func build(s *scratch) {
 		}).
 		commit("report " + idReport)
 
+	// A claim that was worked and then landed on trunk. This is the loop the
+	// whole product describes, and the fixture did not contain one: every issue
+	// on the board was either finished before the samples start or still in
+	// flight, so the site could show four states and no transition between two
+	// of them.
+	//
+	// The branch is left where it is, because a branch outlives the squash that
+	// merged it, and trunk is what decides. So the same issue, with nothing
+	// edited and no flag on the second command, reads `in progress` at the
+	// commit before the merge and `done` at the one after it.
+	s.at(30 * time.Hour).as("Priya Raman <priya@example.invalid>").
+		checkout(Trunk).branch(ReceiptBranch).
+		issueFile(receiptIssue(issue.StateResolved)).
+		commit("claim " + idReceipt + "\n\nIsu-Claim: 91c4be07a2d5f318")
+
+	s.at(time.Hour).as("Priya Raman <priya@example.invalid>").
+		checkout(Trunk).
+		file("src/receipt.ts", "export const receipt = () => {};\n").
+		issueFile(receiptIssue(issue.StateResolved)).
+		commit("send one receipt per paid invoice\n\nIsu-Resolves: " + idReceipt)
+
 	s.publish().settle(ClaimBranch)
+}
+
+// receiptIssue is the story that gets claimed, worked and merged. It is written
+// once and stamped twice — onto the branch and onto trunk — because the only
+// thing that may differ between those two copies is the state, and a second
+// literal is a second place for the rest of it to drift.
+func receiptIssue(state issue.State) *issue.Issue {
+	return &issue.Issue{
+		ID: idReceipt, Title: "Send a receipt after the first invoice",
+		Type: issue.TypeStory, State: state, Owner: "priya",
+		Created: day90(40), Parent: idEpic,
+		Acceptance: "a paid invoice sends one receipt, and only one",
+	}
 }
 
 // day90 is a created date, as many days before Now as the caller says.

@@ -46,7 +46,7 @@ func TestTheContentPlanSaysWhatThePageNeeds(t *testing.T) {
 		require.NotEmptyf(t, section.Claim, "%q claims nothing", section.Title)
 		require.NotEmptyf(t, section.Copy, "%q is a heading with no copy", section.Title)
 
-		if section.Sample != nil {
+		if len(section.Samples) > 0 {
 			proofs++
 		}
 	}

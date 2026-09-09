@@ -42,9 +42,14 @@ type Section struct {
 	Claim string
 	// Copy is the body, one entry per paragraph, as inline markdown.
 	Copy []string
-	// Sample is the terminal block that proves the claim, or nil when the
-	// section proves itself with words.
-	Sample *Command
+	// Samples are the commands in the section's terminal block, in order, and
+	// empty when the section proves itself with words.
+	//
+	// A block carries more than one because a state machine is not proved by a
+	// snapshot of it. Section 3 shows one issue read at two commits, and until
+	// this was a slice the page could show four states and no transition between
+	// any two of them.
+	Samples []Command
 }
 
 // Plan is web/CONTENT.md, read.
@@ -154,11 +159,11 @@ func comments(doc string) map[string]string {
 	return out
 }
 
-// consoleSamples is the first command of each console block in a body, in
-// order, paired with what the plan claims it printed. The claim has already
-// been held to the product by Verify; here it is the sample the page shows.
-func consoleSamples(fences []fenced) []Command {
-	var out []Command
+// consoleSamples is every command of each console block in a body, in order,
+// paired with what the plan claims it printed. The claim has already been held
+// to the product by Verify; here it is the sample the page shows.
+func consoleSamples(fences []fenced) [][]Command {
+	var out [][]Command
 
 	for _, f := range fences {
 		if !isConsole(f.info) {
@@ -170,14 +175,14 @@ func consoleSamples(fences []fenced) []Command {
 			continue
 		}
 
-		out = append(out, block.Commands[0])
+		out = append(out, block.Commands)
 	}
 
 	return out
 }
 
 // sections splits the page body into its `###` sections.
-func sections(body string, samples []Command) []Section {
+func sections(body string, samples [][]Command) []Section {
 	var (
 		out     []Section
 		current *Section
@@ -226,9 +231,8 @@ func sections(body string, samples []Command) []Section {
 
 			inFence = !inFence
 			if !inFence && current != nil && used < len(samples) {
-				sample := samples[used]
+				current.Samples = samples[used]
 				used++
-				current.Sample = &sample
 			}
 		case inFence:
 		case strings.HasPrefix(line, "### "):

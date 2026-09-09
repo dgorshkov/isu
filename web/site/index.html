@@ -39,11 +39,12 @@
 <p class="requires">Needs Go 1.24 or newer, and git.</p>
 <div class="proof">
 <p class="command">isu board</p>
-<pre tabindex="0" role="region" aria-label="output of isu board"><code>main · 9 issues · remote refs 3h ago
+<pre tabindex="0" role="region" aria-label="output of isu board"><code>main · 9 issues · remote refs 1h ago
 
-done (2)
-  APP-x4h7vb  p2  spike  What does a failed payment cost us?  dana
-  APP-2mdz8k  p3  chore  Upgrade the linter                   sam
+done (3)
+  APP-x4h7vb  p2  spike  What does a failed payment cost us?     dana
+  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
+  APP-2mdz8k  p3  chore  Upgrade the linter                      sam
 
 dropped (1)
   APP-8ptr5s  p2  chore  Rewrite the CSS in another framework  sam
@@ -54,24 +55,23 @@ awaiting triage (1)
 in progress (1)
   APP-9cx2rt  p2  story  Show the sign-up queue on the board  priya · claimed by Priya Raman
 
-open (4)
-  APP-7f3akq  p1  bug    Login retries drop the second attempt   dana
-  APP-40b1cc  p2  epic   Make sign-up reliable                   dana · 5 children
-  APP-b5n3kt  p2  story  Send a receipt after the first invoice  priya
-  APP-5wq7dn  p3  chore  Publish a status page                   sam</code></pre>
+open (3)
+  APP-7f3akq  p1  bug    Login retries drop the second attempt  dana
+  APP-40b1cc  p2  epic   Make sign-up reliable                  dana · 5 children
+  APP-5wq7dn  p3  chore  Publish a status page                  sam</code></pre>
 </div>
 </div>
 
 <section class="section" id="derived">
 <h2>Status is derived, never stored</h2>
-<p class="claim">Every status on this board was computed, just now, from what trunk and the branches say — there is no status field anywhere in the repository.</p>
+<p class="claim">Every status on the board above was computed, just now, from what trunk and the branches say — there is no status field anywhere in the repository.</p>
 <p>An issue is <a href="docs/data-model.html">a folder with a <code>README.md</code> in it</a>. The file says <code>state: open</code>, <code>resolved</code> or <code>dropped</code>, and nothing else about where the work has got to. Everything the board groups by is <a href="docs/statuses.html">derived</a>: <code>done</code> because trunk says resolved, <code>in progress</code> because a branch says resolved where trunk says open, <code>awaiting triage</code> because the folder exists on a branch and has never reached trunk at all.</p>
 <p>That last one is worth stopping on. <code>awaiting triage</code> is not a column somebody has to remember to move a card out of. It is a fact about the repository — this issue has been reported and nobody has merged it — and it stops being true the moment the report merges.</p>
 </section>
 
 <section class="section" id="claims">
-<h2>A claim is a branch, and the push is the lock</h2>
-<p class="claim">Two people cannot both take the same issue, and nothing had to be locked to make that true.</p>
+<h2>A claim is a branch, and merging is what makes it true</h2>
+<p class="claim">Two people cannot both take the same issue, and nothing had to be locked to make that true. When the work lands, nobody has to be told: the same command, on two claims one merge apart, says <code>in progress</code> and then <code>done</code>.</p>
 <div class="proof">
 <p class="command">isu show APP-9cx2rt</p>
 <pre tabindex="0" role="region" aria-label="output of isu show APP-9cx2rt"><code>APP-9cx2rt  Show the sign-up queue on the board
@@ -89,35 +89,30 @@ open (4)
 
   claimed by Priya Raman on refs/heads/isu/APP-9cx2rt, 2026-04-14T04:15:00Z
 
-remote refs 3h ago</code></pre>
+remote refs 1h ago</code></pre>
 </div>
-<p><code>isu claim</code> creates <code>isu/&lt;id&gt;</code>, writes <code>state: resolved</code> into the issue, commits with a random <code>Isu-Claim:</code> trailer and pushes — before any work starts, so whoever loses the race has wasted nothing. The push <em>is</em> the compare-and-swap: the trailer makes two claimants&#39; commits different objects, so the second push is not a fast-forward and git refuses it.</p>
-<p>Saying <code>resolved</code> before the work is done is deliberate. A branch is a proposal, not a fact; trunk is where state is true. Until the branch merges, the only thing that reads it is a board that renders it as <code>in progress</code>, with the claimant and the age of the claim beside it.</p>
-</section>
-
-<section class="section" id="merge">
-<h2>Merging is the state change</h2>
-<p class="claim">The same issue, in the same repository, with nothing edited: <code>in progress</code> when trunk is <code>main</code>, <code>done</code> when trunk is the branch that resolves it.</p>
 <div class="proof">
-<p class="command">isu show APP-9cx2rt --ref isu/APP-9cx2rt</p>
-<pre tabindex="0" role="region" aria-label="output of isu show APP-9cx2rt --ref isu/APP-9cx2rt"><code>APP-9cx2rt  Show the sign-up queue on the board
+<p class="command">isu show APP-b5n3kt</p>
+<pre tabindex="0" role="region" aria-label="output of isu show APP-b5n3kt"><code>APP-b5n3kt  Send a receipt after the first invoice
 
   status      done
   type        story
   state       resolved
   owner       priya
-  created     2026-02-21
+  created     2026-03-05
   priority    p2
-  acceptance  the board shows queue depth and the oldest waiting account
+  acceptance  a paid invoice sends one receipt, and only one
   parent      APP-40b1cc  Make sign-up reliable (open)
-  branches    refs/heads/main
+  branches    refs/heads/isu/APP-9cx2rt
               refs/heads/report/firefox-500
-  trunk       isu/APP-9cx2rt
+  trunk       main
 
-remote refs 3h ago</code></pre>
+remote refs 1h ago</code></pre>
 </div>
-<p>Nothing in the file changed between this card and the one above it. <code>state: resolved</code> was already written, by <code>isu claim</code>, before any of the work started. The only difference is which ref isu was told to treat as trunk — and putting a commit into that ref is the whole of what merging does.</p>
-<p>So there is no transition for anybody to perform. A tracker with a database has to be told the work is finished, by a person who remembers, some time after the merge; the gap between those two moments is where every stale board comes from. Here the merge <em>is</em> the telling, and a board built a second later says so without being asked.</p>
+<p><code>isu claim</code> creates <code>isu/&lt;id&gt;</code>, writes <code>state: resolved</code> into the issue, commits with a random <code>Isu-Claim:</code> trailer and pushes — before any work starts, so whoever loses the race has wasted nothing. The push <em>is</em> the compare-and-swap: the trailer makes two claimants&#39; commits different objects, so the second push is not a fast-forward and git refuses it.</p>
+<p>Saying <code>resolved</code> before the work is done is deliberate. A branch is a proposal, not a fact; trunk is where state is true. Until the branch merges, what reads that proposal is a board that renders it as <code>in progress</code>, with the claimant and the age of the claim beside it.</p>
+<p><strong>One half of that is not true across a team yet, and this is a better place to read it than page seven.</strong> The lock is real: two claimants write two different commits, so the second push is refused and nobody does the work twice. The <em>warning</em> is not. <code>isu board</code> reads trunk and every local branch, and a colleague&#39;s claim arrives as <code>refs/remotes/origin/isu/&lt;id&gt;</code>, which the board does not read at all — so their claim is invisible to you, and yours to them, until one of them merges. <a href="docs/field-notes.html">What running isu against real repositories found</a> has it written down with the measurement beside it: reading remote-tracking refs too is one line in the ref pattern and cost 3.4 s over react&#39;s 967 refs, and it wants a story of its own rather than a patch, because a claimant&#39;s board would otherwise read their own claim as contending with itself.</p>
+<p>The second card is the same shape of branch, one merge later. Nothing in that issue&#39;s file changed between the two: <code>state: resolved</code> was written once, by <code>isu claim</code>, before any of the work started, and it never changed again. What changed is which commit <code>main</code> points at. So there is no transition for anybody to perform — a tracker with a database has to be told the work is finished, by a person who remembers, some time after the merge, and the gap between those two moments is where every stale board comes from. Here the merge <em>is</em> the telling.</p>
 </section>
 
 <section class="section" id="checks">
@@ -125,7 +120,7 @@ remote refs 3h ago</code></pre>
 <p class="claim"><code>isu check</code> fails a branch that says it fixed something and changed nothing else.</p>
 <div class="proof">
 <p class="command">isu check</p>
-<pre tabindex="0" role="region" aria-label="output of isu check"><code>main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 3h ago
+<pre tabindex="0" role="region" aria-label="output of isu check"><code>main ← isu/APP-9cx2rt · 9 checks · 1 failure · remote refs 1h ago
 
 fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outside issues/: a claim writes `state: resolved` and touches nothing else, so this is a claim and not a resolution</code></pre>
 </div>
@@ -138,8 +133,7 @@ fail  evidence  APP-9cx2rt  resolved on this branch, which changes nothing outsi
 <p class="claim">Every command speaks newline-delimited JSON, and the shape is a contract rather than a rendering.</p>
 <div class="proof">
 <p class="command">isu ready</p>
-<pre tabindex="0" role="region" aria-label="output of isu ready"><code>{&#34;id&#34;:&#34;APP-7f3akq&#34;,&#34;title&#34;:&#34;Login retries drop the second attempt&#34;,&#34;type&#34;:&#34;bug&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;open&#34;,&#34;owner&#34;:&#34;dana&#34;,&#34;created&#34;:&#34;2026-02-21&#34;,&#34;priority&#34;:&#34;p1&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;sign in, fail once, retry within 5s&#34;,&#34;acceptance&#34;:&#34;&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[],&#34;elsewhere&#34;:[],&#34;epic&#34;:null,&#34;broken&#34;:null}
-{&#34;id&#34;:&#34;APP-b5n3kt&#34;,&#34;title&#34;:&#34;Send a receipt after the first invoice&#34;,&#34;type&#34;:&#34;story&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;open&#34;,&#34;owner&#34;:&#34;priya&#34;,&#34;created&#34;:&#34;2026-03-05&#34;,&#34;priority&#34;:&#34;p2&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;&#34;,&#34;acceptance&#34;:&#34;a paid invoice sends one receipt, and only one&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[],&#34;elsewhere&#34;:[],&#34;epic&#34;:null,&#34;broken&#34;:null}</code></pre>
+<pre tabindex="0" role="region" aria-label="output of isu ready"><code>{&#34;id&#34;:&#34;APP-7f3akq&#34;,&#34;title&#34;:&#34;Login retries drop the second attempt&#34;,&#34;type&#34;:&#34;bug&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;open&#34;,&#34;owner&#34;:&#34;dana&#34;,&#34;created&#34;:&#34;2026-02-21&#34;,&#34;priority&#34;:&#34;p1&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;sign in, fail once, retry within 5s&#34;,&#34;acceptance&#34;:&#34;&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[],&#34;elsewhere&#34;:[],&#34;epic&#34;:null,&#34;broken&#34;:null}</code></pre>
 </div>
 <p><code>isu ready</code> is the queue: the issues nothing is blocking, most urgent first, one JSON object per line — so <code>isu ready | head -1</code> is the top of the queue and not an opening brace. JSON is what it prints by default, because the caller that reads it most often is not a person; <code>--json=false</code> is how you ask for the list a person reads. Every object carries the acceptance criteria or the repro, because an agent picking work up needs the briefing before it needs anything else.</p>
 <p>Fields are added and never repurposed. What that shape means, field by field, is <a href="docs/json.html">written down</a> and tested against the code that prints it.</p>
