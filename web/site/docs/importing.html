@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Importing from GitHub Issues — isu</title>
+<meta name="description" content="GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than an omission. Whoever is adopting isu is already in a git repository, that repository is almost always on GitHub, and GitHub answers for free — with no licence and no administrator — two questions Jira answers only through an integration somebody had to install: which pull request closed this issue, and what is this issue blocked by. It can also be read without credentials, which is what lets the importer be tested against real public repositories rather than against a fixture nobody can check.">
+<link rel="canonical" href="https://isu-website.netlify.app/docs/importing.html">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Importing from GitHub Issues — isu">
+<meta property="og:description" content="GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than an omission. Whoever is adopting isu is already in a git repository, that repository is almost always on GitHub, and GitHub answers for free — with no licence and no administrator — two questions Jira answers only through an integration somebody had to install: which pull request closed this issue, and what is this issue blocked by. It can also be read without credentials, which is what lets the importer be tested against real public repositories rather than against a fixture nobody can check.">
+<meta property="og:url" content="https://isu-website.netlify.app/docs/importing.html">
+<meta property="og:image" content="https://isu-website.netlify.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Importing from GitHub Issues — isu">
+<meta name="twitter:description" content="GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than an omission. Whoever is adopting isu is already in a git repository, that repository is almost always on GitHub, and GitHub answers for free — with no licence and no administrator — two questions Jira answers only through an integration somebody had to install: which pull request closed this issue, and what is this issue blocked by. It can also be read without credentials, which is what lets the importer be tested against real public repositories rather than against a fixture nobody can check.">
+<meta name="twitter:image" content="https://isu-website.netlify.app/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="../index.html">isu</a>
+<span class="version">0.1.0-dev</span>
+<nav aria-label="Sections">
+<a href="../docs/getting-started.html">Getting started</a>
+<a href="../docs/index.html">Docs</a>
+<a href="https://github.com/dgorshkov/isu">Source</a>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>Importing from GitHub Issues</h1>
+<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+<li><a href="#ids">Ids</a></li>
+<li><a href="#the-mapping">The mapping</a></li>
+<li><a href="#the-fields-the-schema-requires-and-github-does-not-have">The fields the schema requires and GitHub does not have</a></li>
+<li><a href="#attachments-are-recorded-not-downloaded">Attachments are recorded, not downloaded</a></li>
+<li><a href="#what-running-it-will-look-like">What running it will look like</a></li>
+<li><a href="#once-and-one-way">Once, and one way</a></li>
+</ul>
+</nav>
+<blockquote><p><strong>Not in this build.</strong> The importer is milestone 7 and has not been written yet. This page is the mapping it is specified to implement, published so that anybody weighing a migration can see exactly what would happen to their data before the code exists. No page on this site shows <code>isu import</code> running, because nothing would.</p></blockquote>
+<p>GitHub Issues is the one importer version 1.0.0 will ship, and that is a decision rather than an omission. Whoever is adopting isu is already in a git repository, that repository is almost always on GitHub, and GitHub answers for free — with no licence and no administrator — two questions Jira answers only through an integration somebody had to install: <strong>which pull request closed this issue</strong>, and <strong>what is this issue blocked by</strong>. It can also be read without credentials, which is what lets the importer be tested against real public repositories rather than against a fixture nobody can check.</p>
+<p>Jira and Linear are on the <a href="not-doing.html">out-of-scope list</a> as deferrals. The importer&#39;s source interface is the seam they arrive through.</p>
+<h2 id="ids">Ids</h2>
+<p>A GitHub key is <code>#1234</code>. It is repo-scoped, it shares its sequence with pull requests, and it is not a folder name — <code>#</code> and <code>/</code> are not in the id character set. So the key becomes <code>&lt;PREFIX&gt;-1234</code>, taking the prefix from <code>.isu.yml</code> and keeping the number, which is the half a human recognises and the half every link contains. <code>owner/repo#1234</code> and the issue&#39;s URL are recorded in <code>source.yml</code> beside the issue, so nothing about the source is lost.</p>
+<p>A key that is <em>already</em> a legal id is kept verbatim. <code>PROJ-1234</code> stays <code>PROJ-1234</code>, because the thing your team has been writing in commit messages for years should still be legible in the id.</p>
+<p>Milestones are numbered from their own sequence, so they take <code>&lt;PREFIX&gt;-M&lt;number&gt;</code>: <code>APP-M3</code> and <code>APP-3</code> are different issues and must not collide.</p>
+<h2 id="the-mapping">The mapping</h2>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>GitHub</th>
+<th>isu</th>
+<th>note</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>issue type, or a configured label map</td>
+<td><code>type</code></td>
+<td>Bug → <code>bug</code>, Feature → <code>story</code>, Task → <code>chore</code>; <code>chore</code> when neither answers</td>
+</tr>
+<tr>
+<td>milestone</td>
+<td>an epic, and the issue&#39;s <code>parent</code></td>
+<td>an issue belongs to at most one, so there is no collapse to design</td>
+</tr>
+<tr>
+<td><code>open</code></td>
+<td><code>state: open</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>closed</code>, <code>state_reason: completed</code> <strong>or absent</strong></td>
+<td><code>state: resolved</code></td>
+<td>the field only exists since 2022, and everything older is an ordinary closed issue</td>
+</tr>
+<tr>
+<td><code>closed</code>, <code>state_reason: not_planned</code></td>
+<td><code>state: dropped</code>, <code>resolution: wontfix</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>closed</code>, <code>state_reason: duplicate</code></td>
+<td><code>state: dropped</code>, <code>resolution: duplicate</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>reopened</code></td>
+<td><code>state: open</code></td>
+<td>isu derives reopening from trunk history and will not read it from a field it would then have to keep in sync</td>
+</tr>
+<tr>
+<td>issue dependencies</td>
+<td><code>blocked_by</code></td>
+<td>a blocker outside the import goes to <code>source.yml</code> rather than becoming an id that resolves to nothing</td>
+</tr>
+<tr>
+<td>first assignee, else <code>--owner</code></td>
+<td><code>owner</code></td>
+<td>the author is recorded in <code>source.yml</code> and is deliberately not the owner</td>
+</tr>
+<tr>
+<td>comments</td>
+<td><code>comments/&lt;date&gt;-&lt;author&gt;-&lt;nn&gt;.md</code></td>
+<td>the sequence is why three comments from one person on one day stay three files</td>
+</tr>
+<tr>
+<td>everything else</td>
+<td><code>source.yml</code></td>
+<td>issue fields, sub-issue trees, attachment links, the author, the milestone&#39;s own state</td>
+</tr>
+</tbody></table></div>
+<p><strong>Pull requests are not issues.</strong> The REST list returns both, and they are told apart by the <code>pull_request</code> key; dropping them is the first thing the importer does and the classic bug in every one that skips it.</p>
+<p><strong>A milestone with no imported children is not written at all</strong>, because an empty epic is a check failure — and <code>--state open</code> empties every milestone whose issues are all closed.</p>
+<p><strong>Sub-issues do not become <code>parent</code>.</strong> isu has one <code>parent</code>, it must name an epic, and the milestone is what it is spent on. A GitHub tree can be eight levels deep where an epic is one, so the hierarchy is written whole to <code>source.yml</code> and its depth and size are reported by the dry run. That is the largest thing version 1.0.0 knowingly declines to model, and recording it losslessly is what makes modelling it later a story rather than a re-import.</p>
+<h2 id="the-fields-the-schema-requires-and-github-does-not-have">The fields the schema requires and GitHub does not have</h2>
+<p><code>repro</code>, <code>acceptance</code> and <code>question</code> are required by type, GitHub supplies none of them, and a naive import would write thousands of files that fail validation on the first <code>isu check</code>. Each is written as a provenance line — <code>repro: imported from owner/repo#1234; see the body</code> — and the dry run counts them, so nobody mistakes archaeology for content.</p>
+<p>The rejected alternative was to call everything a <code>chore</code>, which validates trivially and throws away the bug/story distinction across the entire history in one move.</p>
+<h2 id="attachments-are-recorded-not-downloaded">Attachments are recorded, not downloaded</h2>
+<p>A GitHub attachment is a <code>github.com/user-attachments/assets/…</code> link inside the markdown. On a private repository it cannot be fetched with a personal access token or a GitHub App token at all: the asset wants a browser session. An importer whose completeness depends on winning that race is one that half-works on exactly the repositories people most want migrated — so the links stay in the body byte for byte, they are listed in <code>source.yml</code>, and the dry run says how many there are.</p>
+<h2 id="what-running-it-will-look-like">What running it will look like</h2>
+<p>A dry run is the default and writing requires <code>--write</code>. The dry run reports counts, coverage and samples without touching the repository: how many issues, how many types it could not place, how many owners it could not find, how many provenance lines it had to write, how many attachment links it recorded, and what the API budget cost.</p>
+<p>Two things are also recovered from history for issues that predate isu: which commit resolved each one, at three tiers of evidence — a key in a commit message, a key in a merge commit&#39;s branch name, a key in a squash subject — and, better than all three, <code>closedByPullRequestsReferences</code>, which GitHub already stores and which arrives with the issue.</p>
+<p>Every tier match is checked against the set of numbers actually being imported and discarded when it is not one of them, because <code>#456</code> in a squash subject almost always names a pull request and <code>#1234</code> turns up in prose about nothing at all.</p>
+<h2 id="once-and-one-way">Once, and one way</h2>
+<p>Import is one-way and one-time by design. There is no bidirectional sync with anything, and there will not be: two systems that both believe they own the state are two systems that disagree at three in the morning.</p>
+
+
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>Every sample on this site was produced by running isu against a repository the site&#39;s build creates from scratch. Apache-2.0.</p>
+</div>
+</footer>
+</body>
+</html>

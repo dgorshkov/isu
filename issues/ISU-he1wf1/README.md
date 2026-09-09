@@ -3,7 +3,7 @@ schema: 1
 id: ISU-he1wf1
 title: M8-S1 · Content plan and information architecture
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2

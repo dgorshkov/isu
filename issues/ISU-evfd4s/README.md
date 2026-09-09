@@ -3,7 +3,7 @@ schema: 1
 id: ISU-evfd4s
 title: M8-S3 · Docs, gates and deploy
 type: story
-state: open
+state: resolved
 owner: dmitry
 created: 2026-09-01
 priority: p2

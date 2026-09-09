@@ -480,7 +480,7 @@ Ten milestones. Stop for review at the end of each.
 | M5 | Checks | `isu check`, hooks, GitHub Actions, dogfooding | done |
 | M6 | TUI | `isu ui` | done |
 | M7 | Importers | safe writes, GitHub Issues | not started |
-| M8 | Public website | content, landing page, docs, deploy | not started |
+| M8 | Public website | content, landing page, docs, deploy | done |
 | M9 | Release | goreleaser, brew, docs, v1.0.0 | not started |
 
 ### Sizing
@@ -1945,7 +1945,20 @@ produces a zero-length diff.
 
 ---
 
-# M8 · Public website
+# M8 · Public website ✅
+
+**Status** done — all three stories landed in one pull request. §0's grouping rule allows it:
+they are neighbours here, they belong to one milestone, and they share one subject — the branch
+would have been `isu/M8-S1-S3-website`, and this work was done on `claude/milestone-8-fafh5y`,
+which the session that produced it was told to use. The story ids are in every commit subject.
+
+**This milestone was taken before M7, and M7 is written rather than absent.** That was the
+instruction and it is recorded here rather than smoothed over: `issues/ISU-he1wf1` is
+`blocked_by` the M7 epic and was resolved with that blocker open. M7 exists as #15, open against
+the same base as this milestone and not merged, so trunk has no importer while this lands and
+`docs/importing.md` says so in its first paragraph. Nothing on the site depended on the importer
+existing. What the ordering costs is written under M8-S3: one page of documentation that goes
+stale the moment #15 merges, and a conflict in this file when it does.
 
 The site is designed and built from scratch in this milestone. There is no approved comp to
 port — treat M8-S1 as real design work with a written brief, not as implementation.
@@ -1957,7 +1970,37 @@ product changes and the site doesn't, the build fails.
 Three stories, not seven. The site sells v1.0.0; it does not gate it, and every week spent here
 is a week the thing it advertises is not shipping.
 
-### M8-S1 · Content plan and information architecture
+**The samples run in process rather than through the built binary, and that is the same
+decision M2-S1 made.** A generator that shelled out to `./isu` would be a second place in
+`internal/` that constructs a command, which `TestNothingOutsideGitxExecutesGit` exists to
+prevent, and it would be a generator that could be pointed at a stale binary. `cli.Run` takes
+its streams, its directory, its clock and its environment as arguments — M4-S1 built it that
+way so the tests would be end to end through the product — so `internal/site` calls the same
+function `cmd/isu` calls, with a fixed clock. "This repo's binary" and "this repo's code" are
+the same thing said twice, and only one of them can go stale.
+
+**`make site` is `go test -update`, not a generator of its own.** The site is a golden file like
+every other artifact here: `make site` writes `web/site/` and `make test` fails when the
+committed site and the regenerated one differ. A separate `cmd/` would have added a `main`
+nobody covers against a floor with nine statements of headroom, and running the package's tests
+is what executes the docs' console blocks before anything is published rather than after.
+
+### M8-S1 · Content plan and information architecture ✅
+**Done** #21, 2026-09-09. `web/CONTENT.md` is not a brief the page was built *from* — it is the
+page. `internal/site/content.go` parses the section sequence, the claim, the copy and the sample
+out of it, and the template carries structure and not one word, because a template with a
+sentence in it is a second place the site's copy lives.
+
+**The executable-documentation harness is this story's, and M8-S3 reuses it.** A ```console
+fence is run; a `$ ` prompt anywhere else — loose in the prose, or in an `sh` fence — fails the
+extraction, because a transcript nothing runs is exactly the thing that rots. A command must
+begin with `isu`, so a document cannot ask the harness to run something else.
+
+**The build found one defect in `isu init`, and it is not fixed here.** `reportWrite` falls back
+to the path list for its headline when there is no issue id, and then prints the same list
+underneath — so `isu init` names its three files twice. It is on the site, in
+`docs/getting-started.md`, exactly as the command prints it. Fixing it changes M4's output and
+its golden files, which is M9-S3's business or a story of its own, not a website's.
 **Branch** `isu/M8-S1-content-plan`
 **Why** The page has one job: an engineer decides in thirty seconds whether this is a toy.
 Decide what must be proved, and in what order, before anything is designed.
@@ -1971,7 +2014,129 @@ and produces the output the document claims.
 **Done when** someone who has never seen the project can read `CONTENT.md` and say in one
 sentence what isu does and who it is for.
 
-### M8-S2 · Landing page
+### M8-S2 · Landing page ✅
+**Done** #21, 2026-09-09. Seven sections, five of them a claim above a card containing bytes isu
+wrote. The card is the signature element: a header bar with the command and a body with the
+output, and nothing in between for a designer to embellish.
+
+**"Fonts self-hosted and subset" was answered by shipping no font at all**, and that is the one
+place this story's brief was met differently from how it was written. The strongest available
+form of "no third-party font CDN" is to have nothing to fetch: prose is set in the reader's own
+UI face and terminal output in their own monospace, so there is no subsetting step, no swap on
+first paint, and the third-party-request gate passes because there is nothing that could fail
+it. If a brand face is wanted later it is a stylesheet change and a file, not a redesign.
+
+**The contrast gate earned its place on the day it was written.** `--signal` on `--terminal` is
+3.18:1 and looks perfectly fine; the terminal card's command line uses `--glow` at 9.09:1
+because a computed number said so and an eye did not.
+
+**The page was read back three times by a hostile reader, and each pass found something the
+gates could not.** They are recorded here because the pattern is the point: every round turned
+up at least one place where the site *said* something that was not mechanically true, on a site
+whose whole argument is that it never does.
+
+- Round one: section 5 said the out-of-scope page "is linked from here" and carried no anchor;
+  a `sh` block with placeholder ids in it was borrowing the dark ground that means "the binary
+  wrote these bytes"; the copy recommended `isu ready --json | head -1` beside a card proving
+  the flag is a no-op; and the type scale's comment contradicted its own six ratios. `gateProse`
+  and the `ran`/`sketch` grounds came out of it.
+- Round two: twelve scrolling regions across the site and not one `tabindex` — WCAG 2.1.1, in
+  the element this site is built around. `gateFocus` reads the stylesheet rather than a list of
+  element names, and **a scrolling selector it cannot evaluate fails the build**, because the
+  bug was not the missing rule but that the gate did not know what it was not checking.
+- Round three: the share card was 1200×630 of dark ground with a logo on it and no argument,
+  which is the one asset that reaches a reader before the page does. The page's only call to
+  action was a command with two `aria-hidden` spans round it, so selecting and pasting it gave
+  `$ go install …@latest_` — `aria-hidden` hides a string from a screen reader and not from a
+  clipboard. Four of six sections named a documentation page and did not link it. And the middle
+  verb of the headline was the one the page never demonstrated.
+
+What each of those produced is in the diff: a card that sets the tagline out of `CONTENT.md`, a
+prompt and caret drawn by the stylesheet with `gateDecoration` refusing text inside anything
+`aria-hidden`, five links where there were two, and a section that shows the loop closing rather
+than four snapshots of a state machine.
+
+**A fourth read found the one place the front page and this repository's own evidence
+disagreed.** Section 2 said "two people cannot both take the same issue" while
+`docs/field-notes.md` says, in as many words, that the board reads local refs only and a
+colleague's claim is therefore invisible. Both are true — the *lock* holds, because the second
+push is refused; the *warning* does not — and the landing page was making the multiplayer claim
+without the carve-out, on the one page of eight it did not link. The carve-out is in section 2
+now, with the link, which is the move section 5 already makes with `not-doing` and gets credit
+for.
+
+**A section carries a sequence of samples rather than one.** `Section.Samples` is a slice because
+a state machine is not proved by a snapshot of it: the merge is now the same command on two
+claims one merge apart, `in progress` and then `done`, with no flag on either. Getting there
+needed a fixture that contains a completed loop, which it did not — every issue in it was either
+finished before the samples start or still in flight — so `APP-b5n3kt` is claimed on a branch and
+then squashed onto trunk, and the branch is left standing because that is what happens to
+branches.
+
+**`--ref <an ancestor of trunk>` is not a way to show a merge, and that is a product
+observation.** Reading the fixture at `main~1` reports `in progress (contended)` with two
+claimants, because `refs/heads/main` is a ref that proposes `resolved` and the contention rule
+counts it. It is correct and it is unreadable on a landing page, which is why the two cards are
+flagless. M3's contention rule deciding that trunk-ahead-of-the-ref is not a rival claimant is a
+story of its own.
+
+**The tutorial cannot quote a claim, and now says so instead of ending in a sketch nobody
+explains.** `isu claim` writes a random `Isu-Claim:` nonce, so the commit id differs every run;
+the board after it reads `remote refs just now`; and the claimant it prints is whoever `git` is
+configured as on the machine that built the page — `claimed by Claude`, on the run that found
+this. A page whose bytes must be identical on every machine can quote none of those three, so
+`docs/getting-started.md` names the reason and sends the reader to the front page, where the
+clock and the identities are fixed. Its lede promised "a merged fix" and now promises what it
+delivers.
+
+**Accessibility, twice over.** The fix that made every scrolling box reachable gave each one
+`role="region"`, which makes it a *landmark*: `docs/json.html` announced sixteen landmarks all
+called "table". They are `role="group"` now — reachable, labelled on entry, out of the landmark
+list — and a block that did not run says "example, not run" rather than "terminal output", which
+is the distinction the stylesheet had been drawing since the round before and the accessibility
+tree had never heard of. And the five cards on the landing page were reachable while announcing
+nothing on focus: no rule covered `.proof pre`, so it fell back to the browser's outline, which
+`.proof`'s own `overflow: hidden` clipped on three sides. The ring is inset now, in `--glow`,
+which is 9.09:1 on the terminal ground.
+
+**The install line was 40% off the right-hand edge of a phone.** `gateWidth` could not see it:
+that gate holds `<pre>` and `<table>` to a scrolling box, and the install line is a `<p>`, so
+"no page-level horizontal scroll" and "readable on a phone" came apart exactly where the page
+asks somebody to type something. It wraps under 30rem and `user-select: all` makes one tap take
+the command and neither pseudo-element — verified in Chromium, along with the focus ring and the
+landmark counts.
+
+**The share card is 1200×630 and had three letters on it.** It sets the tagline now, read out of
+`CONTENT.md` so the card and the page cannot disagree, which cost the bitmap face an alphabet —
+five by nine, the last two rows for descenders, and a tagline carrying a character the face
+cannot set fails the build rather than drawing a hole.
+
+**And `TokensAgree` exists because this document lied about itself twice.** The plan's colour and
+type tables are prose about a stylesheet, and prose about a file stops being true: the type table
+went on saying `--text-l` was `1.25rem` for a week after it became a clamp. Every row naming a
+token is now held to what the stylesheet declares, in both schemes.
+
+**Two findings were not acted on, and the reason is the same in both cases: they are somebody
+else's story.**
+
+- **`isu board` prints `done` and `dropped` first.** `internal/cli/view.go` renders the groups in
+  `model.Statuses` order, and that slice is the *precedence* table from §1 — which rule wins when
+  two match. That has nothing to do with what a person wants to read first, so the flagship card
+  on the landing page opens with three rows of finished work, one of them a joke about rewriting
+  the CSS. It is a real defect and it is M2/M3's, not M8's; a display order of `open`,
+  `in progress`, `awaiting triage`, `reopened`, then the terminal groups is the obvious fix and
+  it moves golden files in `internal/cli` that this pull request has no business moving.
+- **The `isu ready` card is two 22-field objects with `"question":"","reason":"","resolution":""`
+  visible in both.** The complaint is fair — it reads as "this JSON is mostly empty" — but two
+  lines is what makes *newline-delimited* legible, and `isu ready` has no flag that would print
+  one. Filling those fields in the fixture would mean inventing content for states the issues are
+  not in, which is the one thing this site may not do.
+
+`SiteURL` is the only absolute URL the site contains. It was
+`https://dgorshkov.github.io/isu` while this story was written and is
+`https://isu-website.netlify.app` now, decided under M8-S3. Everything else is relative, so the
+site works from a `file://` checkout, from a deploy preview at a URL nobody chose and from a
+domain of its own without being rebuilt — changing the host is one constant and a `make site`.
 **Branch** `isu/M8-S2-landing`
 **Build** the page from `CONTENT.md`. Colours and type sizes come from CSS custom properties
 declared once; fonts are self-hosted and subset, no third-party font CDN. Terminal output, board
@@ -1983,7 +2148,97 @@ hex value or a pixel font size; a test asserting the built HTML makes zero third
 requests.
 **Done when** every artifact on the page came out of the binary in this repo.
 
-### M8-S3 · Docs, gates and deploy
+### M8-S3 · Docs, gates and deploy ✅
+**Done** #21, 2026-09-09. Eight pages under `docs/`, every console block in them run against a
+scratch repository during `make test` and `make site`. Two facts about them are worth writing
+down rather than discovering:
+
+- **`docs/importing.md` documents a milestone that does not exist yet.** M7 has not been built,
+  so the page opens by saying the command is not in this build, publishes the mapping the plan
+  specifies, and contains no `$ isu` line at all — there is nothing to run and it does not
+  pretend there is. It is the honest version of a page M8-S3 asks for and M7 has not earned.
+- **`docs/getting-started.md` runs against a repository it is allowed to write to**, so `isu
+  init` and `isu new` actually run. What it cannot assert is anything containing a generated id,
+  because an id is thirty bits of hash over eight random bytes; those blocks run and their output
+  is not compared, and the page says so where it quotes one.
+
+**`docs/importing.md` is a debt this milestone hands to M7, and the next session should collect
+it.** M7 is written and open as #15 against the same base as this pull request; the two were
+merged in the order the reviewer chose, this one first, so the moment #15 lands that page's
+first paragraph is false and its mapping is documentation of something that ships. What it owes
+is small and specific: drop the "not in this build" note, and give the page ```console blocks
+running `isu import github` against a recorded dump, so the importer's documentation executes
+like every other page here. Merging #15 will also conflict in this file — both pull requests
+mark a milestone done in the same table and add `**Done**` paragraphs a few lines apart.
+
+**Netlify was rewriting the pages CI had just verified, and nothing in this repository could
+have told anybody.** Pretty URLs post-processing is on by default and is a dashboard form, so
+every deploy preview served an `index.html` 46 bytes shorter than the committed one — every
+internal href rewritten from `docs/json.html` to `/docs/json`, every attribute requoted from `"`
+to `'`. `site.css` and `og.png` came through untouched; only HTML was changed. The third
+consequence is the one that matters: every gate runs inside `Build` over the bytes in
+`web/site`, and not one of them had ever seen a byte a reader was served — `gateLinks` proved
+`docs/json.html` resolves, and the reader got `/docs/json`.
+
+**`skip_processing = true` did not fix it, and finding that out took a deploy.** With that key in
+`netlify.toml`, the preview for `32cbc65` still served 13,233 bytes against 13,283 committed and
+every href still rewritten. `[build.processing.html] pretty_urls = false` is what the platform
+honours: on the preview for `d9a43e6`, `index.html`, `docs/json.html`,
+`docs/getting-started.html` and `404.html` are byte for byte what `make site` wrote. Both keys
+are kept — the general one is the intent, the specific one is what works — and
+`scripts/site_test.go` asserts both are present and nothing more, because a test here cannot
+fetch a deploy. So the gates now run over the bytes a reader receives, and **nothing in this
+repository holds them to that**: somebody turning post-processing back on in the dashboard would
+break it invisibly. Confirming it is a curl and a diff against `web/site`, which is how both the
+defect and the fix were established; a check that does it on every deploy needs production to
+exist and is a story of its own.
+
+That is the second time this milestone that a gate was believed rather than measured — the first
+was the accessibility pass that had never looked at what the stylesheet did to the document it
+read. The pattern is worth naming: a gate over an artifact says nothing about the artifact
+somebody actually receives.
+
+**The gates are hand-written over the built site, and what they can and cannot see is stated in
+`internal/site/gates.go`.** There is no browser in this build, so "no horizontal scroll at
+360 px" is enforced as the two things that cause it — a fixed width wider than the viewport, and
+wide content outside a box that scrolls — rather than measured. That claim was checked once
+against a real Chromium at 360 px while the story was being built, and the page's `scrollWidth`
+equalled its `clientWidth`; the gate that runs on every build is the proxy, and it is a proxy on
+purpose rather than a browser dependency in the allowlist.
+
+The markdown renderer is `internal/site/markdown.go` and it is not the thing the out-of-scope
+list drops. It renders a fixed subset, refuses a line it does not understand, never passes raw
+HTML through — a `<script>` in a source document is escaped and rendered as text — and is never
+handed an issue body. There is nothing for a sanitiser to do and no configuration in which
+there would be.
+
+**Netlify publishes the site, and `.github/workflows/site.yml` publishes nothing.** The story
+asks for publishing on merge to trunk from CI and for a workflow lint asserting the deploy job
+triggers only on trunk; the site was already wired to Netlify while this milestone was being
+built, so the deploy job would have been a second publisher racing the first. What the workflow
+does instead is the half that makes the site reviewable: it regenerates web/site on every pull
+request and `git diff --exit-code -- web/site` holds the committed bytes to the built ones, and
+it runs every console block in the docs while it is there.
+
+The lint changed subject with it, and the replacement is stronger in one direction and weaker in
+another — both are worth stating. Stronger: the workflow now holds no write permission at all,
+which `scripts/site_test.go` asserts line by line, so nothing it runs on a pull request from
+anywhere can reach the address people read. **Weaker: the guarantee that production comes from
+trunk left this repository with the deploy job.** It is Netlify's production-branch setting now,
+and no test here can see it. `netlify.toml` pins everything that can be pinned in a file — the
+publish directory, asserted against the directory `make site` writes, and the absence of a build
+command — and the branch is not one of them. A reviewer who wants that guarantee back wants the
+Pages job back, and this paragraph is where the trade was made.
+
+`SiteURL` is `https://isu-website.netlify.app`, the one absolute URL on the site.
+
+**One statement in this package is uncovered and is argued for**, in the shape the definition of
+done asks for: `documents` propagating a failure from `Renderer.Page`. Every other error return
+here is reached — by a source file that is not there, by a stylesheet with no tokens in it, by a
+directory something else is sitting on, and by a git on `PATH` that refuses one invocation — but
+that one needs `html/template` to fail on a `docBody` this package built out of its own types,
+which it cannot. The renderer's own execution failure *is* reached, directly, in
+`render_test.go`.
 **Branch** `isu/M8-S3-docs-deploy`
 **Build** `docs/`: getting started, the data model, every derived status with its rule, the
 check catalogue, the JSON contract, importing from GitHub Issues, and a page on what isu

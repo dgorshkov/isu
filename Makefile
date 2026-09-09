@@ -14,7 +14,7 @@ GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || echo $(GOBIN)/g
 BINARY ?= isu
 COVERAGE_PROFILE ?= coverage.out
 
-.PHONY: all help build vet lint fmt test perf stress cover dogfood tools clean
+.PHONY: all help build vet lint fmt test perf stress cover dogfood site tools clean
 
 all: build vet lint test perf cover dogfood
 
@@ -28,6 +28,7 @@ help:
 	@echo 'stress  the build-tagged races, which are out of the default suite'
 	@echo 'cover   run the tests and enforce both coverage floors'
 	@echo 'dogfood run isu check over this repository, with the isu just built'
+	@echo 'site    rebuild web/site from web/CONTENT.md, docs/ and the binary'
 	@echo 'tools   install the pinned golangci-lint'
 	@echo 'clean   remove build and coverage output'
 
@@ -86,6 +87,18 @@ ISU_CHECK_ARGS ?=
 
 dogfood: build
 	./$(BINARY) check $(ISU_CHECK_ARGS)
+
+# M8: the website, which is a golden file like every other artifact in this
+# project — `make site` writes it and `make test` fails when the committed site
+# and the regenerated one differ.
+#
+# It is a test with -update rather than a generator of its own for two reasons.
+# The samples come from running isu in process (internal/site/run.go), so a
+# separate binary would add a main nobody covers and a second way to be pointed
+# at stale code; and the whole package's tests run here, which means the docs'
+# console blocks are executed before anything is published rather than after.
+site:
+	$(GO) test ./internal/site/ -count 1 -update
 
 # golangci-lint v2.5.0 needs go >= 1.24.0. The go directive in go.mod is 1.24.0
 # for exactly this reason, so `go install` builds it with the toolchain already

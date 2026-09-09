@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What isu does not do — isu</title>
+<meta name="description" content="A tool that lists only what it can do is a tool you find the edges of in production. This is the list, with the reason beside each one, so nobody has to ask.">
+<link rel="canonical" href="https://isu-website.netlify.app/docs/not-doing.html">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="What isu does not do — isu">
+<meta property="og:description" content="A tool that lists only what it can do is a tool you find the edges of in production. This is the list, with the reason beside each one, so nobody has to ask.">
+<meta property="og:url" content="https://isu-website.netlify.app/docs/not-doing.html">
+<meta property="og:image" content="https://isu-website.netlify.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What isu does not do — isu">
+<meta name="twitter:description" content="A tool that lists only what it can do is a tool you find the edges of in production. This is the list, with the reason beside each one, so nobody has to ask.">
+<meta name="twitter:image" content="https://isu-website.netlify.app/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="../index.html">isu</a>
+<span class="version">0.1.0-dev</span>
+<nav aria-label="Sections">
+<a href="../docs/getting-started.html">Getting started</a>
+<a href="../docs/index.html">Docs</a>
+<a href="https://github.com/dgorshkov/isu">Source</a>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>What isu does not do</h1>
+<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+<li><a href="#no-web-ui">No web UI</a></li>
+<li><a href="#no-jira-or-linear-import">No Jira or Linear import</a></li>
+<li><a href="#no-bidirectional-sync-with-anything">No bidirectional sync with anything</a></li>
+<li><a href="#no-sprints-points-burndown-or-time-tracking">No sprints, points, burndown or time tracking</a></li>
+<li><a href="#no-cross-repo-issues">No cross-repo issues</a></li>
+<li><a href="#no-sub-issue-hierarchies">No sub-issue hierarchies</a></li>
+<li><a href="#no-downloaded-attachments">No downloaded attachments</a></li>
+<li><a href="#no-archive-directory">No archive directory</a></li>
+<li><a href="#no-renumbering">No renumbering</a></li>
+<li><a href="#no-notifications-and-no-email">No notifications, and no email</a></li>
+<li><a href="#no-second-forge">No second forge</a></li>
+<li><a href="#deferrals-not-rejections">Deferrals, not rejections</a></li>
+</ul>
+</nav>
+<p>A tool that lists only what it can do is a tool you find the edges of in production. This is the list, with the reason beside each one, so nobody has to ask.</p>
+<h2 id="no-web-ui">No web UI</h2>
+<p>Version 1.0.0 is a command line and a terminal interface. There is no <code>isu serve</code>.</p>
+<p>Dropping it also drops the markdown-to-HTML pipeline, the HTML sanitiser and the XSS surface that came with them. Issue bodies arrive from importers and from strangers; <code>glamour</code> renders them to a terminal, where a <code>&lt;script&gt;</code> tag is just text. That is a smaller thing to get right than a sanitiser, and it is right by construction rather than by review.</p>
+<h2 id="no-jira-or-linear-import">No Jira or Linear import</h2>
+<p>One importer, done properly, beats three done at once. Whoever is adopting isu is already in a git repository, and that repository is almost always on GitHub — which answers, for free and without an administrator, the two questions Jira answers only through an integration somebody installed. The <a href="importing.html">importer&#39;s</a> source interface is the seam the next one arrives through.</p>
+<h2 id="no-bidirectional-sync-with-anything">No bidirectional sync with anything</h2>
+<p>Import is one-way and one-time. Two systems that both believe they own the state are two systems that disagree at three in the morning, and the whole premise of isu is that there is one place the state lives and git already knows how to merge it.</p>
+<h2 id="no-sprints-points-burndown-or-time-tracking">No sprints, points, burndown or time tracking</h2>
+<p>None of these is a fact about the repository. All of them are a fact about a process, they change when the process does, and a tracker that models them ties your issue data to this quarter&#39;s methodology.</p>
+<h2 id="no-cross-repo-issues">No cross-repo issues</h2>
+<p>Monorepo-first is a position rather than an omission — and it is what keeps imported <code>&lt;PREFIX&gt;-&lt;number&gt;</code> ids from colliding, since two repositories&#39; <code>#1</code> never meet.</p>
+<h2 id="no-sub-issue-hierarchies">No sub-issue hierarchies</h2>
+<p>isu has one <code>parent</code>, it must name an epic, and an import spends it on the milestone. A GitHub tree eight levels deep is recorded whole in <code>source.yml</code> rather than flattened into a shape that would misrepresent it, which makes modelling it later a story rather than a re-import.</p>
+<p>This is the largest thing version 1.0.0 knowingly declines to model.</p>
+<h2 id="no-downloaded-attachments">No downloaded attachments</h2>
+<p>GitHub&#39;s assets want a browser session on a private repository, so an import records the links and leaves them resolvable where they already live. An importer whose completeness depends on winning a race against an expiring token is one that half-works on exactly the repositories people most want migrated.</p>
+<h2 id="no-archive-directory">No archive directory</h2>
+<p>Resolved issues stay in <code>issues/</code>. There is no <code>fixed/</code> and no archive command: state lives in the file, so moving the file would be storing the state twice and leaving somebody to keep the two in step.</p>
+<h2 id="no-renumbering">No renumbering</h2>
+<p>Ids are permanent from creation. There is no <code>isu renumber</code>, because <code>blocked_by</code> on one branch has to keep pointing at the right issue while a hundred other branches are in flight.</p>
+<h2 id="no-notifications-and-no-email">No notifications, and no email</h2>
+<p>isu reads a repository and prints. Where you want to be told about a change is your forge&#39;s question, and it already has an answer.</p>
+<h2 id="no-second-forge">No second forge</h2>
+<p>This project runs on GitHub. A pipeline for a forge nobody here uses is a pipeline that rots while claiming to be a second opinion. Nothing in the design needs one: the squash-merge evidence tiers stand on GitHub&#39;s own squash settings, so adding another later is work rather than a redesign.</p>
+<h2 id="deferrals-not-rejections">Deferrals, not rejections</h2>
+<p>The web UI, the other importers and the WebAssembly derivation demo are deferrals. Each has a milestone&#39;s worth of design already written down, and each was cut because version 1.0.0 ships sooner without it — not because it is a bad idea.</p>
+
+
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>Every sample on this site was produced by running isu against a repository the site&#39;s build creates from scratch. Apache-2.0.</p>
+</div>
+</footer>
+</body>
+</html>

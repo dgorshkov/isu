@@ -1,0 +1,48 @@
+# The website, verified on every pull request.
+#
+# This workflow publishes nothing. Netlify publishes the site, from
+# netlify.toml, which is why this holds no write permission at all: nothing it
+# runs — on a pull request from anywhere — can reach the address people read.
+#
+# What it does is the gate that makes the site reviewable as a diff. As
+# everywhere else in this project the work is a Makefile target rather than
+# logic in YAML: that target regenerates web/site from web/CONTENT.md, docs/
+# and the binary in this repository, and `git diff --exit-code` holds the
+# committed site to it. It also runs every console block in web/CONTENT.md and
+# docs/, so a documented command that no longer does what the page says fails
+# the review rather than the reader.
+name: site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The samples come from a repository the build creates, but isu still
+          # reads this one to run its own tests.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - run: make site
+
+      - name: the committed site is the one the build produces
+        run: git diff --exit-code -- web/site

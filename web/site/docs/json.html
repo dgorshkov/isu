@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>isu&#39;s JSON output — isu</title>
+<meta name="description" content="Every isu command supports --json, because half the people reading its output are agents. What follows is a contract, not a rendering: fields are added, never repurposed, and an agent written against this document keeps working.">
+<link rel="canonical" href="https://isu-website.netlify.app/docs/json.html">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../site.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="isu&#39;s JSON output — isu">
+<meta property="og:description" content="Every isu command supports --json, because half the people reading its output are agents. What follows is a contract, not a rendering: fields are added, never repurposed, and an agent written against this document keeps working.">
+<meta property="og:url" content="https://isu-website.netlify.app/docs/json.html">
+<meta property="og:image" content="https://isu-website.netlify.app/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="isu&#39;s JSON output — isu">
+<meta name="twitter:description" content="Every isu command supports --json, because half the people reading its output are agents. What follows is a contract, not a rendering: fields are added, never repurposed, and an agent written against this document keeps working.">
+<meta name="twitter:image" content="https://isu-website.netlify.app/og.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="masthead">
+<div class="wrap">
+<a class="wordmark" href="../index.html">isu</a>
+<span class="version">0.1.0-dev</span>
+<nav aria-label="Sections">
+<a href="../docs/getting-started.html">Getting started</a>
+<a href="../docs/index.html">Docs</a>
+<a href="https://github.com/dgorshkov/isu">Source</a>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap">
+<h1>isu&#39;s JSON output</h1>
+<nav class="contents" aria-label="On this page">
+<strong>On this page</strong>
+<ul>
+<li><a href="#the-line-format">The line format</a></li>
+<li><a href="#failure">Failure</a></li>
+<li><a href="#issue">Issue</a></li>
+<li><a href="#claim">Claim</a></li>
+<li><a href="#epic">Epic</a></li>
+<li><a href="#broken">Broken</a></li>
+<li><a href="#freshness">Freshness</a></li>
+<li><a href="#boardpayload">BoardPayload</a></li>
+<li><a href="#group">Group</a></li>
+<li><a href="#showpayload">ShowPayload</a></li>
+<li><a href="#text">Text</a></li>
+<li><a href="#link">Link</a></li>
+<li><a href="#write">Write</a></li>
+<li><a href="#checkpayload">CheckPayload</a></li>
+<li><a href="#finding">Finding</a></li>
+</ul>
+</nav>
+<p>Every isu command supports <code>--json</code>, because half the people reading its output are agents. <strong>What follows is a contract</strong>, not a rendering: fields are added, never repurposed, and an agent written against this document keeps working.</p>
+<p><code>internal/cli/payload.go</code> defines these shapes and <code>TestJSONDocumentsEveryField</code> fails the build when a field exists there and not here, so the two cannot drift by more than one commit nobody ran the tests on.</p>
+<h2 id="the-line-format">The line format</h2>
+<p>Output is <strong>newline-delimited JSON</strong>: one complete JSON value per line.</p>
+<p>Most commands print exactly one line. <code>isu ready</code> prints one issue per line, in the order an agent should take them, so that</p>
+<div class="scroller sketch" tabindex="0" role="group" aria-label="example, not run"><pre><code>isu ready --json | head -1</code></pre></div>
+<p>is the top of the queue and not an opening brace. <code>ready</code> prints JSON <strong>by default</strong>; pass <code>--json=false</code> for the list a person reads.</p>
+<p>Errors go to standard error, as one <code>Failure</code> object and nothing else — no usage text, no warnings. Exit status is <code>0</code> for success, <code>1</code> for a command that could not do what it was asked, and <code>2</code> for a command line that does not make sense.</p>
+<p>One whole line, before the fifteen tables of fields below it, because a shape is easier to hold in the head than a schema of it:</p>
+<div class="scroller ran" tabindex="0" role="group" aria-label="terminal output"><pre><code>$ isu show APP-9cx2rt --json
+{&#34;issue&#34;:{&#34;id&#34;:&#34;APP-9cx2rt&#34;,&#34;title&#34;:&#34;Show the sign-up queue on the board&#34;,&#34;type&#34;:&#34;story&#34;,&#34;state&#34;:&#34;open&#34;,&#34;status&#34;:&#34;in progress&#34;,&#34;owner&#34;:&#34;priya&#34;,&#34;created&#34;:&#34;2026-02-21&#34;,&#34;priority&#34;:&#34;p2&#34;,&#34;parent&#34;:&#34;APP-40b1cc&#34;,&#34;blocked_by&#34;:[],&#34;repro&#34;:&#34;&#34;,&#34;acceptance&#34;:&#34;the board shows queue depth and the oldest waiting account&#34;,&#34;question&#34;:&#34;&#34;,&#34;reason&#34;:&#34;&#34;,&#34;resolution&#34;:&#34;&#34;,&#34;on_trunk&#34;:true,&#34;reopened&#34;:false,&#34;contended&#34;:false,&#34;stale&#34;:false,&#34;claims&#34;:[{&#34;ref&#34;:&#34;refs/heads/isu/APP-9cx2rt&#34;,&#34;claimant&#34;:&#34;Priya Raman&#34;,&#34;email&#34;:&#34;priya@example.invalid&#34;,&#34;commit&#34;:&#34;570aec153ebaae2fedc94a4b49ed8063bd6b53f1&#34;,&#34;when&#34;:&#34;2026-04-14T04:15:00Z&#34;,&#34;age_seconds&#34;:21600,&#34;stale&#34;:false}],&#34;elsewhere&#34;:[&#34;refs/heads/isu/APP-9cx2rt&#34;],&#34;epic&#34;:null,&#34;broken&#34;:null},&#34;body&#34;:&#34;&#34;,&#34;attachments&#34;:[],&#34;comments&#34;:[],&#34;children&#34;:[],&#34;parent&#34;:{&#34;id&#34;:&#34;APP-40b1cc&#34;,&#34;title&#34;:&#34;Make sign-up reliable&#34;,&#34;status&#34;:&#34;open&#34;,&#34;known&#34;:true},&#34;blockers&#34;:[],&#34;freshness&#34;:{&#34;remote&#34;:true,&#34;newest&#34;:&#34;2026-04-14T09:15:00Z&#34;,&#34;age_seconds&#34;:3600,&#34;warn&#34;:false}}</code></pre></div>
+<p>Every field on it is defined below, and <code>contended</code>, <code>claims</code> and <code>elsewhere</code> are the three that a tracker with a database has no way to express at all.</p>
+<h2 id="failure">Failure</h2>
+<p>Printed on standard error by any command that fails while <code>--json</code> is set.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>error</code></td>
+<td>string</td>
+<td>what went wrong, in one sentence</td>
+</tr>
+</tbody></table></div>
+<h2 id="issue">Issue</h2>
+<p>One issue: the fields its file carries, and what the repository derives about them. Every field is always present — a list that is sometimes <code>null</code> makes every consumer write the same defensive branch.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>the folder name, which is what every <code>parent</code> and <code>blocked_by</code> points at</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>one line</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>string</td>
+<td><code>bug</code>, <code>story</code>, <code>chore</code>, <code>spike</code> or <code>epic</code></td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td>string</td>
+<td>what the file says: <code>open</code>, <code>resolved</code>, <code>dropped</code>, or empty on an epic</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>string</td>
+<td>what the repository says — see below</td>
+</tr>
+<tr>
+<td><code>owner</code></td>
+<td>string</td>
+<td>the human answerable for it</td>
+</tr>
+<tr>
+<td><code>created</code></td>
+<td>string</td>
+<td><code>YYYY-MM-DD</code></td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td>string</td>
+<td><code>p0</code>…<code>p3</code>, with the default applied</td>
+</tr>
+<tr>
+<td><code>parent</code></td>
+<td>string</td>
+<td>the epic it belongs to, or empty</td>
+</tr>
+<tr>
+<td><code>blocked_by</code></td>
+<td>array of string</td>
+<td>the issues it waits on</td>
+</tr>
+<tr>
+<td><code>repro</code></td>
+<td>string</td>
+<td>how to reproduce it; required on a bug</td>
+</tr>
+<tr>
+<td><code>acceptance</code></td>
+<td>string</td>
+<td>what done looks like; required on a story</td>
+</tr>
+<tr>
+<td><code>question</code></td>
+<td>string</td>
+<td>what is being answered; required on a spike</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>string</td>
+<td>why it was dropped</td>
+</tr>
+<tr>
+<td><code>resolution</code></td>
+<td>string</td>
+<td><code>wontfix</code>, <code>duplicate</code>, <code>works-as-intended</code> or <code>fixed-elsewhere</code></td>
+</tr>
+<tr>
+<td><code>on_trunk</code></td>
+<td>bool</td>
+<td>its folder exists at trunk</td>
+</tr>
+<tr>
+<td><code>reopened</code></td>
+<td>bool</td>
+<td>trunk resolved it once and says open now</td>
+</tr>
+<tr>
+<td><code>contended</code></td>
+<td>bool</td>
+<td>more than one branch claims it</td>
+</tr>
+<tr>
+<td><code>stale</code></td>
+<td>bool</td>
+<td>a claim on it is older than <code>stale_days</code></td>
+</tr>
+<tr>
+<td><code>claims</code></td>
+<td>array of <code>Claim</code></td>
+<td>the branches claiming it</td>
+</tr>
+<tr>
+<td><code>elsewhere</code></td>
+<td>array of string</td>
+<td>the non-trunk refs whose copy differs from trunk&#39;s</td>
+</tr>
+<tr>
+<td><code>epic</code></td>
+<td><code>Epic</code> or null</td>
+<td>what its children add up to; null unless <code>type</code> is <code>epic</code></td>
+</tr>
+<tr>
+<td><code>broken</code></td>
+<td><code>Broken</code> or null</td>
+<td>why trunk&#39;s copy will not decode; null when it does</td>
+</tr>
+</tbody></table></div>
+<p>The five fields above <code>on_trunk</code> are on every issue rather than only on <code>isu show</code>, because <code>isu ready --json | head -1</code> is meant to be the whole briefing: an agent picking work up needs the acceptance criteria or the repro before it needs anything else. The markdown body is one <code>isu show</code> away.</p>
+<p><code>status</code> is one of <code>done</code>, <code>dropped</code>, <code>awaiting triage</code>, <code>in progress</code>, <code>reopened</code> or <code>open</code>. The rows are ordered and the first match wins, so a merged issue whose claiming branch was never deleted reads <code>done</code>. <code>reopened</code> survives as the annotation above whatever status wins, so the fact is never lost.</p>
+<h2 id="claim">Claim</h2>
+<p>One branch claiming one issue. A claim is a branch whose copy of the issue says <code>resolved</code> where trunk says <code>open</code>; there is no other source.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>ref</code></td>
+<td>string</td>
+<td>the claiming branch, in full</td>
+</tr>
+<tr>
+<td><code>claimant</code></td>
+<td>string</td>
+<td>who wrote the commit that flipped the state, or empty when it was not looked up</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>string</td>
+<td>that author&#39;s address</td>
+</tr>
+<tr>
+<td><code>commit</code></td>
+<td>string</td>
+<td>the commit that flipped the state — the first on the branch, never its tip</td>
+</tr>
+<tr>
+<td><code>when</code></td>
+<td>string</td>
+<td>RFC 3339, that commit&#39;s author date, or empty</td>
+</tr>
+<tr>
+<td><code>age_seconds</code></td>
+<td>number</td>
+<td>how long ago, and <code>0</code> when unknown</td>
+</tr>
+<tr>
+<td><code>stale</code></td>
+<td>bool</td>
+<td>older than the repository&#39;s <code>stale_days</code></td>
+</tr>
+</tbody></table></div>
+<h2 id="epic">Epic</h2>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>children</code></td>
+<td>array of string</td>
+<td>the ids naming this epic as their parent</td>
+</tr>
+<tr>
+<td><code>cycle</code></td>
+<td>bool</td>
+<td>the rollup met this epic again while folding it</td>
+</tr>
+</tbody></table></div>
+<h2 id="broken">Broken</h2>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>path</code></td>
+<td>string</td>
+<td>the unreadable file, relative to the repository root</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>string</td>
+<td>why it could not be read</td>
+</tr>
+</tbody></table></div>
+<p>An issue is never dropped from the board for having one. A half-written issue must not blind the whole board, least of all for the one issue somebody most needs to hear about.</p>
+<h2 id="freshness">Freshness</h2>
+<p>How old the newest remote-tracking ref is. Every derived status is a statement about refs, so a board computed from a week-old fetch is a board about last week — and two engineers with different fetch ages see different contention.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>remote</code></td>
+<td>bool</td>
+<td>there are remote-tracking refs at all</td>
+</tr>
+<tr>
+<td><code>newest</code></td>
+<td>string</td>
+<td>RFC 3339 date of the newest, or empty</td>
+</tr>
+<tr>
+<td><code>age_seconds</code></td>
+<td>number</td>
+<td>how old that is</td>
+</tr>
+<tr>
+<td><code>warn</code></td>
+<td>bool</td>
+<td>past the repository&#39;s <code>fetch_warn_hours</code></td>
+</tr>
+</tbody></table></div>
+<h2 id="boardpayload">BoardPayload</h2>
+<p><code>isu board</code>, one object. <code>isu ui --json</code> prints the same object: an interface is not a thing an agent can read, so what it answers with is the board it would have opened on.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>trunk</code></td>
+<td>string</td>
+<td>the ref isu read as trunk</td>
+</tr>
+<tr>
+<td><code>refs</code></td>
+<td>array of string</td>
+<td>the other refs it read</td>
+</tr>
+<tr>
+<td><code>freshness</code></td>
+<td><code>Freshness</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>groups</code></td>
+<td>array of <code>Group</code></td>
+<td>statuses that matched something, in precedence order</td>
+</tr>
+</tbody></table></div>
+<h2 id="group">Group</h2>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td>string</td>
+<td>the derived status</td>
+</tr>
+<tr>
+<td><code>issues</code></td>
+<td>array of <code>Issue</code></td>
+<td>most urgent first, then oldest, then by id</td>
+</tr>
+</tbody></table></div>
+<h2 id="showpayload">ShowPayload</h2>
+<p><code>isu show &lt;id&gt;</code>, one object.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>issue</code></td>
+<td><code>Issue</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>string</td>
+<td>the markdown below the frontmatter, verbatim</td>
+</tr>
+<tr>
+<td><code>attachments</code></td>
+<td>array of string</td>
+<td>file names beside the README; contents are not read</td>
+</tr>
+<tr>
+<td><code>comments</code></td>
+<td>array of <code>Text</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>children</code></td>
+<td>array of <code>Issue</code></td>
+<td>the issues naming this one as parent; empty unless it is an epic</td>
+</tr>
+<tr>
+<td><code>parent</code></td>
+<td><code>Link</code> or null</td>
+<td>the epic it belongs to</td>
+</tr>
+<tr>
+<td><code>blockers</code></td>
+<td>array of <code>Link</code></td>
+<td>what it waits on</td>
+</tr>
+<tr>
+<td><code>freshness</code></td>
+<td><code>Freshness</code></td>
+<td></td>
+</tr>
+</tbody></table></div>
+<h2 id="text">Text</h2>
+<p>One comment file.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td><code>&lt;date&gt;-&lt;author&gt;-&lt;nn&gt;.md</code></td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>string</td>
+<td>the file, verbatim</td>
+</tr>
+</tbody></table></div>
+<h2 id="link">Link</h2>
+<p>Another issue this one names, with enough of it to render.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>empty when the id resolves to nothing</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>string</td>
+<td>empty when the id resolves to nothing</td>
+</tr>
+<tr>
+<td><code>known</code></td>
+<td>bool</td>
+<td>the id names an issue this repository has</td>
+</tr>
+</tbody></table></div>
+<p>An id that resolves to nothing is reported rather than dropped. What to do about it is <code>isu check</code>&#39;s call, in M5.</p>
+<h2 id="write">Write</h2>
+<p>What every command that changes the repository prints: <code>new</code>, <code>claim</code>, <code>unclaim</code>, <code>resolve</code>, <code>drop</code>, <code>comment</code>, <code>triage</code> and <code>init</code>.</p>
+<p>One shape rather than eight. Somebody who has run <code>isu claim</code> and <code>isu resolve</code> should not have to learn two answers to &#34;what did you just do&#34;.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>the issue that changed; empty for <code>init</code>, which names none</td>
+</tr>
+<tr>
+<td><code>branch</code></td>
+<td>string</td>
+<td>the branch written to, or empty when the change went into the working tree</td>
+</tr>
+<tr>
+<td><code>commit</code></td>
+<td>string</td>
+<td>the commit written, or empty when the change was left uncommitted</td>
+</tr>
+<tr>
+<td><code>paths</code></td>
+<td>array of string</td>
+<td>what changed, relative to the repository root</td>
+</tr>
+<tr>
+<td><code>pushed</code></td>
+<td>bool</td>
+<td>the branch reached the remote</td>
+</tr>
+</tbody></table></div>
+<p>Which commands fill which:</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>command</th>
+<th><code>branch</code></th>
+<th><code>commit</code></th>
+<th><code>pushed</code></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>new</code></td>
+<td><code>report/&lt;id&gt;</code></td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>new --no-branch</code></td>
+<td>—</td>
+<td>—</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>claim</code></td>
+<td><code>isu/&lt;id&gt;</code></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>unclaim</code></td>
+<td><code>isu/&lt;id&gt;</code></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>resolve</code></td>
+<td>the current branch</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>drop</code></td>
+<td>the current branch</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>comment</code></td>
+<td>—</td>
+<td>—</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>triage</code></td>
+<td><code>triage/&lt;id&gt;</code></td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>triage --push</code></td>
+<td>trunk</td>
+<td>yes</td>
+<td>when there is a remote</td>
+</tr>
+<tr>
+<td><code>init</code></td>
+<td>—</td>
+<td>—</td>
+<td>no</td>
+</tr>
+</tbody></table></div>
+<h2 id="checkpayload">CheckPayload</h2>
+<p><code>isu check</code>: which rules ran, and what they found.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>trunk</code></td>
+<td>string</td>
+<td>the ref the run treated as trunk</td>
+</tr>
+<tr>
+<td><code>head</code></td>
+<td>string</td>
+<td>the ref under review, or empty when there is none — a run on trunk, or a repository with no commits</td>
+</tr>
+<tr>
+<td><code>checks</code></td>
+<td>array of string</td>
+<td>the names of the checks that ran, in name order</td>
+</tr>
+<tr>
+<td><code>findings</code></td>
+<td>array of <code>Finding</code></td>
+<td>what they found, failures first</td>
+</tr>
+<tr>
+<td><code>failures</code></td>
+<td>number</td>
+<td>how many findings are failures</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td>number</td>
+<td>how many are warnings</td>
+</tr>
+<tr>
+<td><code>ok</code></td>
+<td>bool</td>
+<td>nothing failed</td>
+</tr>
+<tr>
+<td><code>worktree</code></td>
+<td>bool</td>
+<td>the rules read the issues on disk rather than at a ref</td>
+</tr>
+<tr>
+<td><code>freshness</code></td>
+<td><code>Freshness</code></td>
+<td>how old the refs it read are</td>
+</tr>
+</tbody></table></div>
+<p>Exit status is <code>1</code> when <code>ok</code> is false and <code>0</code> when it is true. <strong>A warning does not fail a run</strong>: two people about to do the same work is worth saying and is not a reason to refuse a pull request.</p>
+<h2 id="finding">Finding</h2>
+<p>One thing a check found.</p>
+<div class="scroller" tabindex="0" role="group" aria-label="table">
+<table>
+<thead><tr>
+<th>field</th>
+<th>type</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>check</code></td>
+<td>string</td>
+<td>which rule found it</td>
+</tr>
+<tr>
+<td><code>severity</code></td>
+<td>string</td>
+<td><code>fail</code> or <code>warn</code></td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>the issue it is about, or empty when it is about the repository</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td>string</td>
+<td>the file it is about, relative to the repository root, or empty</td>
+</tr>
+<tr>
+<td><code>message</code></td>
+<td>string</td>
+<td>what is wrong, in one sentence</td>
+</tr>
+</tbody></table></div>
+<p><code>check</code> is a stable name. A pipeline that greps for one is reading a contract, so a rule is renamed the way a JSON field is: it is not.</p>
+
+
+</main>
+<footer class="foot">
+<div class="wrap">
+<p>Every sample on this site was produced by running isu against a repository the site&#39;s build creates from scratch. Apache-2.0.</p>
+</div>
+</footer>
+</body>
+</html>

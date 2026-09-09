@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://isu-website.netlify.app/sitemap.xml
