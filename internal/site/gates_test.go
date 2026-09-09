@@ -96,6 +96,11 @@ func TestEachGateCatchesTheThingItIsFor(t *testing.T) {
 			`<p><a href="index.html">a</a></p>`,
 			"another origin",
 		},
+		{
+			"a script from somewhere else, behind a bareword attribute",
+			`<p><script async src="https://cdn.example/x.js"></script></p>`,
+			"another origin",
+		},
 		{"a pre that cannot scroll", "<pre>wide</pre>\n", "not inside a box that scrolls"},
 		{"a colour written into the page", `<p style="color: #ff0000">x</p>`, "into a style attribute"},
 		{"a style element", "<style>p{}</style>\n", "carries a <style> element"},
