@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The failure paths of a build are reached the way PLAN.md's definition of done
+// The failure paths of a build are reached the way the plan's definition of done
 // says they are reached in this project: with a directory that is not what the
 // code expects, and with a path something else is already sitting on. Nothing
 // here depends on running unprivileged.

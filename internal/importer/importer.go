@@ -6,7 +6,7 @@
 // git. Everything after that — forming ids, mapping fields, deciding what a
 // dry run says, writing anything to disk — happens here, once, for every
 // source there will ever be. v1.0.0 ships one importer (GitHub Issues), and
-// this interface is the seam PLAN.md M7 says Jira and Linear come back
+// this interface is the seam M7 says Jira and Linear come back
 // through: a second source is a Load method, not a second importer.
 //
 // # The mapping is total and reversible
@@ -88,7 +88,7 @@ type Item struct {
 	// Comments become files under comments/.
 	Comments []Comment
 	// Attachments are the links found in the body. They are recorded, never
-	// fetched — see PLAN.md M7-S5.
+	// fetched — see M7-S5.
 	Attachments []string
 	// Closing is the pull request or commit the source itself says closed this
 	// issue. It is the strongest evidence tier there is, and it arrives with

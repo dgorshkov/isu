@@ -7,7 +7,7 @@ import (
 
 // A very small HTML reader, for the gates below and for nothing else.
 //
-// It is written here rather than pulled in because PLAN.md §0 fixes the
+// It is written here rather than pulled in because the plan fixes the
 // dependency allowlist and a parser is not on it — and because the gates need
 // less than a parser: a list of elements, their attributes, their text and
 // whether they close in the right order. Frontmatter is read by hand in

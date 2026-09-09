@@ -52,7 +52,7 @@ type Response struct {
 // It is an interface so that the tests read a recorded transcript rather than
 // the live API — an importer tested against a service that changes underneath
 // it is one whose test suite fails for reasons nobody controls — and so that
-// the process-count assertion PLAN.md M7-S4 asks for has something to count.
+// the process-count assertion M7-S4 asks for has something to count.
 type Transport interface {
 	Get(ctx context.Context, url string, token importer.Secret) (*Response, error)
 }

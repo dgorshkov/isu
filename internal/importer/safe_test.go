@@ -18,7 +18,7 @@ import (
 	"github.com/dgorshkov/isu/internal/issue"
 )
 
-// One payload per attack, which is what PLAN.md M7-S2 asks for. Everything here
+// One payload per attack, which is what M7-S2 asks for. Everything here
 // is a way somebody has escaped a directory before; none of it is hypothetical,
 // and the display-name one is the live one, because a comment file is named for
 // its author.
@@ -66,7 +66,7 @@ func TestAPathIsCheckedElementByElement(t *testing.T) {
 	}
 }
 
-// PLAN.md M7-S2's live payload: the comment file is named for the author, and a
+// M7-S2's live payload: the comment file is named for the author, and a
 // display name is whatever somebody typed into their profile.
 func TestACommentAuthorWhoseDisplayNameIsAPathIsStillOneFileInOneFolder(t *testing.T) {
 	t.Parallel()
@@ -231,7 +231,7 @@ func TestAnIssueOverThePerIssueCapIsRefusedRatherThanTruncated(t *testing.T) {
 	require.Contains(t, err.Error(), "past the 512 one issue may be")
 }
 
-// PLAN.md M7-S2: "a token interpolated into an error message".
+// M7-S2: "a token interpolated into an error message".
 func TestATokenNeverReachesAMessage(t *testing.T) {
 	t.Parallel()
 
@@ -266,7 +266,7 @@ func TestATokenNeverReachesAMessage(t *testing.T) {
 		"an error with nothing to scrub is the error itself, wrappers and all")
 }
 
-// The grep test PLAN.md M7-S2 asks for, in the same style as M2-S1's: **every
+// The grep test M7-S2 asks for, in the same style as M2-S1's: **every
 // importer writes exclusively through the guarded path**, and this is what
 // stops that being true only on the day it was written.
 func TestOnlySafeWritesTouchesTheFilesystem(t *testing.T) {

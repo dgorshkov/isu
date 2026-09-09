@@ -337,7 +337,7 @@ func (r *Repo) Merge(branch string) *Repo {
 // SquashMerge lands branch as a single commit with the given subject, leaving
 // the branch's own commits unreachable from here. This is GitLab's default and
 // a common GitHub setting, so it is the case the derivation layer has to be
-// correct under — see the squash-merge safety section of PLAN.md.
+// correct under — see the squash-merge safety section of the plan.
 func (r *Repo) SquashMerge(branch, subject string) *Repo {
 	r.t.Helper()
 

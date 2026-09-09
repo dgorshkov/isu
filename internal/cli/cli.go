@@ -3,7 +3,7 @@
 // Everything here is parameterised over its streams, its working directory, its
 // clock and its environment, so that a test drives a whole command in process
 // against a repository the harness scripted — no built binary, no mocks, and no
-// git that is not the user's own. PLAN.md M4-S1 asks for that harness with the
+// git that is not the user's own. M4-S1 asks for that harness with the
 // first command rather than after the last: a milestone that builds eight
 // commands and writes its first end-to-end test at the end has seven commands
 // nobody ever ran.
@@ -218,7 +218,7 @@ func (a *app) root() *cobra.Command {
 	root.SetVersionTemplate("{{.Version}}\n")
 
 	// cobra offers to generate shell completions. It is a command surface
-	// nothing in PLAN.md asks for and one more thing every `isu --help` has to
+	// nothing in the plan asks for and one more thing every `isu --help` has to
 	// explain, so it is off until somebody wants it.
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {

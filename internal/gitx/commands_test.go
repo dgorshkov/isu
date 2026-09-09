@@ -147,7 +147,7 @@ func TestCatFileBatchStreamsTheObjectsItIsFed(t *testing.T) {
 // The batch stream is <oid> <type> <size> LF, then exactly size bytes, then LF.
 // A parser that looks for the next header line instead of counting bytes reads
 // a body that contains a header-shaped line as the start of the next object.
-// This is the test PLAN.md says to write first.
+// This is the test the plan says to write first.
 func TestCatFileBatchSurvivesABlobContainingTheBatchDelimiter(t *testing.T) {
 	trap := "89b3d5feacfa4b37139ad6e315fb43374a2bebda blob 117\n" +
 		"---\nschema: 1\nid: NOT-AN-ISSUE\n---\n"

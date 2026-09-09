@@ -13,7 +13,7 @@ import (
 	"github.com/dgorshkov/isu/internal/repo"
 )
 
-// The gate PLAN.md M2-S5 sets. The numbers are the plan's, and they are budgets
+// The gate M2-S5 sets. The numbers are the plan's, and they are budgets
 // for the slowest runner in CI rather than measurements of anybody's laptop.
 const (
 	// perfIssues is the repository size §0's own measurements were taken at.

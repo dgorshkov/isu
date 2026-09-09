@@ -35,7 +35,7 @@ type History map[string][]StateAt
 
 // LoadHistory reads the states every issue's file has held at trunk.
 //
-// `reopened` is one of the six statuses in PLAN.md, and the only one that
+// `reopened` is one of the six statuses in the plan, and the only one that
 // cannot be answered from the current content of any ref. Walking history per
 // issue inside the derivation package would be a git process per issue and
 // would make M3-S1's "no git calls inside" rule a lie the moment M3-S4 landed.

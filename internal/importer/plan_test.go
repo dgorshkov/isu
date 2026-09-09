@@ -26,7 +26,7 @@ func TestEveryMappedIssueValidates(t *testing.T) {
 	require.Equal(t, map[string]int{"open": 1, "resolved": 1}, plan.Report.States)
 }
 
-// PLAN.md M7-S4: the required field is written as a provenance line, and the
+// M7-S4: the required field is written as a provenance line, and the
 // dry run counts them so nobody mistakes archaeology for content.
 func TestTheFieldATypeRequiresIsWrittenAsProvenance(t *testing.T) {
 	t.Parallel()
@@ -65,7 +65,7 @@ func TestAnUnassignedIssueTakesTheFallbackOwner(t *testing.T) {
 	require.Zero(t, plan.Report.Unowned)
 }
 
-// PLAN.md M7-S4: "failing that the import refuses and the dry run says how many
+// M7-S4: "failing that the import refuses and the dry run says how many
 // issues have neither".
 func TestAnIssueWithNoOwnerAtAllIsCountedAndNotWritten(t *testing.T) {
 	t.Parallel()
@@ -81,7 +81,7 @@ func TestAnIssueWithNoOwnerAtAllIsCountedAndNotWritten(t *testing.T) {
 	require.Contains(t, plan.Report.Skipped[0].Why, "--owner")
 }
 
-// PLAN.md M7-S4: "assert an issue whose milestone was skipped emits no parent",
+// M7-S4: "assert an issue whose milestone was skipped emits no parent",
 // and the same for a blocker that was skipped.
 func TestALinkToAnIssueThatIsNotWrittenIsRecordedAndNotWritten(t *testing.T) {
 	t.Parallel()
@@ -135,7 +135,7 @@ func TestAnEpicIsWrittenWithNoState(t *testing.T) {
 	require.Equal(t, 1, plan.Report.States["(fold over its children)"])
 }
 
-// PLAN.md section 1: comment files are <date>-<author>-<nn>.md, and the
+// The data model: comment files are <date>-<author>-<nn>.md, and the
 // sequence is not decoration — without it a second comment by the same person
 // on the same day silently overwrites the first.
 func TestThreeCommentsByOnePersonOnOneDayAreThreeFiles(t *testing.T) {
@@ -169,7 +169,7 @@ func TestThreeCommentsByOnePersonOnOneDayAreThreeFiles(t *testing.T) {
 	require.Contains(t, file(t, folder, "comments/2026-08-24-alice-o-hara-02.md"), "second")
 }
 
-// PLAN.md M7-S5: "a comment containing frontmatter delimiters does not corrupt
+// M7-S5: "a comment containing frontmatter delimiters does not corrupt
 // the issue file".
 func TestACommentFullOfFrontmatterDelimitersCorruptsNothing(t *testing.T) {
 	t.Parallel()
@@ -194,7 +194,7 @@ func TestACommentFullOfFrontmatterDelimitersCorruptsNothing(t *testing.T) {
 		"a comment file opens with who wrote it, so its first line is never a delimiter")
 }
 
-// PLAN.md M7-S5: "an attachment link survives the body byte for byte and is
+// M7-S5: "an attachment link survives the body byte for byte and is
 // listed".
 func TestAnAttachmentLinkSurvivesTheBodyAndIsListed(t *testing.T) {
 	t.Parallel()

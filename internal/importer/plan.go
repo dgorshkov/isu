@@ -552,7 +552,7 @@ func comment(c Comment) string {
 // slug turns a display name into something a file may be named for.
 //
 // A comment file is named for its author, and an author's display name is
-// whatever they typed into their profile — which is why PLAN.md M7-S2 calls
+// whatever they typed into their profile — which is why M7-S2 calls
 // this the live attack and not a hypothetical one. Everything outside a narrow
 // alphabet becomes a hyphen, so a name that is a path becomes a name that is
 // not one, and SafeName still gets the last word.

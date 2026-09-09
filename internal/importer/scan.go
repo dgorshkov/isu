@@ -162,7 +162,8 @@ func record(e *Evidence, c gitx.Commit, found []string, tier Tier, m *Mapping) {
 //
 // The two spellings are git's own and the forge's: `Merge branch 'topic'`, with
 // an optional `into trunk` after it, and `Merge pull request #456 from
-// alice/topic`. PLAN.md's squash-merge section is why this tier exists at all —
+// alice/topic`. The squash-merge section of `docs/design.md` is why this tier
+// exists at all —
 // a repository whose squash message is the pull request title never carries a
 // trailer or a useful subject onto trunk, and the branch name is recorded by
 // the merge whatever that setting says.

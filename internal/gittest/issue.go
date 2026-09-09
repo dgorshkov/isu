@@ -10,7 +10,7 @@ import (
 const issuesDir = "issues"
 
 // IssueOption changes what Issue writes. The zero set of options produces a
-// valid open chore, which is the smallest issue the schema in PLAN.md accepts:
+// valid open chore, which is the smallest issue the schema in the plan accepts:
 // every other type carries a required field of its own, and an option that
 // silently produced an invalid fixture would make every validation test in M1
 // pass for the wrong reason.

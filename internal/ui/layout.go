@@ -56,7 +56,7 @@ func (m Model) header() []string {
 	}
 }
 
-// counts is the status tally, in the precedence order of PLAN.md's table and
+// counts is the status tally, in the precedence order of the plan's table and
 // naming only the statuses something matched — which is the same rule `isu
 // board` renders its groups by, so the two cannot disagree about what is on the
 // board.
@@ -106,7 +106,7 @@ func (m Model) message() string {
 	}
 }
 
-// hints is the key map, which is where a person learns it. PLAN.md M6-S1 names
+// hints is the key map, which is where a person learns it. M6-S1 names
 // seven of these and the eighth is the fold M6-S3's navigation needs.
 //
 // While the filter line is open the map is a different one, because every

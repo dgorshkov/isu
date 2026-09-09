@@ -54,7 +54,7 @@ func TestLoadRefReadsTrunk(t *testing.T) {
 	require.NoError(t, epic.Validate())
 }
 
-// PLAN.md §0 measures the mandated read path at 0.6 s where a git show per file
+// The plan measures the mandated read path at 0.6 s where a git show per file
 // takes 13.7 s. The difference is process count, so that is what is asserted:
 // one ls-tree, one cat-file --batch, whatever the repository holds.
 func TestLoadRefSpawnsExactlyTwoProcesses(t *testing.T) {
@@ -94,7 +94,7 @@ func TestLoadRefReadsABranchAndADetachedSHA(t *testing.T) {
 		"a raw sha is a ref like any other")
 }
 
-// The status table in PLAN.md turns on issues that are on one ref and not
+// The status table in the plan turns on issues that are on one ref and not
 // another — `awaiting triage` is exactly that — so the loader has to answer it
 // without either ref contaminating the other.
 func TestLoadRefKeepsRefsApart(t *testing.T) {
@@ -141,7 +141,7 @@ func TestLoadRefRefusesARefThatIsNotThere(t *testing.T) {
 
 // The cat-file --batch stream is length-prefixed, and a parser that scanned for
 // the next header instead of counting bytes would read this issue's body as the
-// start of another object. PLAN.md M2-S2 says to write this one first.
+// start of another object. M2-S2 says to write this one first.
 func TestLoadRefSurvivesAnIssueThatLooksLikeTwoObjects(t *testing.T) {
 	trap := "0000000000000000000000000000000000000000 blob 42\n" +
 		"---\nschema: 1\nid: NOT-AN-ISSUE\ntype: chore\n---\n"

@@ -1,6 +1,6 @@
 // Package gitx is the only place in isu that executes git.
 //
-// PLAN.md §0 shells out to the git binary rather than linking a reimplementation
+// isu shells out to the git binary rather than linking a reimplementation
 // of it: the user's git configuration, hooks, credential helpers and LFS all
 // apply for free, the plumbing commands give exact control over the read path,
 // and the fast load path in M2-S2 is only available through plumbing. All of
@@ -72,7 +72,7 @@ var environmentVars = []string{
 // them — would otherwise have isu quietly read, and in M4 write, a repository
 // nobody pointed it at. Everything else in the environment survives: the user's
 // configuration, their credential helper and their SSH agent are the reason
-// PLAN.md shells out at all.
+// isu shells out at all.
 var repositoryVars = []string{
 	"GIT_DIR",
 	"GIT_WORK_TREE",
@@ -153,7 +153,7 @@ func (g *Git) Dir() string { return g.dir }
 // Processes is how many git processes this Git has spawned.
 //
 // M2-S5 asserts a process count rather than a wall-clock time alone, because
-// the slow read paths in PLAN.md §0 differ from the fast one by process count
+// the slow read paths in the plan differ from the fast one by process count
 // and not by algorithm — so a regression shows up here before it shows up as
 // seconds on somebody's laptop.
 func (g *Git) Processes() int64 { return g.processes.Load() }

@@ -20,7 +20,7 @@ import (
 // `isu import` is one command with the source as its argument rather than a
 // subcommand per source, because everything after "which tracker" is the same
 // for all of them: the same flags, the same dry run, the same guarded write.
-// PLAN.md M7-S1 calls the interface behind it the seam Jira and Linear come
+// M7-S1 calls the interface behind it the seam Jira and Linear come
 // back through; this is that seam's front.
 //
 // **A dry run is the default and writing requires --write.** An importer is the

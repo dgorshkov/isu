@@ -11,11 +11,11 @@ import (
 )
 
 // The content half: comments, field values, attachment links, and what closed
-// each issue. Everything here reads a recorded dump — PLAN.md M7-S5 asks for a
+// each issue. Everything here reads a recorded dump — M7-S5 asks for a
 // transcript and never the live API, because an importer tested against a
 // service that changes underneath it fails for reasons nobody controls.
 
-// PLAN.md M7-S5: "forty custom field values produce clean frontmatter and a
+// M7-S5: "forty custom field values produce clean frontmatter and a
 // complete source.yml" — here the two shapes a field value arrives in.
 func TestIssueFieldValuesJoinEverythingElseUnmapped(t *testing.T) {
 	t.Parallel()
@@ -76,7 +76,7 @@ func TestCommentsBecomeFilesNamedForTheirAuthorAndDay(t *testing.T) {
 	}, comments)
 }
 
-// PLAN.md M7-S5: closing pull requests outrank the M7-S3 scan, and here they
+// M7-S5: closing pull requests outrank the M7-S3 scan, and here they
 // are free.
 func TestWhatClosedAnIssueArrivesWithTheIssue(t *testing.T) {
 	t.Parallel()

@@ -11,7 +11,7 @@ import (
 // The three things this interface does to a repository, and one re-read.
 //
 // Every one of them is internal/cli's implementation of the command with the
-// same name, called through Actions. That is PLAN.md M6-S5's requirement and it
+// same name, called through Actions. That is M6-S5's requirement and it
 // is also the only design this package could have: it holds a derivation and no
 // way to make another one, so a `c` that did not go back out through here would
 // have nothing to write with.

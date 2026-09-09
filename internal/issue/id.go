@@ -48,7 +48,7 @@ func NewToken(title, owner string, created time.Time) (string, error) {
 
 // NewID returns prefix, a hyphen, and a fresh token.
 //
-// PLAN.md names this NewID(title, owner, created). The prefix argument is
+// The plan names this NewID(title, owner, created). The prefix argument is
 // added because <PREFIX>-<token> is what an id is, and the config that carries
 // the prefix arrives in this same story; config.Config.NewID is the spelling
 // the plan describes.

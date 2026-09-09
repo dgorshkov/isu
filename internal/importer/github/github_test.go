@@ -13,7 +13,7 @@ import (
 
 // Everything here reads a recorded dump and never the live API. An importer
 // tested against a service that changes underneath it is one whose test suite
-// fails for reasons nobody controls, and PLAN.md M7-S5 says so in as many
+// fails for reasons nobody controls, and M7-S5 says so in as many
 // words: "against a recorded transcript, never the live API".
 
 func dump(t *testing.T, name string) []byte {
@@ -109,7 +109,7 @@ func body(t *testing.T, f importer.Folder, name string) string {
 	return ""
 }
 
-// PLAN.md M7-S4: "assert pull requests in the list are not imported". The REST
+// M7-S4: "assert pull requests in the list are not imported". The REST
 // list returns both and they are told apart by the pull_request key; skipping
 // this is the classic bug in every importer that skips it.
 func TestAPullRequestIsNotAnIssue(t *testing.T) {
@@ -157,7 +157,7 @@ func TestEveryStateReasonIncludingItsAbsence(t *testing.T) {
 	}
 }
 
-// PLAN.md M7-S4: "assert every dropped issue has a resolution from the enum and
+// M7-S4: "assert every dropped issue has a resolution from the enum and
 // a reason."
 func TestEveryDroppedIssueCarriesAResolutionFromTheEnumAndAReason(t *testing.T) {
 	t.Parallel()
@@ -180,7 +180,7 @@ func TestEveryDroppedIssueCarriesAResolutionFromTheEnumAndAReason(t *testing.T) 
 	require.Equal(t, 2, dropped)
 }
 
-// PLAN.md M7-S4: "assert imported milestones carry type: epic and no state:".
+// M7-S4: "assert imported milestones carry type: epic and no state:".
 func TestAMilestoneBecomesAnEpicAndAnEpicDeclaresNoState(t *testing.T) {
 	t.Parallel()
 
@@ -201,7 +201,7 @@ func TestAMilestoneBecomesAnEpicAndAnEpicDeclaresNoState(t *testing.T) {
 	require.Equal(t, "ISU-M1", folder(t, plan, "ISU-2").Issue.Parent)
 }
 
-// PLAN.md M7-S4: "a milestone with no imported children is not written at all",
+// M7-S4: "a milestone with no imported children is not written at all",
 // and "assert an issue whose milestone was skipped emits no parent".
 func TestAMilestoneWithNoImportedChildrenIsNotWritten(t *testing.T) {
 	t.Parallel()
@@ -222,7 +222,7 @@ func TestAMilestoneWithNoImportedChildrenIsNotWritten(t *testing.T) {
 	require.NotContains(t, keys(closed), "#1")
 }
 
-// PLAN.md M7-S4: "assert an out-of-import blocker leaves blocked_by absent
+// M7-S4: "assert an out-of-import blocker leaves blocked_by absent
 // rather than dangling."
 func TestADependencyOutsideTheImportIsRecordedAndNotWritten(t *testing.T) {
 	t.Parallel()
@@ -242,7 +242,7 @@ func TestADependencyOutsideTheImportIsRecordedAndNotWritten(t *testing.T) {
 	require.Contains(t, source, "other/repo#5")
 }
 
-// PLAN.md M7-S4: "a four-level sub-issue tree". isu has one parent, the
+// M7-S4: "a four-level sub-issue tree". isu has one parent, the
 // milestone is spending it, so the hierarchy is recorded whole and modelled not
 // at all.
 func TestASubIssueTreeIsRecordedWholeAndNeverBecomesAParent(t *testing.T) {
@@ -320,7 +320,7 @@ func TestTheAuthorIsRecordedAndIsDeliberatelyNotTheOwner(t *testing.T) {
 	require.Equal(t, 1, planned(t, b, importer.Options{}).Report.Unowned)
 }
 
-// PLAN.md M7: "a repository with none of them still imports, and the dry run
+// M7: "a repository with none of them still imports, and the dry run
 // says which it found."
 func TestARepositoryThatUsesNoneOfItStillImports(t *testing.T) {
 	t.Parallel()
@@ -406,7 +406,7 @@ func TestTheRepositoryOnTheCommandLineWinsOverTheDumps(t *testing.T) {
 	require.Equal(t, "fork/widgets#1", item(t, b, "#1").Ref)
 }
 
-// PLAN.md M7-S4: "the imported tree passes isu check with zero failures" — the
+// M7-S4: "the imported tree passes isu check with zero failures" — the
 // half of it this package can assert on its own is that every issue it produces
 // is a valid one.
 func TestEveryIssueTheImporterProducesValidates(t *testing.T) {

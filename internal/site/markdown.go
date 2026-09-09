@@ -9,7 +9,7 @@ import (
 
 // A small markdown renderer, for the documents in docs/ and for nothing else.
 //
-// PLAN.md's out-of-scope list drops the local web UI and says dropping it "also
+// The plan's out-of-scope list drops the local web UI and says dropping it "also
 // drops the markdown-to-HTML pipeline, the HTML sanitiser and the XSS surface
 // that came with them". That is a rule about *issue bodies*, which arrive from
 // an importer and from strangers; the docs are written in this repository and
@@ -206,7 +206,7 @@ func (r *renderer) quote() {
 }
 
 // code renders a fenced block. Wide output is the reason every one of them
-// sits in its own scrolling box: PLAN.md M8-S3 asks for no horizontal scroll on
+// sits in its own scrolling box: M8-S3 asks for no horizontal scroll on
 // the page at 360 px, and a board is 90 columns wide.
 //
 // **A block that ran and a block that did not must not look the same.** The

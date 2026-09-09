@@ -52,7 +52,7 @@ func TestAKeyThatCannotBeAnIDIsFormedIntoOne(t *testing.T) {
 func TestAnIDMapsBackToTheKeyItWasFormedFrom(t *testing.T) {
 	t.Parallel()
 
-	// Both halves of PLAN.md M7-S1's rule, and the second is why the reverse is
+	// Both halves of M7-S1's rule, and the second is why the reverse is
 	// recorded rather than computed: with this prefix, `#1234` and `PROJ-1234`
 	// form the same id, so no function of the id alone could say which.
 	m := importer.NewMapping("PROJ")
@@ -124,7 +124,7 @@ func TestACollisionInsideOneImportStopsIt(t *testing.T) {
 	require.Contains(t, err.Error(), "both become ISU-7")
 }
 
-// PLAN.md M7-S1: "dry run writes no files".
+// M7-S1: "dry run writes no files".
 func TestMappingWritesNothing(t *testing.T) {
 	t.Parallel()
 
@@ -142,7 +142,7 @@ func TestMappingWritesNothing(t *testing.T) {
 		"an empty Wrote is what makes a dry run one")
 }
 
-// PLAN.md M7-S1: "a source with two hundred custom fields produces clean
+// M7-S1: "a source with two hundred custom fields produces clean
 // frontmatter and a complete source.yml".
 func TestTwoHundredCustomFieldsStayOutOfTheFrontmatter(t *testing.T) {
 	t.Parallel()
@@ -194,7 +194,7 @@ func itoa(n int) string {
 func TestSourceYAMLIsOrderedSoThatAnImportIsIdempotent(t *testing.T) {
 	t.Parallel()
 
-	// PLAN.md M7-S5 asks that running an import twice produce a zero-length
+	// M7-S5 asks that running an import twice produce a zero-length
 	// diff, and a file whose key order follows a map's iteration produces a
 	// diff every time.
 	b := batch()
@@ -236,7 +236,7 @@ func TestNestedValuesAreOrderedToo(t *testing.T) {
 func TestTheSourceInterfaceIsWhatAnImportReads(t *testing.T) {
 	t.Parallel()
 
-	// The seam PLAN.md M7-S1 says Jira and Linear come back through: four
+	// The seam M7-S1 says Jira and Linear come back through: four
 	// methods, and everything after them is the same for every tracker.
 	var source importer.Source = fake{batch: batch()}
 

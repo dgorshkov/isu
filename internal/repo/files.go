@@ -57,7 +57,7 @@ func (f Files) Attachments(id string) []File {
 //
 // One `ls-tree -r -l`, whatever the repository holds. The sizes are the whole
 // reason for the call — the attachment cap in M5-S2 has no other source, and
-// reading every attachment to measure it would be the slow read path PLAN.md §0
+// reading every attachment to measure it would be the slow read path the plan
 // exists to forbid, over the largest files in the repository rather than the
 // smallest.
 func (r *Repo) LoadFiles(ctx context.Context, ref string) (Files, error) {

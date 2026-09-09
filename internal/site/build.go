@@ -41,9 +41,12 @@ var Documents = []Document{
 	{Name: "json"},
 	{Name: "importing", Dump: "acme.json"},
 	{Name: "not-doing"},
-	// Last, and after the reference pages rather than between two of them: this
-	// is the maintainer's notebook, and a stranger reading the documentation is
-	// not looking for it in the same list as the JSON contract.
+	// The last two are the maintainer's shelf rather than the reference: the
+	// design record is why the rules above are the rules, and the field notes
+	// are what happened when they met real repositories. A stranger reading the
+	// documentation is not looking for either in the same list as the JSON
+	// contract.
+	{Name: "design"},
 	{Name: "field-notes"},
 }
 

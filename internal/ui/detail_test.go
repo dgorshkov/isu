@@ -76,7 +76,7 @@ type script struct {
 // run drives one bubbletea program over a pair of buffers, which is what `isu
 // ui` itself does with a pipe on either side of it.
 //
-// teatest is used where PLAN.md M6-S1 asks for it — the golden frames and the
+// teatest is used where M6-S1 asks for it — the golden frames and the
 // assertion that `q` ends the program — and not here. tea.Exec, which is how
 // `n` hands the terminal to an editor, does not come back reliably under
 // teatest's harness: measured at about one run in two, the program released the
@@ -221,7 +221,7 @@ func detailPane(frame string) string {
 	return strings.Join(out, "\n")
 }
 
-// PLAN.md M6-S4 asks for a golden frame per type, because what a type requires
+// M6-S4 asks for a golden frame per type, because what a type requires
 // before it can be closed is the one thing the pane must never leave out.
 func TestGoldenDetailForEveryType(t *testing.T) {
 	t.Parallel()
@@ -375,7 +375,7 @@ func TestAFolderThatCannotBeReadSaysSo(t *testing.T) {
 		"permission denied")
 }
 
-// PLAN.md M6-S4: "an issue with twenty attachments scrolls".
+// M6-S4: "an issue with twenty attachments scrolls".
 func TestAnIssueWithTwentyAttachmentsScrolls(t *testing.T) {
 	t.Parallel()
 

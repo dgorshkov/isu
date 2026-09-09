@@ -59,7 +59,7 @@ func commit(oid, subject, body string, parents ...string) gitx.Commit {
 	}
 }
 
-// PLAN.md M7-S3: a history deliberately mixing all three conventions plus a
+// M7-S3: a history deliberately mixing all three conventions plus a
 // long tail of commits with no key, with the per-tier counts asserted exactly.
 func TestTheThreeTiersAreCountedExactly(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,7 @@ func TestTheThreeTiersAreCountedExactly(t *testing.T) {
 	}
 }
 
-// PLAN.md M7-S3: "assert a (#456) squash subject naming a pull request produces
+// M7-S3: "assert a (#456) squash subject naming a pull request produces
 // no link, and that the same subject does produce one when 456 is an imported
 // issue."
 func TestASquashSubjectNamingAPullRequestProducesNoLink(t *testing.T) {
@@ -140,7 +140,7 @@ func TestAMergeSubjectsOwnPullRequestNumberIsNotALink(t *testing.T) {
 	require.Zero(t, e.Len())
 }
 
-// PLAN.md M7-S3: "an issue matched at two tiers records the stronger one".
+// M7-S3: "an issue matched at two tiers records the stronger one".
 func TestAnIssueMatchedAtTwoTiersRecordsTheStronger(t *testing.T) {
 	t.Parallel()
 
@@ -164,7 +164,7 @@ func TestAnIssueMatchedAtTwoTiersRecordsTheStronger(t *testing.T) {
 func TestTheSourcesOwnAnswerOutranksEveryTierOfTheScan(t *testing.T) {
 	t.Parallel()
 
-	// PLAN.md M7-S5: closing pull requests are the strongest tier there is, and
+	// M7-S5: closing pull requests are the strongest tier there is, and
 	// they arrive with the issue rather than through an integration.
 	e := importer.NewEvidence()
 	require.True(t, e.Record(importer.Link{

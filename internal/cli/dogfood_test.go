@@ -1,10 +1,7 @@
 package cli
 
 import (
-	"os"
 	"regexp"
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,25 +12,39 @@ import (
 
 // isu tracks its own construction, and this is what keeps that true.
 //
-// The conversion in M5-S7 turned every remaining story in PLAN.md into an issue
-// folder. Two documents saying the same thing drift the moment nobody is
-// checking, so these read both and hold them to each other: the plan is the
-// brief, the issues are the queue, and neither is allowed to grow a story the
-// other has never heard of.
+// M5-S7 turned every remaining story in the plan into an issue folder, and the
+// tests here held the two documents to each other because two documents saying
+// the same thing drift the moment nobody is checking. The drift is gone because
+// the second document is: the plan's fifty-one stories are all issues now, from
+// M0-S1 to M9-S4, and `issues/` is the build order, the queue and the history
+// at once.
 //
-// It reads the working tree rather than trunk, deliberately, where PLAN.md says
-// trunk. An assertion about trunk is one that cannot fail on the pull request
-// that breaks it — trunk has not merged it yet — so it would go green for the
-// whole of the review and red immediately afterwards, which is the one moment
-// nobody is looking.
+// What is left to assert is that the one remaining document is whole. A tree
+// with a gap in it — a milestone with no epic, a story numbered past the end of
+// its milestone, a `blocked_by` chain that skips a link — is the same defect the
+// correspondence test used to catch, asked of one document instead of two.
+//
+// It reads the working tree rather than trunk, deliberately. An assertion about
+// trunk is one that cannot fail on the pull request that breaks it — trunk has
+// not merged it yet — so it would go green for the whole of the review and red
+// immediately afterwards, which is the one moment nobody is looking.
 
 // planRoot is this repository, from the directory the tests run in.
 const planRoot = "../.."
 
+// milestones is how many the build has: M0 through M9, all of them epics.
+const milestones = 10
+
 var (
-	storyHeading     = regexp.MustCompile(`(?m)^### (M[5-9]-S\d+ · .+?)\s*$`)
-	milestoneHeading = regexp.MustCompile(`(?m)^# (M[5-9] · .+?)\s*$`)
-	doneHeading      = regexp.MustCompile(` ✅$`)
+	// storyTitle and epicTitle are the two shapes a title in this repository
+	// takes. Nothing else is allowed one, which is what keeps a story from
+	// arriving outside a milestone.
+	storyTitle = regexp.MustCompile(`^M(\d)-S(\d+) · .+$`)
+	epicTitle  = regexp.MustCompile(`^M(\d) · .+$`)
+
+	// doneRecord is the line the working agreement asks every finished story to
+	// carry: which pull request landed it, and when.
+	doneRecord = regexp.MustCompile(`(?m)^\*\*Done\*\* #\d+, \d{4}-\d{2}-\d{2}`)
 )
 
 // ours is every issue in this repository, as the working tree holds it.
@@ -48,16 +59,6 @@ func ours(t *testing.T) *repo.Set {
 	require.Empty(t, set.Broken, "every issue in this repository has to be readable")
 
 	return set
-}
-
-// brief is PLAN.md, read.
-func brief(t *testing.T) string {
-	t.Helper()
-
-	body, err := os.ReadFile(planRoot + "/PLAN.md")
-	require.NoError(t, err)
-
-	return string(body)
 }
 
 func TestEveryIssueInThisRepositoryValidates(t *testing.T) {
@@ -155,39 +156,134 @@ func TestTheDependencyGraphOfThisRepositoryIsAcyclic(t *testing.T) {
 		"a ring in blocked_by is a queue in which nothing is ever ready")
 }
 
-// PLAN.md is the brief and issues/ is the queue. A story in one and not the
-// other is the drift this whole conversion exists to prevent.
-func TestEveryStoryInThePlanHasAnIssueAndTheOtherWayRound(t *testing.T) {
-	t.Parallel()
+// build is this repository's issues indexed the way the plan named them: the
+// epic of each milestone, and each milestone's stories by their number.
+type build struct {
+	epics   map[int]string         // milestone -> epic id
+	stories map[int]map[int]string // milestone -> story number -> id
+}
 
-	body := brief(t)
-
-	var want []string
-
-	for _, match := range milestoneHeading.FindAllStringSubmatch(body, -1) {
-		want = append(want, strings.TrimSpace(doneHeading.ReplaceAllString(match[1], "")))
-	}
-
-	for _, match := range storyHeading.FindAllStringSubmatch(body, -1) {
-		want = append(want, strings.TrimSpace(doneHeading.ReplaceAllString(match[1], "")))
-	}
+// read indexes the tree and fails on anything whose title is not a milestone or
+// a story of one. A title outside those two shapes is a story that belongs to no
+// milestone, which is the thing this repository's queue may not grow.
+func read(t *testing.T) (*repo.Set, build) {
+	t.Helper()
 
 	set := ours(t)
-
-	var got []string
+	b := build{epics: map[int]string{}, stories: map[int]map[int]string{}}
 
 	for _, id := range set.IDs() {
 		i, _ := set.Get(id)
-		got = append(got, i.Title)
+
+		if m := storyTitle.FindStringSubmatch(i.Title); m != nil {
+			mile, story := atoi(t, m[1]), atoi(t, m[2])
+			if b.stories[mile] == nil {
+				b.stories[mile] = map[int]string{}
+			}
+
+			require.Emptyf(t, b.stories[mile][story], "two issues are M%d-S%d", mile, story)
+			b.stories[mile][story] = id
+
+			continue
+		}
+
+		m := epicTitle.FindStringSubmatch(i.Title)
+		require.NotNilf(t, m, "%s is titled %q, which is neither a milestone nor "+
+			"a story of one: this repository's queue is its build order", id, i.Title)
+
+		mile := atoi(t, m[1])
+		require.Emptyf(t, b.epics[mile], "two issues are M%d", mile)
+		b.epics[mile] = id
 	}
 
-	sort.Strings(want)
-	sort.Strings(got)
+	return set, b
+}
 
-	require.Equal(t, want, got,
-		"every milestone from M5 on is an epic and every story is an issue, and "+
-			"nothing else is: PLAN.md and issues/ are two documents saying the same "+
-			"thing, and two documents drift the moment nobody is checking")
+// The build is whole: every milestone has an epic, and every milestone's
+// stories are numbered from one with no gap. A gap is a story that was planned
+// and never written down, which is exactly what the old correspondence test
+// caught when the plan was a second file.
+func TestTheBuildHasEveryMilestoneAndEveryStoryOfEachOne(t *testing.T) {
+	t.Parallel()
+
+	_, b := read(t)
+
+	require.Len(t, b.epics, milestones, "M0 through M9 are epics, and nothing else is")
+
+	for mile := range milestones {
+		require.NotEmptyf(t, b.epics[mile], "M%d has no epic", mile)
+		require.NotEmptyf(t, b.stories[mile], "M%d has no stories", mile)
+
+		for story := 1; story <= len(b.stories[mile]); story++ {
+			require.NotEmptyf(t, b.stories[mile][story],
+				"M%d has %d stories and no M%d-S%d: the numbers run from one "+
+					"without a gap, because a gap is a story nobody wrote down",
+				mile, len(b.stories[mile]), mile, story)
+		}
+	}
+}
+
+// `blocked_by` is the build order, and it is a chain rather than a suggestion:
+// a story waits on the one before it, and the first story of a milestone waits
+// on the milestone before it. That is what makes `isu ready` the answer to what
+// to work on next.
+func TestBlockedByIsTheBuildOrder(t *testing.T) {
+	t.Parallel()
+
+	set, b := read(t)
+
+	waits := func(id string) []string {
+		i, _ := set.Get(id)
+
+		return i.BlockedBy
+	}
+
+	for mile := range milestones {
+		require.Emptyf(t, waits(b.epics[mile]), "M%d is an epic and waits on nothing", mile)
+
+		for story := 1; story <= len(b.stories[mile]); story++ {
+			id := b.stories[mile][story]
+
+			var want []string
+
+			switch {
+			case story > 1:
+				want = []string{b.stories[mile][story-1]}
+			case mile > 0:
+				want = []string{b.epics[mile-1]}
+			}
+
+			require.Equalf(t, want, waits(id),
+				"M%d-S%d is the %s", mile, story,
+				map[bool]string{true: "first story of its milestone", false: "next story"}[story == 1])
+		}
+	}
+}
+
+// A finished story says which pull request finished it and when. The working
+// agreement asks for that line in the same pull request that resolves the
+// story, and a resolved issue without one is a story whose record is a state
+// field and nothing else.
+func TestEveryResolvedStoryRecordsWhenItWasDone(t *testing.T) {
+	t.Parallel()
+
+	set, _ := read(t)
+
+	resolved := 0
+
+	for _, id := range set.IDs() {
+		i, _ := set.Get(id)
+		if i.State != issue.StateResolved {
+			continue
+		}
+
+		resolved++
+
+		require.Regexpf(t, doneRecord, i.Body,
+			"%s is resolved and carries no `**Done** #<pr>, <date>` line", id)
+	}
+
+	require.Positive(t, resolved, "six milestones of this build have landed")
 }
 
 // The rules this milestone built, run over the repository that built them.

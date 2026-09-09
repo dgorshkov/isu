@@ -10,7 +10,7 @@ import (
 	"github.com/dgorshkov/isu/internal/issue"
 )
 
-// The structural rules: everything PLAN.md section 1 says about an issue that
+// The structural rules: everything the data model says about an issue that
 // can be answered without a diff.
 //
 // Two of them are answers to the same question asked at different distances.
@@ -358,7 +358,7 @@ func findCycles(ids []string, next func(string) []string) [][]string {
 // epicCheck is an epic nobody filled in.
 //
 // An epic's status is the fold over its children, so an epic with none folds
-// over nothing. PLAN.md calls that a check failure rather than a status, and
+// over nothing. The plan calls that a check failure rather than a status, and
 // this is it: the board renders such an epic as open, which is the least
 // surprising thing it can say and not a thing anybody can act on.
 type epicCheck struct{}

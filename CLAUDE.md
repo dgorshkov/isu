@@ -2,34 +2,61 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## PLAN.md governs
+## The working agreement
 
-`PLAN.md` is the build order and the design record, not background reading. **Read §0 "Working
-agreement" before every session**, and section 1 "The data model" before touching anything that
-reads or writes an issue.
+**Read this section before every session**, and [`docs/design.md`](docs/design.md) before touching
+anything that reads or writes an issue.
 
-What it obliges you to, in short:
+The build order lives in `issues/`, not in a document beside it. Milestones are epics, stories
+name them as `parent`, and `blocked_by` encodes the order — so `isu ready` is what to work on next
+and `isu board` is where the build actually is. There is no plan file to keep in sync, which is
+the point: this repository tracks its own construction with the tool it is building.
 
 - **TDD, visibly.** The failing test is its own commit and precedes the commit that makes it pass.
   A Go test naming types that do not exist yet does not compile, and that is the intended red —
   CI gates the branch head, not every commit.
 - **Commit format:** `M5-S3: require the work beside the word` — story id, colon, imperative
   summary. The body explains why, not what.
-- **One pull request carries one story**, or several neighbouring stories in the same milestone.
-  Never group across a milestone boundary. Never merge your own pull request.
+- **One pull request carries one story**, or several neighbouring stories in the same milestone
+  that share one subject a reviewer can hold in their head at once. Never group across a milestone
+  boundary. Never group so much that one sitting cannot review it. Branch name is the story id,
+  slugged: `isu/M3-S2-derive-epic-rollup`; a branch carrying several is named for the range and
+  its subject. Everything else here stays **per story** whatever the branch carries.
+- **Never merge your own pull request.** Open it, fill the template, stop. Wait for review.
 - **Stop at every milestone boundary** and wait for explicit approval to start the next one.
-- **A story is not finished until PLAN.md says so in the same pull request**: ` ✅` on the heading,
-  a `**Done** #<pr>, <date>` line under it, the Milestones table row updated, and the milestone
-  heading marked when its last story lands.
-- **If a story needs a decision this document does not make, stop and ask** — put the question in
-  the pull request description rather than inventing product behaviour.
-- **If a test proves PLAN.md wrong, say so.** Open the pull request with the failing test, the
-  evidence and a proposed amendment. A story that ends in a corrected PLAN.md and no
-  implementation is a successful story.
+- **A story is not finished until its own issue says so, in the same pull request.** `isu resolve`
+  flips it — which writes the `Isu-Resolves:` trailer — and the same pull request writes what the
+  story decided into the issue body: a `**Done** #<pr>, <date>` line, and the corrections, defects
+  and carve-outs it produced. Resolve a story only once its pull request has merged. Never resolve
+  one that was skipped, deferred or partially built; say what is missing instead.
+- **If a story needs a decision nothing here makes, stop and ask** — put the question in the pull
+  request description rather than inventing product behaviour.
+- **If a test proves the design wrong, say so.** Open the pull request with the failing test, the
+  evidence and a proposed amendment to the issue body or to `docs/design.md`. A story that ends in
+  a corrected design record and no implementation is a successful story.
+- **Every story leaves the tree green:** `make all` passes, and coverage stays at or above the
+  floors below.
 
-Decisions are recorded where the decision lives: a milestone's header note and each story's
-`**Done**` paragraph carry the corrections, defects and carve-outs that milestone produced. When
-you change behaviour the plan specifies, write the reason there.
+Decisions are recorded where the decision lives: a milestone epic's body and each story's
+`**Done**` paragraph carry what that milestone corrected. The durable *why* — the read path, the
+claim protocol, squash-merge safety, the dependency allowlist — is
+[`docs/design.md`](docs/design.md), and it is a published page like every other document here.
+
+### Definition of done, every story
+
+Per story, not per pull request: one carrying several satisfies all of it for each separately.
+
+1. The failing test is its own commit, and it precedes the commit that makes it pass.
+2. `go build ./...`, `go vet ./...`, `golangci-lint run`, `go test ./...` all pass at the branch
+   head.
+3. Coverage is at or above **99% across `./...`** — the whole module, `cmd/` and the test harness
+   included — and 100% for `internal/model`. The floor is a gate rather than a target: an error
+   return you add is an error return you must reach, and a story that adds one it cannot reach
+   should expect to argue for it. Two of the things this floor has made somebody look at were
+   defects rather than missing tests.
+4. The story's own issue file is flipped to `resolved` in the same pull request.
+5. The pull request describes what changed, what was decided, and anything that needs a call.
+6. You have not merged it.
 
 ## Commands
 
@@ -108,9 +135,9 @@ every run; the default suite still runs those tests and logs the same figure, an
 **process-count** assertions beside them — the ones that actually prevent the regression — hold
 in every pass. macOS carries a further factor-of-two allowance, because `macos-latest` is
 measured at 2.58× the runner the budgets were taken on — 707 ms for `LoadRef` there against
-274 ms here, and 3.66 s for the board against 1.41 s. Those left the plan's own numbers 2.12×
+274 ms here, and 3.66 s for the board against 1.41 s. Those left the original numbers 2.12×
 and 1.64× of headroom on an idle macOS runner, which is why both budgets carry it and not just
-the one that went red. See PLAN.md M2-S5.
+the one that went red. See `docs/design.md` and M2-S5's issue.
 
 ### The read path is a hard requirement
 
@@ -122,8 +149,8 @@ regresses, and it asserts process *counts*, not just times.
 
 ### Domain rules worth knowing before you edit
 
-- **Status is derived, never stored.** The precedence table in PLAN.md §1 is ordered and the first
-  match wins; `reopened` survives as an annotation on whatever status beats it.
+- **Status is derived, never stored.** The precedence table in `docs/statuses.md` is ordered and
+  the first match wins; `reopened` survives as an annotation on whatever status beats it.
 - **Trunk is where state is true.** A branch saying `state: resolved` is a proposal, and that
   proposal is exactly what a claim is: `isu claim` branches, flips the state, commits with an
   `Isu-Claim:` nonce trailer, and pushes — the push is the compare-and-swap.
@@ -154,14 +181,17 @@ regresses, and it asserts process *counts*, not just times.
 
 ## isu tracks its own construction
 
-`issues/` holds one folder per remaining story — milestones are epics, stories name them as
-`parent`, and `blocked_by` encodes the order. From M5-S7 on, **the pull request that carries a
-story also flips that story's issue file to `resolved`** (with `isu resolve`, which writes the
-trailer), and M5-S3 turns a pull request that contains nothing else into a failing check.
+`issues/` holds the whole build — all ten milestones as epics and all fifty-one stories beneath
+them, from M0-S1 to M9-S4, each carrying its own brief and its `**Done**` record. It is the build
+order, the queue and the history at once, and there is no second document saying the same thing.
+**The pull request that carries a story also flips that story's issue file to `resolved`** (with
+`isu resolve`, which writes the trailer), and the evidence check turns a pull request that
+contains nothing else into a failure.
 
-`internal/cli/dogfood_test.go` holds PLAN.md and `issues/` to each other in both directions — a
-story heading with no issue, or an issue with no heading, fails the suite. `make dogfood` runs the
-rules over this repository with the binary just built.
+`internal/cli/dogfood_test.go` asserts the shape of that tree — every issue validates, every story
+names an epic that has children, every epic has children, the `blocked_by` graph is acyclic and
+the chain is unbroken, and `isu check` passes over this repository. `make dogfood` runs the rules
+with the binary just built.
 
 ## The website is a golden file
 
@@ -189,6 +219,6 @@ and `TestTheDocumentsAndTheDocumentationAgree` fails when a file in `docs/` is n
 
 ## Dependencies
 
-The allowlist is fixed in PLAN.md §0 — cobra, bubbletea/bubbles/lipgloss/glamour (M6), teatest,
+The allowlist is fixed in `docs/design.md` — cobra, bubbletea/bubbles/lipgloss/glamour (M6), teatest,
 goccy/go-yaml (`.isu.yml` and `source.yml` only, never frontmatter), testify, goreleaser. **Adding
 anything else requires asking first.** Go 1.24+; `git` is a hard runtime requirement.

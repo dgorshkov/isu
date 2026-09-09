@@ -35,7 +35,7 @@ func states(t *testing.T, history repo.History, id string) []string {
 
 // An issue resolved and then reverted has held three states at trunk, not two:
 // it was open when it was created, and creation is a state the file held. See
-// the note under M2-S4 in PLAN.md.
+// the note under M2-S4 in the plan.
 func TestLoadHistoryRecordsAResolveAndItsRevert(t *testing.T) {
 	r := gittest.New(t).
 		Issue("AR-7f3akq").Commit("add AR-7f3akq")
@@ -122,7 +122,7 @@ func TestLoadHistoryCollapsesACommitThatDidNotChangeTheState(t *testing.T) {
 	require.Equal(t, []string{"open", "resolved"}, states(t, history, "AR-7f3akq"))
 }
 
-// PLAN.md §Squash-merge safety: post-merge questions are answered from file
+// The plan's squash-merge safety: post-merge questions are answered from file
 // content at trunk commits, never from commit metadata. Squash collapses
 // authorship; it does not touch the file.
 func TestLoadHistoryReadsTheSameSequenceFromASquashAndFromAMerge(t *testing.T) {

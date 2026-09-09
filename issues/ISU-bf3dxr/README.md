@@ -11,4 +11,8 @@ parent: ISU-thyf24
 blocked_by: ISU-9a1rqm
 acceptance: the tag is pushed and the release artifacts are attached.
 ---
-The brief for this story is in PLAN.md, under `### M9-S4 · v1.0.0`.
+**Branch** `isu/M9-S4-v1`
+**Build** CHANGELOG, README final pass, tag `v1.0.0`.
+**Done when** the tag is pushed and the release artifacts are attached.
+
+---

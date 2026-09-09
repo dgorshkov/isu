@@ -7,4 +7,4 @@ owner: dmitry
 created: 2026-09-01
 priority: p2
 ---
-The stories in PLAN.md under `# M9 · Release`.
+The stories of M9 · Release.

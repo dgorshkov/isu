@@ -1,6 +1,6 @@
 // Package github reads issues out of GitHub Issues.
 //
-// It is v1.0.0's one importer, and PLAN.md M7 says why it is this one: whoever
+// It is v1.0.0's one importer, and M7 says why it is this one: whoever
 // is adopting isu is already in a git repository, that repository is
 // overwhelmingly on GitHub, and the issues they want out are therefore sitting
 // beside the code they are migrating — no export request, no admin, no licence.

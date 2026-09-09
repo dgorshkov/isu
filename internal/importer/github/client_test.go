@@ -17,7 +17,7 @@ import (
 	"github.com/dgorshkov/isu/internal/importer/github"
 )
 
-// transcript is the recorded API PLAN.md M7-S5 asks these tests to read: a
+// transcript is the recorded API M7-S5 asks these tests to read: a
 // canned answer per path, and a count of every round trip, which is what makes
 // "no request per issue" something this suite asserts rather than hopes.
 type transcript struct {
@@ -87,7 +87,7 @@ func listOf(from, n int) string {
 	return "[" + strings.Join(rows, ",") + "]"
 }
 
-// PLAN.md M7-S4: "5,000 issues are read in pages of a hundred with no request
+// M7-S4: "5,000 issues are read in pages of a hundred with no request
 // per issue" — a process count in the spirit of M2-S5, against a transport that
 // counts.
 func TestTheListIsReadInPagesAndCostsNoRequestPerIssue(t *testing.T) {

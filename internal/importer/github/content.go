@@ -1,7 +1,7 @@
 // The content half of a GitHub import: the comments, the field values, the
 // attachment links, and the pull request that closed each issue.
 //
-// It is its own file because it is its own story — PLAN.md M7-S5 — and because
+// It is its own file because it is its own story — M7-S5 — and because
 // the two halves fail differently. Everything beside it maps an issue onto
 // isu's schema and cannot lose anything; this is the part that would quietly
 // drop a comment, mangle an attachment link, or claim a link to a commit it

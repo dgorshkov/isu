@@ -15,7 +15,7 @@ import (
 //
 // They are bound to the fixture the way production binds — gitx.New with no
 // options — so that the identity and the configuration a commit is written
-// under are the repository's own, which is the whole reason PLAN.md §0 shells
+// under are the repository's own, which is the whole reason isu shells
 // out to git rather than linking a reimplementation of it.
 
 func TestBuildTreeWritesWithoutTouchingTheWorkingTree(t *testing.T) {

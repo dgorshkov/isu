@@ -25,7 +25,7 @@ import (
 // $GIT_DIR/info/exclude and the user's global excludes file, which is where
 // half of them live. `git ls-files` already knows.
 //
-// PLAN.md M2-S3 says "no git process at all". One is not none, and the
+// M2-S3 says "no git process at all". One is not none, and the
 // difference is exactly this: honouring .gitignore was in the same sentence,
 // and the two cannot both be true. One constant process is still nothing beside
 // the per-blob path, and it is the honest number.

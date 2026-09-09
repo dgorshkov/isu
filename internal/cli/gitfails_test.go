@@ -17,7 +17,7 @@ import (
 //
 // Every command here is a few git processes in a row, and each of them has an
 // error return that until now nobody had ever taken. An error return nobody has
-// ever taken is a message nobody has ever read, and PLAN.md's coverage floor
+// ever taken is a message nobody has ever read, and the plan's coverage floor
 // exists to say so.
 //
 // The lever is a git on PATH that forwards to the real one and refuses exactly

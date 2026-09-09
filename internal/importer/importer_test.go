@@ -18,7 +18,7 @@ import (
 var created = time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
 
 // fake is a source with nothing behind it, which is the whole point of the
-// interface PLAN.md M7-S1 asks for: the mapping, the dry run and the guarded
+// interface M7-S1 asks for: the mapping, the dry run and the guarded
 // write are the same for every tracker, and a test of them should not have to
 // be a test of GitHub.
 type fake struct {
@@ -145,7 +145,7 @@ func names(f importer.Folder) []string {
 }
 
 // custom is an item carrying however many fields the schema has no place for,
-// which is the two hundred PLAN.md M7-S1 names.
+// which is the two hundred M7-S1 names.
 func custom(n int) importer.Item {
 	extra := make(map[string]any, n)
 	for i := range n {

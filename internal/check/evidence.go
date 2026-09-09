@@ -11,7 +11,7 @@ func init() {
 	Checks.MustRegister(evidenceCheck{})
 }
 
-// evidenceCheck is the type table in PLAN.md section 1, read as a rule about a
+// evidenceCheck is the type table in the data model, read as a rule about a
 // diff: resolving a bug, a story or a chore requires a change outside issues/,
 // and resolving a spike requires the answer written down beside it.
 //

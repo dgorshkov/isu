@@ -16,7 +16,7 @@ import (
 )
 
 // The whole importer, end to end through the product, against a recorded dump
-// and a real repository. Nothing here reaches github.com: PLAN.md M7-S5 asks
+// and a real repository. Nothing here reaches github.com: M7-S5 asks
 // for a recorded transcript and never the live API, and an import that only
 // works when a service is up is one nobody can review.
 
@@ -113,7 +113,7 @@ func TestWritingTakesAFlagAndStagesWhatItWrote(t *testing.T) {
 	require.Contains(t, staged, "issues/ISU-1/comments/2026-03-05-alice-o-hara-02.md")
 }
 
-// PLAN.md M7-S4: "the imported tree passes isu check with zero failures".
+// M7-S4: "the imported tree passes isu check with zero failures".
 func TestTheImportedTreePassesIsuCheck(t *testing.T) {
 	t.Parallel()
 
@@ -128,7 +128,7 @@ func TestTheImportedTreePassesIsuCheck(t *testing.T) {
 	require.Contains(t, got.stdout, "nothing to report")
 }
 
-// PLAN.md M7-S5: "a realistic export imports completely and idempotently —
+// M7-S5: "a realistic export imports completely and idempotently —
 // running it twice produces a zero-length diff."
 func TestRunningTheSameImportTwiceProducesNoDiff(t *testing.T) {
 	t.Parallel()
@@ -168,7 +168,7 @@ func TestAnImportRefusesToOverwriteADifferentRepositorysIssue(t *testing.T) {
 	require.Contains(t, got.stderr, "refuses rather than overwriting")
 }
 
-// PLAN.md M7-S4: the import refuses when an issue has neither an assignee nor
+// M7-S4: the import refuses when an issue has neither an assignee nor
 // --owner, and the dry run says how many.
 func TestAnUnassignedIssueStopsAWriteAndNotADryRun(t *testing.T) {
 	t.Parallel()
@@ -184,7 +184,7 @@ func TestAnUnassignedIssueStopsAWriteAndNotADryRun(t *testing.T) {
 	require.NoDirExists(t, filepath.Join(r.Dir(), "issues"))
 }
 
-// PLAN.md M7-S3: "the scanner runs against a real repository and reports its
+// M7-S3: "the scanner runs against a real repository and reports its
 // coverage."
 func TestTheScanReportsWhichCommitResolvedWhat(t *testing.T) {
 	t.Parallel()

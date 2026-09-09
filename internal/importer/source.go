@@ -11,8 +11,8 @@ import (
 //
 // It sits in the issue's own folder, beside the README, and **nothing in isu
 // reads it**. That is the point: a mature tracker has two hundred custom
-// fields, and a schema that absorbs them is not a schema. PLAN.md's dependency
-// allowlist names goccy/go-yaml for `.isu.yml` and this file and nothing else —
+// fields, and a schema that absorbs them is not a schema. The dependency
+// allowlist in `docs/design.md` names goccy/go-yaml for `.isu.yml` and this file and nothing else —
 // frontmatter is still parsed by hand, because Write has to round-trip unknown
 // keys, spacing and line endings byte for byte and a YAML serialiser will not.
 const SourceFileName = "source.yml"
@@ -28,7 +28,7 @@ const sourceHeader = `# Written by ` + "`isu import`" + `. Everything the source
 // renderSource writes source.yml.
 //
 // Keys are sorted at every level rather than left to a map's iteration order,
-// and that is what makes an import idempotent: PLAN.md M7-S5 asks that running
+// and that is what makes an import idempotent: M7-S5 asks that running
 // it twice produces a zero-length diff, and a file whose key order changes per
 // run produces a diff every time.
 func renderSource(values map[string]any) ([]byte, error) {

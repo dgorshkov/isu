@@ -17,7 +17,7 @@ import (
 // TestOnlySafeWritesTouchesTheFilesystem fails the build when that stops being
 // true — the same grep test M2-S1 uses to keep git inside internal/gitx.
 //
-// It has its own story (PLAN.md M7-S2) for one reason: **an importer writes
+// It has its own story (M7-S2) for one reason: **an importer writes
 // attacker-influenced data into your repository.** Ticket titles, comment
 // bodies, author display names and custom field values all originate outside
 // your control, and on a public repository "outside your control" means anyone
@@ -25,7 +25,7 @@ import (
 // of scope and glamour renders to a terminal — so writing it to disk is the
 // entire attack surface.
 //
-// The decompressed-size limit and the content-type sniffing PLAN.md names are
+// The decompressed-size limit and the content-type sniffing M7-S2 names are
 // deferred along with the downloads that needed them: v1.0.0's one importer
 // records attachment links and fetches nothing, so a zip-bomb guard here would
 // be a defence with no traffic on it and a 99% coverage floor to answer to.
@@ -177,7 +177,7 @@ func (w Writer) Write(f Folder) ([]string, error) {
 // claimed refuses a folder that is already somebody else's issue.
 //
 // Two imports into one tracker can collide — one repository's `#7` and
-// another's are both `<PREFIX>-7` — and PLAN.md says isu refuses rather than
+// another's are both `<PREFIX>-7` — and M7-S4 says isu refuses rather than
 // overwriting. It cannot refuse every folder that is already there, because
 // M7-S5 asks that running one import twice produce a zero-length diff. So the
 // question is not "is something here" but "is what is here this issue".
@@ -298,7 +298,7 @@ func safeParents(root, rel string) error {
 
 // Secret is a credential — an API token — and it never appears in output.
 //
-// PLAN.md M7-S2 asks for tokens read from the environment or a credential
+// M7-S2 asks for tokens read from the environment or a credential
 // helper, never from a flag, never written to disk, and redacted from every log
 // line and error string. The first three are the caller's to obey; this type is
 // how the fourth stops depending on anybody remembering. A Secret formats as

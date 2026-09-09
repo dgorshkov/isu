@@ -93,7 +93,7 @@ func TestTheHeaderCountsWhatTheListHolds(t *testing.T) {
 	require.Contains(t, head, "remote refs 2h ago")
 }
 
-// PLAN.md M6-S1 names the key map, and the footer is where a person learns it.
+// M6-S1 names the key map, and the footer is where a person learns it.
 func TestTheFooterNamesEveryKeyThePlanAsksFor(t *testing.T) {
 	t.Parallel()
 
@@ -142,7 +142,7 @@ func TestTheReadyQueueIsAKeyAway(t *testing.T) {
 			"`r` a way to find something rather than a way to lose your place")
 }
 
-// PLAN.md: "q quits cleanly and restores the terminal". Quitting cleanly is
+// The plan: "q quits cleanly and restores the terminal". Quitting cleanly is
 // this half — the program ends of its own accord, rather than being torn down
 // by a timeout — and restoring the terminal is asserted where the terminal is,
 // against `isu ui` itself.

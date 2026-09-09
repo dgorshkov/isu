@@ -82,7 +82,7 @@ type SelectOption struct {
 
 // FieldValue is one issue field value — the structured custom metadata that
 // reached general availability in July 2026, and precisely the two hundred
-// custom fields PLAN.md M7-S1 refuses to let into frontmatter.
+// custom fields M7-S1 refuses to let into frontmatter.
 //
 // The API spells the name `issue_field_name` and puts a select field's answer
 // in `single_select_option` or `multi_select_options` rather than in `value`.
